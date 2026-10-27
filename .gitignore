@@ -1,0 +1,10 @@
+target/
+*.class
+*.log
+.idea/
+.vscode/
+nbproject/private/
+*.iml
+.DS_Store
+application-local.properties
+.env
