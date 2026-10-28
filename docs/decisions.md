@@ -1,12 +1,26 @@
-# UENav decisions (fill in before T3/T4)
+# UENav Decisions
 
-| ID | Question | Answer |
-|----|----------|--------|
-| D1 | Architecture: Client -> Spring Boot REST -> MySQL (drop SQLite/JDBC-in-client)? | |
-| D2 | Add Room table to ERD and class diagram? | |
-| D3 | Node gets X, Y and a link to its Building/Room name? | |
-| D4 | Feedback storage: type and review status? | |
-| D5 | Dijkstra runs on the server? | |
-| D6 | Maps: pre-rendered images plus coordinate overlay? | |
-| D7 | Admin on phone, PC, or both? | |
-| D8 | Admin auth: BCrypt plus token or session? | |
+Status: D1 to D9 answered by the project owner.
+
+| ID | Question | Decision |
+|----|----------|----------|
+| D1 | How do the app and database connect? | Spring Boot REST API sits in front of MySQL. The "SQLite / JDBC in client" wording in the proposal slides is dropped. |
+| D2 | Add a Room table? | **No.** Rooms and places are rows in the **Node** table, told apart by `Node_Type`. The ERD stays as drawn. |
+| D3 | Node positions and names? | Node gets `X`, `Y` and a `Name`, so routes can be drawn and steps can say "Turn left". |
+| D4 | Feedback storage? | Each "Helpful" / "Wrong route" is its own Usage Log record with a feedback type (`Helpful`, `Wrong_Route`), a status (`New`, `Reviewed`) and the route it was about. |
+| D5 | Where does Dijkstra run? | **Inside the Android app** (and desktop client), using the `uenav-core` module, so navigation works **offline** inside the school. The server is not needed to find a route. |
+| D6 | How are maps shown? | Map pictures made in Photoshop (the emergency map can be used as the base), with the route line drawn on top by the app using node X/Y positions. |
+| D7 | Where does the admin work? | On the PC first. The phone admin screen comes later. |
+| D8 | Admin login? | Passwords stored hashed with BCrypt. Server gives a token after login. Password checks happen on the server only. |
+
+## What these decisions change
+
+- **Table count:** the proposal text says 7 tables. With D2 it is **6**: Admin Account, Building, Floor, Node, Edge, Usage Log. Fix this on the ERD slide and in the Class Diagram (no Room class).
+- **Offline (D5):** the phone needs its own copy of the campus data (nodes, edges, buildings, floors, map images). It cannot read MySQL. See D9.
+- **Logs while offline:** searches and feedback are saved on the phone first and sent to the server later, when there is a connection.
+- **Sequence diagram:** route search no longer calls the server. Update it so `computeRoute` runs inside the app and the log is saved locally and synced later.
+- **Server role:** admin login, place/walkway editing, reports, stats, CSV export, and handing out the data snapshot.
+
+## D9: getting campus data onto the phone (approved)
+
+The server exports one data file (JSON) with the whole graph: nodes, edges, buildings and floors. The app ships with a built-in copy and replaces it when it connects and finds a newer version. Map pictures are packed inside the app.
