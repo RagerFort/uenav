@@ -26,7 +26,7 @@ public final class SnapshotReader {
                     getNullableInt(n, "floorId"), getString(n, "name"),
                     getInt(n, "x"), getInt(n, "y"), getString(n, "nodeType"));
             graph.addNode(node);
-            if (!NOT_SEARCHABLE.contains(node.nodeType())) {
+            if (isSearchable(node.nodeType())) {
                 places.add(node);
             }
         }
@@ -42,6 +42,11 @@ public final class SnapshotReader {
                     getDouble(e, "distanceM"), type, getBool(e, "accessible")));
         }
         return new CampusData(version, graph, List.copyOf(places));
+    }
+
+    /** False for waypoints (junctions, stairs, elevators) that are not offered as destinations. */
+    public static boolean isSearchable(String nodeType) {
+        return !NOT_SEARCHABLE.contains(nodeType);
     }
 
     @SuppressWarnings("unchecked")

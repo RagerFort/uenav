@@ -24,3 +24,7 @@ Status: D1 to D9 answered by the project owner.
 ## D9: getting campus data onto the phone (approved)
 
 The server exports one data file (JSON) with the whole graph: nodes, edges, buildings and floors. The app ships with a built-in copy and replaces it when it connects and finds a newer version. Map pictures are packed inside the app.
+
+## D10: JSON handling (implemented, owner has not explicitly confirmed)
+
+The phone and desktop apps read and write JSON with `MiniJson` in `uenav-core`, a small hand-written reader and writer with no outside library and no reflection. This avoids native-image (Android) problems with JSON libraries. The server keeps using Spring's built-in Jackson. If the team prefers a library later, only `MiniJson` and its callers change.

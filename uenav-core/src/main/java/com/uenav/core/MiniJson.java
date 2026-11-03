@@ -33,6 +33,82 @@ public final class MiniJson {
         return v;
     }
 
+    /** Writes a Map, List, String, Number, Boolean or null as JSON text. */
+    public static String write(Object value) {
+        StringBuilder sb = new StringBuilder();
+        write(value, sb);
+        return sb.toString();
+    }
+
+    private static void write(Object v, StringBuilder sb) {
+        if (v == null) {
+            sb.append("null");
+        } else if (v instanceof String str) {
+            writeString(str, sb);
+        } else if (v instanceof Boolean b) {
+            sb.append(b.booleanValue());
+        } else if (v instanceof Integer || v instanceof Long || v instanceof Short || v instanceof Byte) {
+            sb.append(v);
+        } else if (v instanceof Number n) {
+            double d = n.doubleValue();
+            if (Double.isNaN(d) || Double.isInfinite(d)) {
+                throw new IllegalArgumentException("Cannot write NaN or infinity");
+            }
+            sb.append(d == Math.rint(d) && Math.abs(d) < 1e15 ? Long.toString((long) d) : Double.toString(d));
+        } else if (v instanceof Map<?, ?> map) {
+            sb.append('{');
+            boolean first = true;
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (!first) {
+                    sb.append(',');
+                }
+                first = false;
+                writeString(String.valueOf(e.getKey()), sb);
+                sb.append(':');
+                write(e.getValue(), sb);
+            }
+            sb.append('}');
+        } else if (v instanceof Iterable<?> items) {
+            sb.append('[');
+            boolean first = true;
+            for (Object o : items) {
+                if (!first) {
+                    sb.append(',');
+                }
+                first = false;
+                write(o, sb);
+            }
+            sb.append(']');
+        } else {
+            throw new IllegalArgumentException("Cannot write " + v.getClass().getName());
+        }
+    }
+
+    private static void writeString(String s, StringBuilder sb) {
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"' -> sb.append("\\\"");
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                default -> {
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        sb.append('"');
+    }
+
+
     private Object value() {
         if (pos >= s.length()) {
             throw error("Unexpected end of JSON");

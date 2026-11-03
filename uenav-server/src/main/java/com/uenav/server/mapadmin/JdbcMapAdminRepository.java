@@ -2,6 +2,7 @@ package com.uenav.server.mapadmin;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -84,14 +85,49 @@ public class JdbcMapAdminRepository implements MapAdminRepository {
     // ---- nodes
     @Override
     public int insertNode(MapInput.NodeInput n) {
-        return insert("INSERT INTO node (building_id, floor_id, name, node_type, x, y) VALUES (?, ?, ?, ?, ?, ?)",
-                n.buildingId(), n.floorId(), n.name(), n.nodeType(), n.x(), n.y());
+        KeyHolder keys = new GeneratedKeyHolder();
+        jdbc.update(con -> {
+            PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO node (building_id, floor_id, name, node_type, x, y) VALUES (?, ?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS);
+            setNullableInt(ps, 1, n.buildingId());
+            setNullableInt(ps, 2, n.floorId());
+            ps.setString(3, n.name());
+            ps.setString(4, n.nodeType());
+            ps.setInt(5, n.x());
+            ps.setInt(6, n.y());
+            return ps;
+        }, keys);
+        Number key = keys.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Insert did not return an id");
+        }
+        return key.intValue();
     }
 
     @Override
     public boolean updateNode(int id, MapInput.NodeInput n) {
-        return update("UPDATE node SET building_id=?, floor_id=?, name=?, node_type=?, x=?, y=? WHERE node_id=?",
-                n.buildingId(), n.floorId(), n.name(), n.nodeType(), n.x(), n.y(), id);
+        return jdbc.update(con -> {
+            PreparedStatement ps = con.prepareStatement(
+                    "UPDATE node SET building_id=?, floor_id=?, name=?, node_type=?, x=?, y=? WHERE node_id=?");
+            setNullableInt(ps, 1, n.buildingId());
+            setNullableInt(ps, 2, n.floorId());
+            ps.setString(3, n.name());
+            ps.setString(4, n.nodeType());
+            ps.setInt(5, n.x());
+            ps.setInt(6, n.y());
+            ps.setInt(7, id);
+            return ps;
+        }) > 0;
+    }
+
+    private static void setNullableInt(PreparedStatement ps, int index, Integer value)
+            throws java.sql.SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.INTEGER);
+        } else {
+            ps.setInt(index, value);
+        }
     }
 
     @Override
