@@ -1,10 +1,13 @@
 package com.uenav.mobile;
 
-import com.uenav.core.Graph;
+import com.uenav.core.CampusData;
 import com.uenav.core.Node;
 import com.uenav.core.PathFinder;
 import com.uenav.core.Route;
 import com.uenav.core.RoutePreference;
+import com.uenav.core.SnapshotReader;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -18,17 +21,31 @@ import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
 /**
- * Offline spike: pick start, destination and stairs/elevator, then press Find route.
- * No network and no database. Routing runs on the device through uenav-core.
+ * Offline app: loads the campus map from the copy bundled inside the app (campus-snapshot.json),
+ * then finds routes on the device with no network and no database.
  */
 public class MobileApp extends Application {
 
+    private static final String BUNDLED_SNAPSHOT = "/campus-snapshot.json";
+
     @Override
     public void start(Stage stage) {
-        Graph graph = SampleData.graph();
+        CampusData data;
+        try {
+            data = loadBundled();
+        } catch (Exception e) {
+            Label err = new Label("Could not load the campus map.\n" + e.getMessage());
+            err.setWrapText(true);
+            VBox box = new VBox(err);
+            box.setPadding(new Insets(16));
+            stage.setScene(new Scene(box, 360, 640));
+            stage.show();
+            return;
+        }
+        final CampusData campus = data;
 
-        ComboBox<Node> from = placeBox(graph);
-        ComboBox<Node> to = placeBox(graph);
+        ComboBox<Node> from = placeBox(campus);
+        ComboBox<Node> to = placeBox(campus);
         from.setPromptText("From");
         to.setPromptText("To");
 
@@ -57,20 +74,32 @@ public class MobileApp extends Application {
                 result.setText("Choose a different place.");
                 return;
             }
-            Optional<Route> r = PathFinder.findRoute(graph, a.id(), b.id(), pref.getValue());
+            Optional<Route> r = PathFinder.findRoute(campus.graph(), a.id(), b.id(), pref.getValue());
             result.setText(r.map(RouteFormatter::describe).orElse("No route found."));
         });
 
-        VBox root = new VBox(12, new Label("UENav (offline test)"), from, to, pref, go, scroll);
+        Label version = new Label("Map data: " + campus.version());
+        version.setStyle("-fx-font-size: 11;");
+
+        VBox root = new VBox(12, new Label("UENav"), from, to, pref, go, scroll, version);
         root.setPadding(new Insets(16));
         stage.setScene(new Scene(root, 360, 640));
         stage.setTitle("UENav");
         stage.show();
     }
 
-    private static ComboBox<Node> placeBox(Graph graph) {
+    private static CampusData loadBundled() throws Exception {
+        try (InputStream in = MobileApp.class.getResourceAsStream(BUNDLED_SNAPSHOT)) {
+            if (in == null) {
+                throw new IllegalStateException("campus-snapshot.json is not inside the app");
+            }
+            return SnapshotReader.read(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static ComboBox<Node> placeBox(CampusData campus) {
         ComboBox<Node> box = new ComboBox<>();
-        box.getItems().addAll(SampleData.places(graph));
+        box.getItems().addAll(campus.places());
         box.setMaxWidth(Double.MAX_VALUE);
         box.setConverter(new StringConverter<>() {
             @Override public String toString(Node n) { return n == null ? "" : n.name(); }

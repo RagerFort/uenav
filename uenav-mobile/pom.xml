@@ -60,6 +60,9 @@
           <target>${gluonfx.target}</target>
           <mainClass>${main.class}</mainClass>
           <appIdentifier>${app.identifier}</appIdentifier>
+          <resourcesList>
+            <list>.*\.json$</list>
+          </resourcesList>
           <releaseConfiguration>
             <vendor>UENav</vendor>
             <description>${app.description}</description>
