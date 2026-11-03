@@ -51,7 +51,8 @@ public class AdminApi {
         List<AdminModels.Building> list = new ArrayList<>();
         for (Object o : asList(send("GET", "/api/admin/buildings", null, true))) {
             Map<String, Object> m = asObject(o);
-            list.add(new AdminModels.Building(integer(m, "id"), string(m, "name")));
+            list.add(new AdminModels.Building(integer(m, "id"), string(m, "name"),
+                    nullableString(m, "category"), nullableString(m, "description")));
         }
         return list;
     }
@@ -87,6 +88,81 @@ public class AdminApi {
 
     public void deleteNode(int id) throws ApiException {
         send("DELETE", "/api/admin/nodes/" + id, null, true);
+    }
+
+    // ---- buildings
+    public int createBuilding(AdminModels.BuildingForm f) throws ApiException {
+        return integer(asObject(send("POST", "/api/admin/buildings", buildingBody(f), true)), "id");
+    }
+
+    public void updateBuilding(int id, AdminModels.BuildingForm f) throws ApiException {
+        send("PUT", "/api/admin/buildings/" + id, buildingBody(f), true);
+    }
+
+    public void deleteBuilding(int id) throws ApiException {
+        send("DELETE", "/api/admin/buildings/" + id, null, true);
+    }
+
+    private static Map<String, Object> buildingBody(AdminModels.BuildingForm f) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", f.name());
+        m.put("category", f.category());
+        m.put("description", f.description());
+        return m;
+    }
+
+    // ---- floors
+    public int createFloor(AdminModels.FloorForm f) throws ApiException {
+        return integer(asObject(send("POST", "/api/admin/floors", floorBody(f), true)), "id");
+    }
+
+    public void updateFloor(int id, AdminModels.FloorForm f) throws ApiException {
+        send("PUT", "/api/admin/floors/" + id, floorBody(f), true);
+    }
+
+    public void deleteFloor(int id) throws ApiException {
+        send("DELETE", "/api/admin/floors/" + id, null, true);
+    }
+
+    private static Map<String, Object> floorBody(AdminModels.FloorForm f) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("buildingId", f.buildingId());
+        m.put("floorNumber", f.floorNumber());
+        m.put("floorName", f.floorName());
+        return m;
+    }
+
+    // ---- walkways (edges)
+    public List<AdminModels.Edge> edges() throws ApiException {
+        List<AdminModels.Edge> list = new ArrayList<>();
+        for (Object o : asList(send("GET", "/api/admin/edges", null, true))) {
+            Map<String, Object> m = asObject(o);
+            list.add(new AdminModels.Edge(integer(m, "id"), integer(m, "fromNodeId"), integer(m, "toNodeId"),
+                    decimal(m, "distanceM"), string(m, "edgeType"), bool(m, "accessible")));
+        }
+        return list;
+    }
+
+    public int createEdge(AdminModels.EdgeForm f) throws ApiException {
+        return integer(asObject(send("POST", "/api/admin/edges", edgeBody(f), true)), "id");
+    }
+
+    public void updateEdge(int id, AdminModels.EdgeForm f) throws ApiException {
+        send("PUT", "/api/admin/edges/" + id, edgeBody(f), true);
+    }
+
+    public void deleteEdge(int id) throws ApiException {
+        send("DELETE", "/api/admin/edges/" + id, null, true);
+    }
+
+    private static Map<String, Object> edgeBody(AdminModels.EdgeForm f) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("fromNodeId", f.fromNodeId());
+        m.put("toNodeId", f.toNodeId());
+        m.put("distanceM", f.distanceM());
+        m.put("edgeType", f.edgeType());
+        m.put("accessible", f.accessible());
+        return m;
     }
 
     private static Map<String, Object> nodeBody(AdminModels.NodeForm f) {
@@ -207,5 +283,32 @@ public class AdminApi {
 
     private static Integer nullableInteger(Map<String, Object> m, String key) throws ApiException {
         return m.get(key) == null ? null : integer(m, key);
+    }
+
+    private static String nullableString(Map<String, Object> m, String key) throws ApiException {
+        Object v = m.get(key);
+        if (v == null) {
+            return null;
+        }
+        if (!(v instanceof String)) {
+            throw new ApiException(0, "Unexpected reply from the server (bad " + key + ")");
+        }
+        return (String) v;
+    }
+
+    private static double decimal(Map<String, Object> m, String key) throws ApiException {
+        Object v = m.get(key);
+        if (!(v instanceof Double)) {
+            throw new ApiException(0, "Unexpected reply from the server (missing " + key + ")");
+        }
+        return (Double) v;
+    }
+
+    private static boolean bool(Map<String, Object> m, String key) throws ApiException {
+        Object v = m.get(key);
+        if (!(v instanceof Boolean)) {
+            throw new ApiException(0, "Unexpected reply from the server (missing " + key + ")");
+        }
+        return (Boolean) v;
     }
 }
