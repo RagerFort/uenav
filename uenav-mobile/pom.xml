@@ -61,7 +61,7 @@
           <mainClass>${main.class}</mainClass>
           <appIdentifier>${app.identifier}</appIdentifier>
           <resourcesList>
-            <list>.*\.json$</list>
+            <list>.*campus-snapshot.json</list>
           </resourcesList>
           <releaseConfiguration>
             <vendor>UENav</vendor>
