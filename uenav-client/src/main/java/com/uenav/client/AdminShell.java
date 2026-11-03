@@ -56,9 +56,10 @@ public class AdminShell extends BorderPane {
                 navItem("dashboard", "Dashboard", true),
                 section("ADMINISTRATION"),
                 navItem("places", "Places", true),
-                navItem("reports", "Route reports", true),
-                navItem("walkways", "Walkways  (soon)", false),
-                navItem("buildings", "Buildings and floors  (soon)", false));
+                navItem("walkways", "Walkways", true),
+                navItem("buildings", "Buildings", true),
+                navItem("floors", "Floors", true),
+                navItem("reports", "Route reports", true));
 
         Label cardTitle = new Label("CAMPUS NAVIGATOR");
         cardTitle.getStyleClass().add("field-label");
@@ -152,6 +153,18 @@ public class AdminShell extends BorderPane {
             case "places" -> {
                 page = new PlacesView(api, e -> expired());
                 title = "Places";
+            }
+            case "walkways" -> {
+                page = new WalkwaysView(api, e -> expired());
+                title = "Walkways";
+            }
+            case "buildings" -> {
+                page = new BuildingsView(api, e -> expired());
+                title = "Buildings";
+            }
+            case "floors" -> {
+                page = new FloorsView(api, e -> expired());
+                title = "Floors";
             }
             case "reports" -> {
                 page = placeholder("Route reports",

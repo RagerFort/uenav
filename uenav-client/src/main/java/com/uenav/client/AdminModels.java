@@ -6,7 +6,19 @@ public final class AdminModels {
 
     private AdminModels() { }
 
-    public record Building(int id, String name) { }
+    public record Building(int id, String name, String category, String description) { }
+
+    /** What the Add/Edit building form sends to the server. */
+    public record BuildingForm(String name, String category, String description) { }
+
+    /** What the Add/Edit floor form sends to the server. */
+    public record FloorForm(int buildingId, int floorNumber, String floorName) { }
+
+    /** A walkway between two places. It can be walked in both directions. */
+    public record Edge(int id, int fromNodeId, int toNodeId, double distanceM, String edgeType, boolean accessible) { }
+
+    /** What the Add/Edit walkway form sends to the server. */
+    public record EdgeForm(int fromNodeId, int toNodeId, double distanceM, String edgeType, boolean accessible) { }
 
     public record Floor(int id, int buildingId, int floorNumber, String floorName) { }
 

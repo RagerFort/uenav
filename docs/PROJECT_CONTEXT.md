@@ -133,6 +133,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 9. **Give the owner every file** a step needs (use the file list, not just the interesting ones). A missing `JdbcAdminAccountRepository` caused a Spring "no bean" start-up error.
 10. When adding code, **search the repo first** (`grep`) for an existing method or file. Duplicates of `MiniJson` writer and `SnapshotReader.isSearchable` were almost added twice.
 11. Spring/JavaFX code cannot be compiled in the AI sandbox: say so, and expect a first-run fix.
+12. This project does not use `spring-boot-starter-parent`, so Java does **not** keep parameter names. Always name them: `@PathVariable("id")`, `@RequestParam("x")`. Unnamed ones return HTTP 500 for PUT/DELETE `/api/admin/*/{id}`.
 
 ## 10. Known inconsistencies in the proposal deck (still to fix)
 - Slide text says 7 tables; there are 6 (D2). Class diagram must have no Room class.
