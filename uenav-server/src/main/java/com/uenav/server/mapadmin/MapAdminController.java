@@ -50,13 +50,13 @@ public class MapAdminController {
     }
 
     @PutMapping("/buildings/{id}")
-    public Map<String, String> changeBuilding(@PathVariable int id, @RequestBody MapInput.BuildingInput in) {
+    public Map<String, String> changeBuilding(@PathVariable("id") int id, @RequestBody MapInput.BuildingInput in) {
         service.updateBuilding(id, in);
         return ok("updated");
     }
 
     @DeleteMapping("/buildings/{id}")
-    public Map<String, String> deleteBuilding(@PathVariable int id) {
+    public Map<String, String> deleteBuilding(@PathVariable("id") int id) {
         service.deleteBuilding(id);
         return ok("deleted");
     }
@@ -73,13 +73,13 @@ public class MapAdminController {
     }
 
     @PutMapping("/floors/{id}")
-    public Map<String, String> changeFloor(@PathVariable int id, @RequestBody MapInput.FloorInput in) {
+    public Map<String, String> changeFloor(@PathVariable("id") int id, @RequestBody MapInput.FloorInput in) {
         service.updateFloor(id, in);
         return ok("updated");
     }
 
     @DeleteMapping("/floors/{id}")
-    public Map<String, String> deleteFloor(@PathVariable int id) {
+    public Map<String, String> deleteFloor(@PathVariable("id") int id) {
         service.deleteFloor(id);
         return ok("deleted");
     }
@@ -96,13 +96,13 @@ public class MapAdminController {
     }
 
     @PutMapping("/nodes/{id}")
-    public Map<String, String> changeNode(@PathVariable int id, @RequestBody MapInput.NodeInput in) {
+    public Map<String, String> changeNode(@PathVariable("id") int id, @RequestBody MapInput.NodeInput in) {
         service.updateNode(id, in);
         return ok("updated");
     }
 
     @DeleteMapping("/nodes/{id}")
-    public Map<String, String> deleteNode(@PathVariable int id) {
+    public Map<String, String> deleteNode(@PathVariable("id") int id) {
         service.deleteNode(id);
         return ok("deleted");
     }
@@ -119,13 +119,13 @@ public class MapAdminController {
     }
 
     @PutMapping("/edges/{id}")
-    public Map<String, String> changeEdge(@PathVariable int id, @RequestBody MapInput.EdgeInput in) {
+    public Map<String, String> changeEdge(@PathVariable("id") int id, @RequestBody MapInput.EdgeInput in) {
         service.updateEdge(id, in);
         return ok("updated");
     }
 
     @DeleteMapping("/edges/{id}")
-    public Map<String, String> deleteEdge(@PathVariable int id) {
+    public Map<String, String> deleteEdge(@PathVariable("id") int id) {
         service.deleteEdge(id);
         return ok("deleted");
     }
