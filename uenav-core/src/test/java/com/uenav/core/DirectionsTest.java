@@ -91,4 +91,30 @@ class DirectionsTest {
         assertEquals(8, DATA.graph().nodeCount());
         assertEquals(7, DATA.graph().edges().size());
     }
+
+    @Test
+    void shortKinksAreNotStepsOfTheirOwn() {
+        // 0,0 -> 100,0 -> 105,8 (a 9 m kink) -> 205,8 -> 205,60 : one left/right turn, not three
+        String json = """
+            {"version":"k","nodes":[
+              {"id":1,"buildingId":null,"floorId":null,"name":"A","nodeType":"GATE","x":0,"y":0},
+              {"id":2,"buildingId":null,"floorId":null,"name":"j1","nodeType":"JUNCTION","x":100,"y":0},
+              {"id":3,"buildingId":null,"floorId":null,"name":"j2","nodeType":"JUNCTION","x":105,"y":8},
+              {"id":4,"buildingId":null,"floorId":null,"name":"j3","nodeType":"JUNCTION","x":205,"y":8},
+              {"id":5,"buildingId":null,"floorId":null,"name":"B","nodeType":"OFFICE","x":205,"y":60},
+              {"id":6,"buildingId":null,"floorId":null,"name":"C","nodeType":"OFFICE","x":212,"y":60}],
+             "edges":[
+              {"id":1,"fromNodeId":1,"toNodeId":2,"distanceM":100,"edgeType":"WALK","accessible":true},
+              {"id":2,"fromNodeId":2,"toNodeId":3,"distanceM":9,"edgeType":"WALK","accessible":true},
+              {"id":3,"fromNodeId":3,"toNodeId":4,"distanceM":100,"edgeType":"WALK","accessible":true},
+              {"id":4,"fromNodeId":4,"toNodeId":5,"distanceM":52,"edgeType":"WALK","accessible":true},
+              {"id":5,"fromNodeId":5,"toNodeId":6,"distanceM":7,"edgeType":"WALK","accessible":true}]}
+            """;
+        CampusData d = SnapshotReader.read(json);
+        Route r = PathFinder.findRoute(d.graph(), 1, 6, RoutePreference.ANY).orElseThrow();
+        List<Directions.Step> steps = Directions.steps(r, d);
+        assertEquals(List.of("Start walking", "Turn right", "Arrive at C"),
+                steps.stream().map(Directions.Step::title).toList());
+        assertTrue(steps.get(1).detail().startsWith("Walk ~59 m"));
+    }
 }
