@@ -167,16 +167,11 @@ public class AdminShell extends BorderPane {
                 title = "Floors";
             }
             case "reports" -> {
-                page = placeholder("Route reports",
-                        "Wrong-route reports will be listed here once the usage log is connected.");
+                page = new ReportsView(api, e -> expired());
                 title = "Route reports";
             }
             default -> {
-                page = new DashboardView(api, e -> {
-                    if (e.status() == 401) {
-                        expired();
-                    }
-                });
+                page = new DashboardView(api, e -> expired(), () -> show("reports"));
                 title = "Dashboard";
             }
         }
