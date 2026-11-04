@@ -5,7 +5,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import com.uenav.mobile.Icons;
+import com.uenav.mobile.PlaceStyle;
+import com.uenav.mobile.Ui;
 import java.util.function.Consumer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -13,8 +18,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -24,21 +30,38 @@ import javafx.stage.FileChooser;
 /** Admin dashboard (Figma: Dashboard): numbers, most searched places, recent activity. */
 public class DashboardView extends ScrollPane {
 
-    private record Data(long places, AdminModels.UsageSummary summary, List<AdminModels.TopPlace> top,
-                        List<AdminModels.UsageEvent> recent) { }
+    private record Data(List<AdminModels.Place> places, AdminModels.UsageSummary summary,
+                        List<AdminModels.TopPlace> top, List<AdminModels.UsageEvent> recent) { }
+
+    /** What the Places card asks the window to do (the add/edit forms live on the Places page). */
+    public record PlaceAction(Kind kind, int id, String search) {
+        public enum Kind { ADD, EDIT, DELETE, VIEW_ALL }
+    }
+
+    /** Rows shown in the Places card before "View all places". */
+    static final int PLACE_ROWS = 4;
 
     private final AdminApi api;
     private final Consumer<ApiException> onProblem;
     private final Label placesNumber = new Label("\u2026");
     private final Label searchesNumber = new Label("\u2026");
     private final Label reportsNumber = new Label("\u2026");
-    private final VBox topRows = new VBox(10);
+    private final VBox topRows = new VBox(14);
     private final VBox recentRows = new VBox(8);
     private final Label status = new Label();
+    private final VBox placeRows = new VBox();
+    private final Label placesTotal = new Label();
+    private final Label placesFooter = new Label();
+    private final TextField placeSearch = new TextField();
+    private final Consumer<PlaceAction> onPlace;
+    private List<AdminModels.Place> placeList = List.of();
+    private final Map<Integer, Long> searchCounts = new HashMap<>();
 
-    public DashboardView(AdminApi api, Consumer<ApiException> onProblem, Runnable openReports) {
+    public DashboardView(AdminApi api, Consumer<ApiException> onProblem, Runnable openReports,
+                         Consumer<PlaceAction> onPlace) {
         this.api = api;
         this.onProblem = onProblem;
+        this.onPlace = onPlace;
         setFitToWidth(true);
         getStyleClass().add("canvas");
 
@@ -84,7 +107,7 @@ public class DashboardView extends ScrollPane {
 
         status.getStyleClass().add("error-label");
         status.setWrapText(true);
-        VBox page = new VBox(16, header, stats, panels, status);
+        VBox page = new VBox(16, header, stats, panels, placesCard(), status);
         page.setPadding(new Insets(24));
         setContent(page);
 
@@ -92,14 +115,22 @@ public class DashboardView extends ScrollPane {
         recentRows.getChildren().add(muted("Loading\u2026"));
 
         Async.run(() -> {
-                    long places = api.nodes().stream().filter(AdminModels.Place::isSearchable).count();
-                    return new Data(places, api.usageSummary(), api.mostSearched(5), api.recentActivity(8));
+                    List<AdminModels.Place> places = api.nodes().stream().filter(AdminModels.Place::isSearchable)
+                            .toList();
+                    return new Data(places, api.usageSummary(), api.mostSearched(100), api.recentActivity(6));
                 },
                 this::show, this::problem);
     }
 
     private void show(Data d) {
-        placesNumber.setText(String.valueOf(d.places()));
+        placesNumber.setText(String.valueOf(d.places().size()));
+        searchCounts.clear();
+        d.top().forEach(t -> searchCounts.put(t.nodeId(), t.count()));
+        placeList = d.places().stream()
+                .sorted((a, b) -> Long.compare(searchCounts.getOrDefault(b.id(), 0L),
+                        searchCounts.getOrDefault(a.id(), 0L)))
+                .toList();
+        fillPlaces();
         searchesNumber.setText(String.valueOf(d.summary().searches()));
         reportsNumber.setText(String.valueOf(d.summary().openReports()));
         status.setText("");
@@ -109,17 +140,8 @@ public class DashboardView extends ScrollPane {
             topRows.getChildren().add(muted("No searches yet."));
         }
         long max = d.top().stream().mapToLong(AdminModels.TopPlace::count).max().orElse(1);
-        for (AdminModels.TopPlace t : d.top()) {
-            Label name = new Label(t.name());
-            Label count = new Label(String.valueOf(t.count()));
-            count.getStyleClass().add("card-title");
-            count.setStyle("-fx-text-fill: #C8102E;");
-            Region grow = new Region();
-            HBox.setHgrow(grow, Priority.ALWAYS);
-            ProgressBar bar = new ProgressBar((double) t.count() / Math.max(1, max));
-            bar.setMaxWidth(Double.MAX_VALUE);
-            bar.setPrefHeight(8);
-            topRows.getChildren().add(new VBox(4, new HBox(8, name, grow, count), bar));
+        for (AdminModels.TopPlace t : d.top().subList(0, Math.min(5, d.top().size()))) {
+            topRows.getChildren().add(Ui.bar(t.name(), t.count(), max));
         }
 
         recentRows.getChildren().clear();
@@ -135,6 +157,93 @@ public class DashboardView extends ScrollPane {
             what.setWrapText(true);
             recentRows.getChildren().add(new HBox(10, when, what));
         }
+    }
+
+    private VBox placesCard() {
+        Label h = new Label("Places");
+        h.getStyleClass().add("card-title");
+        placesTotal.getStyleClass().add("chip");
+        Label sub = new Label("Manage campus destinations and location details.");
+        sub.getStyleClass().add("muted");
+        placeSearch.setPromptText("Search places");
+        placeSearch.setPrefWidth(220);
+        placeSearch.textProperty().addListener((o, a, b) -> fillPlaces());
+        Button add = new Button("+ Add place");
+        add.getStyleClass().add("primary-button");
+        add.setOnAction(e -> onPlace.accept(new PlaceAction(PlaceAction.Kind.ADD, 0, null)));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox titleRow = new HBox(8, h, placesTotal);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        HBox head = new HBox(12, new VBox(2, titleRow, sub), spacer, placeSearch, add);
+        head.setAlignment(Pos.CENTER_LEFT);
+
+        placesFooter.getStyleClass().add("muted");
+        Button all = new Button("View all places \u2192");
+        all.getStyleClass().add("link-button");
+        all.setOnAction(e -> onPlace.accept(new PlaceAction(PlaceAction.Kind.VIEW_ALL, 0,
+                placeSearch.getText().isBlank() ? null : placeSearch.getText())));
+        Region grow = new Region();
+        HBox.setHgrow(grow, Priority.ALWAYS);
+        HBox foot = new HBox(placesFooter, grow, all);
+        foot.setAlignment(Pos.CENTER_LEFT);
+
+        placeRows.getChildren().add(muted("Loading\u2026"));
+        VBox card = new VBox(12, head, new Separator(), placeRows, foot);
+        card.getStyleClass().add("card");
+        card.setPadding(new Insets(16, 20, 16, 20));
+        return card;
+    }
+
+    private void fillPlaces() {
+        String q = placeSearch.getText() == null ? "" : placeSearch.getText().trim().toLowerCase();
+        List<AdminModels.Place> matches = placeList.stream()
+                .filter(p -> q.isEmpty() || p.name().toLowerCase().contains(q)
+                        || p.nodeType().toLowerCase().contains(q))
+                .toList();
+        placesTotal.setText(placeList.size() + " total");
+        placeRows.getChildren().clear();
+        int shown = Math.min(PLACE_ROWS, matches.size());
+        for (int i = 0; i < shown; i++) {
+            if (i > 0) {
+                placeRows.getChildren().add(new Separator());
+            }
+            placeRows.getChildren().add(placeRow(matches.get(i)));
+        }
+        if (matches.isEmpty()) {
+            placeRows.getChildren().add(muted(placeList.isEmpty() ? "No places yet." : "No places match."));
+        }
+        placesFooter.setText("Showing " + shown + " of " + matches.size() + " places");
+    }
+
+    private HBox placeRow(AdminModels.Place p) {
+        PlaceStyle style = PlaceStyle.of(p.nodeType());
+        long n = searchCounts.getOrDefault(p.id(), 0L);
+        Label name = new Label(p.name());
+        name.getStyleClass().add("card-title");
+        Label sub = new Label(style.label() + " \u00B7 " + n + (n == 1 ? " search" : " searches"));
+        sub.getStyleClass().add("muted");
+        sub.setStyle("-fx-font-size: 11px;");
+        Button edit = iconButton("edit", "Edit");
+        edit.setOnAction(e -> onPlace.accept(new PlaceAction(PlaceAction.Kind.EDIT, p.id(), null)));
+        Button del = iconButton("delete", "Delete");
+        del.getStyleClass().add("danger");
+        del.setOnAction(e -> onPlace.accept(new PlaceAction(PlaceAction.Kind.DELETE, p.id(), null)));
+        Region grow = new Region();
+        HBox.setHgrow(grow, Priority.ALWAYS);
+        HBox row = new HBox(12, Ui.bubble(style.icon(), style.tone(), 36), new VBox(2, name, sub), grow, edit, del);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(8, 0, 8, 0));
+        return row;
+    }
+
+    private static Button iconButton(String icon, String text) {
+        Button b = new Button();
+        b.setGraphic(Icons.icon(icon, 16));
+        b.getStyleClass().add("icon-button");
+        b.setAccessibleText(text);
+        b.setTooltip(new javafx.scene.control.Tooltip(text));
+        return b;
     }
 
     private void problem(ApiException e) {

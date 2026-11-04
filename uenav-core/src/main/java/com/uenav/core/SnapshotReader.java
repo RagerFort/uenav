@@ -41,7 +41,24 @@ public final class SnapshotReader {
             graph.addEdge(new Edge(getInt(e, "id"), getInt(e, "fromNodeId"), getInt(e, "toNodeId"),
                     getDouble(e, "distanceM"), type, getBool(e, "accessible")));
         }
-        return new CampusData(version, graph, List.copyOf(places));
+        List<Building> buildings = new ArrayList<>();
+        if (root.get("buildings") != null) {
+            for (Object o : asList(root.get("buildings"), "buildings")) {
+                Map<String, Object> b = asObject(o, "building");
+                buildings.add(new Building(getInt(b, "id"), getString(b, "name"), getNullableString(b, "category"),
+                        getNullableString(b, "description"), getNullableInt(b, "mapX"), getNullableInt(b, "mapY"),
+                        getNullableString(b, "imagePath")));
+            }
+        }
+        List<Floor> floors = new ArrayList<>();
+        if (root.get("floors") != null) {
+            for (Object o : asList(root.get("floors"), "floors")) {
+                Map<String, Object> f = asObject(o, "floor");
+                floors.add(new Floor(getInt(f, "id"), getInt(f, "buildingId"), getInt(f, "floorNumber"),
+                        getString(f, "floorName"), getNullableString(f, "planImagePath")));
+            }
+        }
+        return new CampusData(version, graph, places, buildings, floors);
     }
 
     /** False for waypoints (junctions, stairs, elevators) that are not offered as destinations. */
@@ -95,6 +112,17 @@ public final class SnapshotReader {
 
     private static Integer getNullableInt(Map<String, Object> m, String key) {
         return m.get(key) == null ? null : getInt(m, key);
+    }
+
+    private static String getNullableString(Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        if (v == null) {
+            return null;
+        }
+        if (!(v instanceof String)) {
+            throw new IllegalArgumentException("Field " + key + " must be text");
+        }
+        return (String) v;
     }
 
     private static boolean getBool(Map<String, Object> m, String key) {

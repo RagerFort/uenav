@@ -7,20 +7,30 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import com.uenav.mobile.Icons;
+import javafx.scene.control.Separator;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /** Admin sign-in screen (Figma: Login). */
 public class LoginView extends StackPane {
 
-    public LoginView(AdminApi api, String serverUrl, String message, Consumer<AdminApi.LoginInfo> onSuccess) {
+    public LoginView(AdminApi api, String serverUrl, String message, Consumer<AdminApi.LoginInfo> onSuccess,
+                     Runnable onVisitor) {
         getStyleClass().add("login-bg");
 
+        StackPane logo = new StackPane(Icons.icon("pin", 26, "nv-icon-brand"));
+        logo.setStyle("-fx-background-color: white; -fx-background-radius: 14;");
+        logo.setMinSize(52, 52);
+        logo.setMaxSize(52, 52);
         Label brand = new Label("UENav");
         brand.setStyle("-fx-text-fill: white; -fx-font-size: 30px; -fx-font-weight: bold;");
         Label sub = new Label("Campus Navigator \u00B7 UE Caloocan");
         sub.setStyle("-fx-text-fill: white; -fx-opacity: 0.85;");
-        VBox header = new VBox(4, brand, sub);
+        VBox header = new VBox(4, logo, brand, sub);
+        VBox.setMargin(brand, new Insets(10, 0, 0, 0));
         header.getStyleClass().add("login-header");
         header.setPadding(new Insets(28, 28, 24, 28));
 
@@ -74,7 +84,21 @@ public class LoginView extends StackPane {
         password.setOnAction(ev -> submit.run());
         username.setOnAction(ev -> password.requestFocus());
 
-        VBox body = new VBox(8, title, hint, userLabel, username, passLabel, password, signIn, error, server);
+        Separator left = new Separator();
+        Separator right = new Separator();
+        HBox.setHgrow(left, Priority.ALWAYS);
+        HBox.setHgrow(right, Priority.ALWAYS);
+        Label or = new Label("or");
+        or.getStyleClass().add("muted");
+        HBox orRow = new HBox(10, left, or, right);
+        orRow.setAlignment(Pos.CENTER);
+        Button visitor = new Button("Continue as visitor");
+        visitor.getStyleClass().add("secondary-button");
+        visitor.setMaxWidth(Double.MAX_VALUE);
+        visitor.setOnAction(e -> onVisitor.run());
+
+        VBox body = new VBox(8, title, hint, userLabel, username, passLabel, password, signIn, error, orRow, visitor,
+                server);
         body.setPadding(new Insets(24, 28, 24, 28));
         VBox.setMargin(userLabel, new Insets(10, 0, 0, 0));
         VBox.setMargin(passLabel, new Insets(6, 0, 0, 0));
