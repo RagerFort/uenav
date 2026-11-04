@@ -1,5 +1,7 @@
 package com.uenav.client;
 
+import com.uenav.mobile.Icons;
+import com.uenav.mobile.Navigator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -15,35 +17,61 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
-/** The admin window after login: side menu, top bar, and the page in the middle (Figma: desktop dashboard). */
+/**
+ * The main window (Figma: desktop admin dashboard): side menu, top bar, and the page in the middle.
+ * With a login it shows the admin pages too; without one (visitor mode) only Explore and Map.
+ */
 public class AdminShell extends BorderPane {
 
     private final AdminApi api;
+    private final AdminApi.LoginInfo info;
+    private final VisitorSupport visitor;
     private final Consumer<String> onSignOut;
+    private final Runnable onSignIn;
     private final StackPane content = new StackPane();
-    private final Label crumb = new Label();
+    private final Label crumbArea = new Label();
+    private final Label crumbPage = new Label();
     private final Map<String, Button> navButtons = new LinkedHashMap<>();
+    private final Label reportsBadge = new Label();
+    private String current;
     private boolean signedOut;
 
-    public AdminShell(AdminApi api, AdminApi.LoginInfo info, Consumer<String> onSignOut) {
+    /** Admin mode. */
+    public AdminShell(AdminApi api, AdminApi.LoginInfo info, VisitorSupport visitor, Consumer<String> onSignOut) {
+        this(api, info, visitor, onSignOut, null);
+    }
+
+    /** Visitor mode: no login, only Explore and Map; onSignIn opens the login screen. */
+    public static AdminShell visitor(VisitorSupport visitor, Runnable onSignIn) {
+        return new AdminShell(null, null, visitor, m -> { }, onSignIn);
+    }
+
+    private AdminShell(AdminApi api, AdminApi.LoginInfo info, VisitorSupport visitor, Consumer<String> onSignOut,
+                       Runnable onSignIn) {
         this.api = api;
+        this.info = info;
+        this.visitor = visitor;
         this.onSignOut = onSignOut;
+        this.onSignIn = onSignIn;
         getStyleClass().add("canvas");
         setLeft(buildSidebar());
-        setTop(buildTopBar(info));
-        setCenter(content);
-        show("dashboard");
+        VBox.setVgrow(content, Priority.ALWAYS);
+        setCenter(new VBox(buildTopBar(), content));
+        show(isAdmin() ? "dashboard" : "explore");
+        refreshBadge();
+    }
+
+    private boolean isAdmin() {
+        return info != null;
     }
 
     private VBox buildSidebar() {
-        Label logoText = new Label("UE");
-        logoText.getStyleClass().add("logo-text");
-        StackPane logo = new StackPane(logoText);
+        StackPane logo = new StackPane(Icons.icon("navigation", 20, "nv-icon-white"));
         logo.getStyleClass().add("logo-box");
-        logo.setMinSize(34, 34);
-        logo.setMaxSize(34, 34);
+        logo.setMinSize(36, 36);
+        logo.setMaxSize(36, 36);
         Label name = new Label("UENav");
-        name.getStyleClass().add("card-title");
+        name.getStyleClass().add("brand-name");
         Label campus = new Label("UE Caloocan");
         campus.getStyleClass().add("muted");
         campus.setStyle("-fx-font-size: 11px;");
@@ -51,87 +79,119 @@ public class AdminShell extends BorderPane {
         brand.setAlignment(Pos.CENTER_LEFT);
         brand.setPadding(new Insets(0, 0, 14, 4));
 
-        VBox nav = new VBox(4, brand,
-                section("ADMIN"),
-                navItem("dashboard", "Dashboard", true),
-                section("ADMINISTRATION"),
-                navItem("places", "Places", true),
-                navItem("walkways", "Walkways", true),
-                navItem("buildings", "Buildings", true),
-                navItem("floors", "Floors", true),
-                navItem("reports", "Route reports", true));
+        VBox nav = new VBox(4, brand, section("WORKSPACE"),
+                navItem("explore", "Explore", "search"),
+                navItem("map", "Map", "map"));
+        if (isAdmin()) {
+            nav.getChildren().addAll(navItem("dashboard", "Admin", "shield"),
+                    section("ADMINISTRATION"),
+                    navItem("places", "Places", "pin"),
+                    navItem("walkways", "Walkways", "navigation"),
+                    navItem("buildings", "Buildings", "building"),
+                    navItem("floors", "Floors", "stairs"),
+                    navItem("reports", "Route reports", "flag"));
+            reportsBadge.getStyleClass().add("nav-badge");
+            Button reports = navButtons.get("reports");
+            Region grow = new Region();
+            HBox.setHgrow(grow, Priority.ALWAYS);
+            HBox inner = new HBox(10, Icons.icon("flag", 18), new Label("Route reports"), grow, reportsBadge);
+            inner.setAlignment(Pos.CENTER_LEFT);
+            reports.setText(null);
+            reports.setGraphic(inner);
+            inner.prefWidthProperty().bind(reports.widthProperty().subtract(26));
+        }
 
         Label cardTitle = new Label("CAMPUS NAVIGATOR");
         cardTitle.getStyleClass().add("field-label");
         Label cardName = new Label("UE Caloocan");
         cardName.getStyleClass().add("card-title");
-        Label cardText = new Label("Outdoor places and indoor rooms");
+        Label cardText = new Label("Outdoor places & indoor rooms");
         cardText.getStyleClass().add("muted");
         cardText.setWrapText(true);
-        VBox info = new VBox(2, cardTitle, cardName, cardText);
-        info.setPadding(new Insets(10));
-        info.setStyle("-fx-background-color: #F3F4F6; -fx-background-radius: 10;");
+        VBox infoCard = new VBox(2, cardTitle, cardName, cardText);
+        infoCard.setPadding(new Insets(10, 12, 12, 12));
+        infoCard.getStyleClass().add("side-card");
 
-        Button logout = new Button("Log out");
-        logout.getStyleClass().add("nav-item");
-        logout.setMaxWidth(Double.MAX_VALUE);
-        logout.setOnAction(e -> {
-            Thread t = new Thread(api::logout);
-            t.setDaemon(true);
-            t.start();
-            signOut(null);
-        });
+        Button bottom;
+        if (isAdmin()) {
+            bottom = new Button("Log out");
+            bottom.setGraphic(Icons.icon("logout", 18));
+            bottom.setOnAction(e -> {
+                Thread t = new Thread(api::logout);
+                t.setDaemon(true);
+                t.start();
+                signOut(null);
+            });
+        } else {
+            bottom = new Button("Admin sign in");
+            bottom.setGraphic(Icons.icon("lock", 18));
+            bottom.setOnAction(e -> onSignIn.run());
+        }
+        bottom.getStyleClass().add("nav-item");
+        bottom.setGraphicTextGap(10);
+        bottom.setMaxWidth(Double.MAX_VALUE);
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        VBox side = new VBox(8, nav, spacer, info, logout);
+        VBox side = new VBox(8, nav, spacer, infoCard, bottom);
         side.getStyleClass().add("sidebar");
-        side.setPadding(new Insets(18, 14, 14, 14));
-        side.setPrefWidth(240);
-        side.setMinWidth(240);
+        side.setPadding(new Insets(22, 14, 14, 14));
+        side.setPrefWidth(232);
+        side.setMinWidth(232);
         return side;
     }
 
     private static Label section(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("nav-section");
-        l.setPadding(new Insets(12, 0, 2, 12));
+        l.setPadding(new Insets(14, 0, 4, 4));
         return l;
     }
 
-    private Button navItem(String key, String label, boolean enabled) {
+    private Button navItem(String key, String label, String icon) {
         Button b = new Button(label);
+        b.setGraphic(Icons.icon(icon, 18));
+        b.setGraphicTextGap(10);
         b.getStyleClass().add("nav-item");
         b.setMaxWidth(Double.MAX_VALUE);
-        b.setDisable(!enabled);
-        if (enabled) {
-            b.setOnAction(e -> show(key));
-        }
+        b.setOnAction(e -> show(key));
         navButtons.put(key, b);
         return b;
     }
 
-    private HBox buildTopBar(AdminApi.LoginInfo info) {
-        crumb.getStyleClass().add("muted");
+    private HBox buildTopBar() {
+        crumbArea.getStyleClass().add("muted");
+        Label slash = new Label("/");
+        slash.getStyleClass().add("muted");
+        crumbPage.getStyleClass().add("crumb-page");
+        HBox crumb = new HBox(10, crumbArea, slash, crumbPage);
+        crumb.setAlignment(Pos.CENTER_LEFT);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label initials = new Label(initialsOf(info.fullName()));
-        initials.getStyleClass().add("avatar-text");
-        StackPane avatar = new StackPane(initials);
-        avatar.getStyleClass().add("avatar");
-        avatar.setMinSize(32, 32);
-        avatar.setMaxSize(32, 32);
-        Label who = new Label(info.fullName());
-        who.getStyleClass().add("card-title");
-        Label where = new Label("UE Caloocan");
-        where.getStyleClass().add("muted");
-        where.setStyle("-fx-font-size: 11px;");
-
-        HBox bar = new HBox(12, crumb, spacer, new VBox(0, who, where), avatar);
+        HBox bar;
+        if (isAdmin()) {
+            Label initials = new Label(initialsOf(info.fullName()));
+            initials.getStyleClass().add("avatar-text");
+            StackPane avatar = new StackPane(initials);
+            avatar.getStyleClass().add("avatar");
+            avatar.setMinSize(36, 36);
+            avatar.setMaxSize(36, 36);
+            Label who = new Label(info.fullName());
+            who.getStyleClass().add("card-title");
+            Label where = new Label("UE Caloocan");
+            where.getStyleClass().add("muted");
+            where.setStyle("-fx-font-size: 11px;");
+            bar = new HBox(12, crumb, spacer, new VBox(0, who, where), avatar);
+        } else {
+            Button signIn = new Button("Admin sign in");
+            signIn.getStyleClass().add("secondary-button");
+            signIn.setOnAction(e -> onSignIn.run());
+            bar = new HBox(12, crumb, spacer, signIn);
+        }
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("topbar");
-        bar.setPadding(new Insets(12, 24, 12, 24));
+        bar.setPadding(new Insets(14, 28, 14, 28));
         return bar;
     }
 
@@ -146,39 +206,74 @@ public class AdminShell extends BorderPane {
         return s.toUpperCase();
     }
 
-    private void show(String key) {
-        Node page;
-        String title;
-        switch (key) {
-            case "places" -> {
-                page = new PlacesView(api, e -> expired());
-                title = "Places";
-            }
-            case "walkways" -> {
-                page = new WalkwaysView(api, e -> expired());
-                title = "Walkways";
-            }
-            case "buildings" -> {
-                page = new BuildingsView(api, e -> expired());
-                title = "Buildings";
-            }
-            case "floors" -> {
-                page = new FloorsView(api, e -> expired());
-                title = "Floors";
-            }
-            case "reports" -> {
-                page = new ReportsView(api, e -> expired());
-                title = "Route reports";
-            }
-            default -> {
-                page = new DashboardView(api, e -> expired(), () -> show("reports"));
-                title = "Dashboard";
-            }
+    /** Opens the Places page, then runs an action on it once it has loaded. */
+    private void openPlaces(Consumer<PlacesView> action) {
+        PlacesView page = new PlacesView(api, e -> expired());
+        setPage("places", page, "Admin", "Places");
+        if (action != null) {
+            page.afterLoad(() -> action.accept(page));
         }
-        crumb.setText("Admin  /  " + title);
+    }
+
+    private void show(String key) {
+        if (!isAdmin() && !"explore".equals(key) && !"map".equals(key)) {
+            key = "explore";
+        }
+        switch (key) {
+            case "explore", "map" -> {
+                Navigator nav = visitor.navigator();
+                if (nav == null) {
+                    Label msg = new Label(visitor.problem());
+                    msg.getStyleClass().add("error-label");
+                    msg.setPadding(new Insets(24));
+                    setPage(key, msg, "Workspace", "Explore");
+                    return;
+                }
+                nav.setOnTabChanged(t -> {
+                    String k = t == Navigator.Tab.MAP ? "map" : "explore";
+                    highlight(k);
+                    crumbPage.setText(t == Navigator.Tab.MAP ? "Map" : "Explore");
+                    current = k;
+                });
+                if ("map".equals(key)) {
+                    nav.openMap();
+                } else {
+                    nav.openExplore();
+                }
+                setPage(key, nav.view(), isAdmin() ? "Workspace" : "Visitor",
+                        "map".equals(key) ? "Map" : "Explore");
+            }
+            case "places" -> openPlaces(null);
+            case "walkways" -> setPage(key, new WalkwaysView(api, e -> expired()), "Admin", "Walkways");
+            case "buildings" -> setPage(key, new BuildingsView(api, e -> expired()), "Admin", "Buildings");
+            case "floors" -> setPage(key, new FloorsView(api, e -> expired()), "Admin", "Floors");
+            case "reports" -> setPage(key, new ReportsView(api, e -> expired()), "Admin", "Route reports");
+            default -> setPage("dashboard", new DashboardView(api, e -> expired(), () -> show("reports"),
+                    this::onDashboardPlace), "Admin", "Dashboard");
+        }
+        refreshBadge();
+    }
+
+    private void onDashboardPlace(DashboardView.PlaceAction action) {
+        switch (action.kind()) {
+            case ADD -> openPlaces(PlacesView::openAdd);
+            case EDIT -> openPlaces(p -> p.openEdit(action.id()));
+            case DELETE -> openPlaces(p -> p.askDelete(action.id()));
+            case VIEW_ALL -> openPlaces(action.search() == null ? null : p -> p.setSearch(action.search()));
+        }
+    }
+
+    private void setPage(String key, Node page, String area, String title) {
+        current = key;
+        crumbArea.setText(area);
+        crumbPage.setText(title);
         content.getChildren().setAll(page);
-        for (Map.Entry<String, Button> en : navButtons.entrySet()) {
-            en.getValue().getStyleClass().remove("nav-item-active");
+        highlight(key);
+    }
+
+    private void highlight(String key) {
+        for (Button b : navButtons.values()) {
+            b.getStyleClass().remove("nav-item-active");
         }
         Button active = navButtons.get(key);
         if (active != null) {
@@ -186,18 +281,16 @@ public class AdminShell extends BorderPane {
         }
     }
 
-    private static VBox placeholder(String title, String text) {
-        Label eyebrow = new Label("ADMIN");
-        eyebrow.getStyleClass().add("eyebrow");
-        Label t = new Label(title);
-        t.getStyleClass().add("page-title");
-        Label m = new Label(text);
-        m.getStyleClass().add("muted");
-        m.setWrapText(true);
-        VBox box = new VBox(6, new VBox(2, eyebrow, t), m);
-        box.setPadding(new Insets(24));
-        box.getStyleClass().add("canvas");
-        return box;
+    /** Number of new wrong-route reports next to "Route reports" in the menu. */
+    private void refreshBadge() {
+        if (!isAdmin()) {
+            return;
+        }
+        Async.run(api::usageSummary, s -> {
+            long n = s.openReports();
+            reportsBadge.setText(n > 0 ? String.valueOf(n) : "");
+            reportsBadge.setVisible(n > 0);
+        }, e -> reportsBadge.setVisible(false));
     }
 
     private void expired() {

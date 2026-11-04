@@ -28,3 +28,15 @@ The server exports one data file (JSON) with the whole graph: nodes, edges, buil
 ## D10: JSON handling (implemented, owner has not explicitly confirmed)
 
 The phone and desktop apps read and write JSON with `MiniJson` in `uenav-core`, a small hand-written reader and writer with no outside library and no reflection. This avoids native-image (Android) problems with JSON libraries. The server keeps using Spring's built-in Jackson. If the team prefers a library later, only `MiniJson` and its callers change.
+
+## D11: PC visitor pages reuse the phone screens (implemented 2026-11-04, owner has not confirmed)
+
+The Figma desktop frame has Explore and Map in the PC sidebar. Instead of writing those screens twice, the visitor
+screens live in `uenav-mobile` (`Navigator`, `MapView`) and `uenav-client` depends on `uenav-mobile`. The PC uses the
+wide layout (map and steps side by side). Routing still runs inside the app (D5). `uenav-core` stays pure Java.
+
+## D12: a basic phone Admin tab (implemented 2026-11-04, owner has not confirmed)
+
+D7 says admin on the PC first, phone later. The Figma phone frames include Login and an admin Dashboard, so the phone
+now has an Admin tab: sign in, dashboard numbers, most searched, recent activity, add/edit/delete place, route reports.
+Walkways, buildings, floors and CSV export stay on the PC. It uses the same server API and token as the PC (D8).
