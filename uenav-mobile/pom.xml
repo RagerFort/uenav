@@ -15,6 +15,7 @@
     <app.identifier>com.uenav.mobile</app.identifier>
     <app.description>UENav campus navigator</app.description>
     <version.code>1</version.code>
+    <attach.version>4.0.25</attach.version>
     <provided.keystore.path/>
     <provided.keystore.password/>
     <provided.key.alias/>
@@ -31,6 +32,21 @@
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>
       <version>${javafx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.gluonhq.attach</groupId>
+      <artifactId>util</artifactId>
+      <version>${attach.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.gluonhq.attach</groupId>
+      <artifactId>storage</artifactId>
+      <version>${attach.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -60,9 +76,9 @@
           <target>${gluonfx.target}</target>
           <mainClass>${main.class}</mainClass>
           <appIdentifier>${app.identifier}</appIdentifier>
-          <resourcesList>
-            <list>.*campus-snapshot.json</list>
-          </resourcesList>
+          <attachList>
+            <list>storage</list>
+          </attachList>
           <releaseConfiguration>
             <vendor>UENav</vendor>
             <description>${app.description}</description>

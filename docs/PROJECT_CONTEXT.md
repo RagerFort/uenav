@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-03 (after the usage log, real dashboard and Route reports page were written).
+Last updated: 2026-11-03 (after phone-side usage logging and sending were written).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -85,7 +85,10 @@ uenav-server/                    Spring Boot: UenavServerApplication, HealthCont
 uenav-client/                    desktop JavaFX admin app: UenavApp, LoginView, AdminShell, DashboardView,
                                  PlacesView, BuildingsView, FloorsView, WalkwaysView (these three extend ManagePage),
                                  ReportsView, TimeAgo, UsageText, AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css
-uenav-mobile/                    Gluon app: MobileApp (loads bundled campus-snapshot.json), RouteFormatter; `android` profile
+uenav-mobile/                    Gluon app: MobileApp (bundled campus-snapshot.json, route search, Helpful/Wrong route buttons),
+                                 RouteFormatter; usage log on the phone: UsageEntry, UsageQueue (file-backed, max 1000), Settings
+                                 (server address), SyncService, HttpSyncClient (HttpURLConnection), FileTextStore/TextStore,
+                                 AppStorage (Gluon Attach private storage, falls back to ~/.uenav); `android` profile
 sql/00_create_database.sql       creates database `uenav` and user `uenav_app`
 sql/01_schema.sql                6 tables
 sql/02_seed_sample.sql           SAMPLE data only (made-up campus)
@@ -121,7 +124,8 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | PC admin pages: Buildings, Floors, Walkways (`ManagePage` base) | **Not run**: JavaFX code never compiled (no JavaFX in AI sandbox); syntax-checked only. `AdminApiMapTest` (7) and `AdminApiTest` (8) **Ran here** |
 | Usage log server (`usagelog`, 9 tests) | Tests **Ran here** with stand-ins; Spring/SQL parts **Not run** |
 | Dashboard numbers, Most searched, Recent activity, Route reports page, CSV export button | **Not run**: JavaFX never compiled in AI sandbox; syntax-checked only. `AdminApiUsageTest` (5) and `UsageFormatTest` (3) **Ran here** |
-| Phone: local log queue + sync to `POST /api/usage`, Helpful/Wrong route buttons, update snapshot from server, Explore list, map image overlay | Not written |
+| Phone usage log: queue, settings, sync, Helpful/Wrong route buttons (26 unit tests incl. real HTTP to a local fake server) | Logic tests **Ran here**; `MobileApp` screen and `AppStorage` (Attach) **Not compiled/run**; never tried on a phone |
+| Phone: update snapshot from server, Explore list, map image overlay | Not written |
 | Real campus data and Photoshop map images | Not started |
 
 ## 9. Gotchas already hit (do not repeat)
@@ -140,6 +144,10 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 12. This project does not use `spring-boot-starter-parent`, so Java does **not** keep parameter names. Always name them: `@PathVariable("id")`, `@RequestParam("x")`. Unnamed ones return HTTP 500 for PUT/DELETE `/api/admin/*/{id}`.
 13. Usage log rows block deleting the places they mention (database foreign keys). While testing with sample data, clear the log with `DELETE FROM usage_log;` in MySQL before removing sample places.
 
+14. Tables must fit the window with no sideways scrolling: use `TableView.CONSTRAINED_RESIZE_POLICY` and pin the button column's min and max width (owner could not reach the Mark reviewed button before this).
+14. Phone sending uses plain `HttpURLConnection`, not `java.net.http`, on purpose (safer in the Android native build). The phone keeps unsent entries and never deletes one unless the server answered 200 for its batch.
+15. `AppStorage` uses `com.gluonhq.attach.storage.StorageService` (Attach 4.0.25) and the `storage` entry in `attachList`. Written from memory of the API; if it fails to compile or the queue is not saved on the phone, look here first.
+
 ## 10. Known inconsistencies in the proposal deck (still to fix)
 - Slide text says 7 tables; there are 6 (D2). Class diagram must have no Room class.
 - ERD Node lacks `name`, `x`, `y`; Usage Log lacks feedback type, status and `client_log_id`.
@@ -150,11 +158,11 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 - Figma admin dashboard is shown on a phone; D7 says PC first.
 
 ## 11. Next tasks (in dependency order)
-1. **Owner:** run the PC admin app and report the new dashboard, Route reports page and CSV export. Confirm airplane-mode routing on the phone.
-2. **Phone logging:** save each search and Helpful / Wrong route tap on the device with a random `clientLogId` (UUID) and ISO UTC `createdAt`; send them to `POST /api/usage` (body `{"entries":[...]}`) when online; keep unsent ones; do not delete until the server says accepted or duplicate. Server address setting on the phone; Android cleartext HTTP exception or HTTPS.
-3. **Phone:** update the snapshot from the server when online; Explore/search list; map image with route overlay.
+1. **Owner:** run `uenav-mobile` on the PC against the local server and check the dashboard numbers move; then build the APK and test on the phone (steps in the last reply). Confirm airplane-mode routing.
+2. **If phone sending fails with a clear-text/HTTP error:** Android blocks plain `http://` by default. Options: allow clear text through a custom Android manifest (GluonFX `src/android`), or serve the API over HTTPS. Offline logging still works either way.
+3. **Phone:** update the snapshot from the server when online (`GET /api/snapshot/version`, then `/api/snapshot`, keep a downloaded copy in app storage, prefer it over the bundled one); Explore/search list; map image with route overlay.
 4. **Admin extras:** export the snapshot JSON from the admin app (to refresh the phone's built-in copy).
-5. **HTTPS** and a request limit on the open `/api/usage` address before school use (anyone can send log entries; there is no rate limit yet).
+5. **HTTPS** and a request limit on the open `/api/usage` address before school use (anyone can send log entries).
 6. **Testing:** API tests, device tests, route correctness against real campus measurements.
 7. **Docs:** fix the deck items in section 10.
 
