@@ -64,6 +64,8 @@ public class PlacesView extends VBox {
     private List<AdminModels.Floor> floors = List.of();
     private final Map<Integer, String> buildingNames = new HashMap<>();
     private final Map<Integer, String> floorNames = new HashMap<>();
+    private boolean loaded;
+    private Runnable afterLoad;
 
     public PlacesView(AdminApi api, Consumer<ApiException> onUnauthorized) {
         this.api = api;
@@ -231,6 +233,12 @@ public class PlacesView extends VBox {
                     table.refresh();
                     updateCounts();
                     status.setText("");
+                    loaded = true;
+                    if (afterLoad != null) {
+                        Runnable r = afterLoad;
+                        afterLoad = null;
+                        javafx.application.Platform.runLater(r);
+                    }
                 },
                 this::loadFailed);
     }
@@ -243,6 +251,31 @@ public class PlacesView extends VBox {
         status.setText(e.getMessage());
         retry.setVisible(true);
         retry.setManaged(true);
+    }
+
+    /** Runs an action once the list has loaded (used by the dashboard's Places card). */
+    public void afterLoad(Runnable r) {
+        if (loaded) {
+            javafx.application.Platform.runLater(r);
+        } else {
+            afterLoad = r;
+        }
+    }
+
+    public void openAdd() {
+        openForm(null);
+    }
+
+    public void openEdit(int id) {
+        items.stream().filter(p -> p.id() == id).findFirst().ifPresent(this::openForm);
+    }
+
+    public void askDelete(int id) {
+        items.stream().filter(p -> p.id() == id).findFirst().ifPresent(this::confirmDelete);
+    }
+
+    public void setSearch(String text) {
+        search.setText(text == null ? "" : text);
     }
 
     // ---- add / edit

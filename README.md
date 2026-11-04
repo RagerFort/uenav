@@ -1,6 +1,7 @@
 # UENav
 
-Modules: `uenav-core` (graph and routing), `uenav-server` (Spring Boot REST), `uenav-client` (JavaFX).
+Modules: `uenav-core` (graph, routing, directions), `uenav-server` (Spring Boot REST), `uenav-mobile` (Gluon phone app and the
+shared visitor screens), `uenav-client` (JavaFX PC app: admin pages plus Explore/Map). Full guide: `docs/PROJECT_CONTEXT.md`.
 
 ## Versions (edit to match what you actually run)
 JDK 17+, Maven 3.9+, Spring Boot 3.3.5, JavaFX 21.0.5, MySQL 8.
@@ -21,4 +22,6 @@ JDK 17+, Maven 3.9+, Spring Boot 3.3.5, JavaFX 21.0.5, MySQL 8.
     mvn -pl uenav-server spring-boot:run
     curl http://localhost:8080/api/health           # {"status":"UP"}
     curl http://localhost:8080/api/health/db        # {"status":"UP","database":"uenav"}
-    mvn -pl uenav-client javafx:run                 # window shows Server and Database status
+    mvn install -DskipTests                         # once, so the apps can find each other
+    mvn -pl uenav-client javafx:run                 # PC app: admin sign-in or "Continue as visitor"
+    mvn -pl uenav-mobile javafx:run                 # phone app in a phone-sized window (works offline)
