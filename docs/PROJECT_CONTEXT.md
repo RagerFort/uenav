@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-04 (after the Figma screens were built for phone and PC, and the first end-to-end run with MySQL).
+Last updated: 2026-11-04 (PC app made admin-only to match the proposal; VS Code tasks added).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -16,7 +16,7 @@ Rance = data administrator, Gungon = routing and quality.
 Two kinds of users:
 - **Visitor/student (phone):** pick From and To, see the route on a map with step-by-step directions,
   choose stairs or elevator, press Helpful or Wrong route. Must work **offline** inside the school.
-- **Admin (PC first):** logs in, adds/edits/deletes places and walkways, sees most-searched places and
+- **Admin (PC app, admin only; also a basic Admin tab on the phone):** logs in, adds/edits/deletes places and walkways, sees most-searched places and
   recent activity, reviews wrong-route reports, exports the usage log as CSV.
 
 ## 2. Owner and how to work with them
@@ -83,7 +83,7 @@ uenav-server/                    Spring Boot: UenavServerApplication, HealthCont
   .../mapadmin/                  admin CRUD for buildings, floors, nodes, edges under /api/admin/**
   .../usagelog/                  POST /api/usage (open, phone sync, idempotent by client_log_id);
                                  admin: /api/admin/usage/summary|most-searched|recent|export.csv, /api/admin/reports, PUT reports/{id}/status
-uenav-mobile/                    Gluon phone app, also the home of the shared visitor screens:
+uenav-mobile/                    Gluon phone app (visitors and admins):
                                  MobileApp (bottom bar Explore / Map / Admin), Navigator (Figma screens Explore, Plan a route,
                                  Directions with map + steps + stairs/elevator choice + Helpful/Wrong route, Route unavailable,
                                  Campus map), MapView (draws a level and the route; uses /maps/*.png if present), Icons, Ui,
@@ -91,10 +91,11 @@ uenav-mobile/                    Gluon phone app, also the home of the shared vi
                                  AdminScreens + MobileAdminApi (phone Admin tab: sign in, dashboard, add/edit/delete place,
                                  route reports, server address); usage log: UsageEntry, UsageQueue, Settings, SyncService,
                                  HttpSyncClient, Http, FileTextStore/TextStore, AppStorage; `android` profile
-uenav-client/                    desktop JavaFX app (depends on uenav-mobile for Explore/Map): UenavApp, LoginView
-                                 (+ Continue as visitor), AdminShell (Figma sidebar; admin or visitor mode), VisitorSupport,
-                                 DashboardView (+ Places card), PlacesView, BuildingsView, FloorsView, WalkwaysView (ManagePage),
-                                 ReportsView, TimeAgo, UsageText, AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css
+uenav-client/                    PC admin app, **admins only** (proposal: Windows = admin app). JavaFX: UenavApp, LoginView,
+                                 AdminShell (Figma sidebar), DashboardView (+ Places card), PlacesView, BuildingsView,
+                                 FloorsView, WalkwaysView (ManagePage), ReportsView, Icons, PlaceStyle, TimeAgo, UsageText,
+                                 AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css. Does not depend on uenav-mobile.
+.vscode/tasks.json               VS Code tasks: build, start server, open PC admin app, open phone app on PC
 sql/00_create_database.sql       creates database `uenav` and user `uenav_app`
 sql/01_schema.sql                6 tables
 sql/02_seed_sample.sql           SAMPLE data only (made-up campus)
@@ -129,7 +130,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | Phone: search + Wrong route saved offline, then sent when the server address was set | **Ran here** end to end: rows appeared in MySQL `usage_log` |
 | Phone: newer map downloaded from server (D9) | **Ran here**: a place added in the Admin tab appeared in Explore after restart |
 | Phone Admin tab (sign in, dashboard, add/edit/delete place, route reports, server address) | **Ran here** against the real server |
-| PC app: Figma sidebar, Explore and Map pages, Continue as visitor, dashboard Places card | **Ran here**, screenshots checked against the Figma desktop frame |
+| PC admin app: Figma sidebar (admin pages only), dashboard with Places card | **Ran here**, screenshots checked against the Figma desktop frame |
 | PC admin pages Places, Buildings, Floors, Walkways, Reports, CSV export | Compiled and the app opened them; add/edit dialogs not clicked through here |
 | Phone on Android: clear-text `http://` to the server | **Not tested** (see task 2) |
 | Real campus data and Photoshop map images | Not started |
@@ -153,12 +154,12 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 14. Tables must fit the window with no sideways scrolling: use `TableView.CONSTRAINED_RESIZE_POLICY` and pin the button column's min and max width (owner could not reach the Mark reviewed button before this).
 15. Phone sending uses plain `HttpURLConnection`, not `java.net.http`, on purpose (safer in the Android native build). The phone keeps unsent entries and never deletes one unless the server answered 200 for its batch.
 16. `AppStorage` uses `com.gluonhq.attach.storage.StorageService` (Attach 4.0.25) and the `storage` entry in `attachList`. Written from memory of the API; if it fails to compile or the queue is not saved on the phone, look here first.
-17. The PC app depends on `uenav-mobile` (shared visitor screens). Before `mvn -pl uenav-client javafx:run`, run
-    `mvn install -DskipTests` once (or after changing core/mobile), otherwise Maven cannot find `uenav-mobile`.
+17. The PC app is **admin only** (proposal slide "Software requirements": Windows 10/11 = admin app). Do not add
+    Explore/Map or a visitor mode to it; the Figma desktop frame's Explore/Map links were left out on purpose (D11).
 18. Plain `HttpURLConnection` with `setFixedLengthStreamingMode` loses the server's error text on HTTP 401
     (wrong password showed a generic message). `Http.java` does not use streaming mode for that reason.
 19. The phone opens on **Explore** (visitors need no login); the Figma Login screen is the **Admin** tab, with
-    "Continue as visitor". Same on the PC: login screen first, with "Continue as visitor".
+    "Continue as visitor". The PC app opens on the admin login, with no visitor option.
 
 ## 10. Known inconsistencies in the proposal deck (still to fix)
 - Slide text says 7 tables; there are 6 (D2). Class diagram must have no Room class.
@@ -170,8 +171,8 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 - Figma admin dashboard is shown on a phone; D7 says PC first.
 
 ## 11. Next tasks (in dependency order)
-1. **Owner:** pull, run `mvn clean verify`, then try the PC app (admin and "Continue as visitor") and the phone app on the PC
-   (`mvn -pl uenav-mobile javafx:run`). Report anything that looks wrong next to the Figma.
+1. **Owner:** pull, open the folder in VS Code, run the tasks "UENav: start server" and "UENav: open PC admin app",
+   then "UENav: open phone app on the PC". Report anything that looks wrong next to the Figma.
 2. **Owner:** push to `main` so GitHub builds the APK; install it and test: Explore, directions in airplane mode, then the
    Admin tab with the PC's address (e.g. `http://192.168.1.10:8080`). If sign-in or sending fails only on the phone,
    it is probably Android blocking plain `http://`: add a custom Android manifest that allows clear text
@@ -181,16 +182,17 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 4. **Map pictures (D6):** add `maps/campus.png` and floor plans (see section 7) and enter node X/Y as picture pixels.
 5. **HTTPS** and a request limit on the open `/api/usage` address before school use (anyone can send log entries).
 6. **Testing:** device tests, route correctness against real campus measurements.
-7. **Docs:** fix the deck items in section 10 (Figma now matches the built screens, see decisions D11, D12).
+7. **Docs:** fix the deck items in section 10 (see decisions D11, D12).
 
 ## 12. How to run
+In VS Code: **Terminal > Run Task...** and pick a `UENav:` task (`.vscode/tasks.json`). The same commands by hand:
 ```
 mvn clean verify                              # builds and tests everything
-mvn install -DskipTests                       # needed before the javafx:run lines below
+mvn -pl uenav-core -am install -DskipTests    # needed before the run lines below
 $env:UENAV_DB_PASSWORD="your_password"
 $env:UENAV_ADMIN_USER="admin"; $env:UENAV_ADMIN_PASSWORD="your-password"   # first start only (creates the first admin)
 mvn -pl uenav-server spring-boot:run          # then open http://localhost:8080/api/health and /api/snapshot
-mvn -pl uenav-client javafx:run               # PC app; start the server first for admin pages
+mvn -pl uenav-client javafx:run               # PC admin app; start the server first
 mvn -pl uenav-mobile javafx:run               # phone app in a phone-sized window; works without the server
 ```
 Database: edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
