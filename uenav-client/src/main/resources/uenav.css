@@ -108,3 +108,21 @@
 .icon-button:hover { -fx-background-color: #E5E7EB; }
 .icon-button.danger .nv-icon { -fx-background-color: -brand; }
 .separator .line { -fx-border-color: -line; -fx-border-width: 1 0 0 0; }
+
+/* icons, soft icon circles and bars (same look as the phone app) */
+.nv-icon { -fx-background-color: -ink; }
+.nv-icon-brand { -fx-background-color: -brand; }
+.nv-icon-white { -fx-background-color: white; }
+.nv-bubble { -fx-background-radius: 999; }
+.nv-tone-red { -fx-background-color: #FDECEF; }
+.nv-tone-red .nv-icon { -fx-background-color: #C8102E; }
+.nv-tone-orange { -fx-background-color: #FEF1E2; }
+.nv-tone-orange .nv-icon { -fx-background-color: #C2610C; }
+.nv-tone-green { -fx-background-color: #E3F4EA; }
+.nv-tone-green .nv-icon { -fx-background-color: #15803D; }
+.nv-tone-blue { -fx-background-color: #E8EFFC; }
+.nv-tone-blue .nv-icon { -fx-background-color: #2563EB; }
+.nv-tone-grey { -fx-background-color: #F3F4F6; }
+.nv-bar-track { -fx-background-color: #F1F2F4; -fx-background-radius: 4; }
+.nv-bar-fill { -fx-background-color: -brand; -fx-background-radius: 4; }
+.bar-count { -fx-text-fill: -brand; -fx-font-weight: bold; }
