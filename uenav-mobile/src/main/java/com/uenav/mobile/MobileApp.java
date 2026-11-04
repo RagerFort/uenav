@@ -41,7 +41,7 @@ public class MobileApp extends Application {
     public void start(Stage stage) {
         File dir = AppStorage.directory();
         queue = new UsageQueue(new FileTextStore(new File(dir, "usage-queue.json")));
-        settings = new Settings(new FileTextStore(new File(dir, "settings.json")));
+        settings = new Settings(new FileTextStore(new File(dir, "settings.json")), BuiltInServer.url());
         sync = new SyncService(queue, new HttpSyncClient());
         store = new CampusStore(new FileTextStore(new File(dir, "campus-snapshot.json")));
 
@@ -107,6 +107,40 @@ public class MobileApp extends Application {
 
         checkForMapUpdate();
         syncAsync();
+        startAutoConnect();
+    }
+
+    /**
+     * Keeps trying in the background while the app is open: sends waiting entries every minute (so they go out as
+     * soon as the phone has internet again, on any Wi-Fi or mobile data) and looks for a newer map every 30 minutes.
+     */
+    private void startAutoConnect() {
+        Thread t = new Thread(() -> {
+            long minutes = 0;
+            while (true) {
+                try {
+                    Thread.sleep(60_000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                minutes++;
+                String url = settings.serverUrl();
+                if (url.isEmpty()) {
+                    continue;
+                }
+                if (queue.size() > 0) {
+                    sync.syncNow(url);
+                }
+                if (minutes % 30 == 0) {
+                    CampusStore.Check c = store.checkForUpdate(url);
+                    if (c.updated() != null) {
+                        Platform.runLater(() -> navigator.setData(c.updated()));
+                    }
+                }
+            }
+        }, "uenav-auto-connect");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void show(Stage stage, Parent root) {

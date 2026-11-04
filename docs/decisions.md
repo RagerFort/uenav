@@ -41,3 +41,11 @@ Map links in the sidebar; those were left out to match the proposal. Visitors us
 D7 says admin on the PC first, phone later. The Figma phone frames include Login and an admin Dashboard, so the phone
 now has an Admin tab: sign in, dashboard numbers, most searched, recent activity, add/edit/delete place, route reports.
 Walkways, buildings, floors and CSV export stay on the PC. It uses the same server API and token as the PC (D8).
+
+## D13: the phone map is drawn in basic 3D shapes (implemented 2026-11-04, owner asked for it)
+
+D6 said Photoshop map pictures with the route drawn on top. The owner asked for a 3D map in basic shapes instead, like
+the Figma 3D frames. The app now draws the campus from `maps/campus-3d.json`: flat shapes (roads, ground, field) and
+raised blocks (buildings, trees), traced from the official campus map. Floors are drawn as their building's outline.
+A floor plan picture can still be added per floor. The database and ERD do not change (shapes are app files, like
+the map pictures in D9).

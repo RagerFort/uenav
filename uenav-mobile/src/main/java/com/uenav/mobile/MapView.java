@@ -31,8 +31,8 @@ import javafx.scene.text.TextAlignment;
 
 /**
  * Draws one level of the campus (the outdoor campus, or one building floor) with the route on top (D6).
- * If the app contains a map picture for the level it is drawn underneath: /maps/campus.jpg (or .png) for the campus,
- * and /maps/ + the floor's planImagePath for a floor. Node X/Y are pixels of that picture. With no picture, a simple
+ * The outdoor campus is drawn in basic 3D shapes from /maps/campus-3d.json (see CampusArt). A floor uses its plan
+ * picture, /maps/ + the floor's planImagePath, when the app contains one. Node X/Y are pixels of that picture. With no picture, a simple
  * plan is drawn from the node positions.
  *
  * Moving around works like Google Maps: drag to move, pinch (or mouse wheel) to zoom around the fingers or pointer,
@@ -46,6 +46,8 @@ public class MapView extends Region {
     private static final Color BLUE = Color.web("#2563EB");
     private static final Color GREEN = Color.web("#15803D");
     private static final Map<String, Optional<Image>> IMAGES = new HashMap<>();
+    private static CampusArt campusArt;
+    private static boolean artLoaded;
     /** Zoom per pixel of mouse-wheel movement (one wheel notch is about 40). */
     private static final double WHEEL_ZOOM = 1.004;
 
@@ -316,6 +318,14 @@ public class MapView extends Region {
 
     /** minX, minY, maxX, maxY of the level: the picture, or the places on it. */
     private double[] levelBounds() {
+        CampusArt art3d = art();
+        if (art3d != null) {
+            return art3d.bounds();
+        }
+        Integer floorOf = floorBuilding3d();
+        if (floorOf != null) {
+            return allArt().footprintBounds(floorOf);
+        }
         Optional<Image> img = image();
         if (img.isPresent()) {
             return new double[] {0, 0, img.get().getWidth(), img.get().getHeight()};
@@ -355,7 +365,8 @@ public class MapView extends Region {
     private void fit() {
         double[] level = levelBounds();
         double[] target = level;
-        if (route != null) {
+        if (route != null && this.level == null) {
+            // outdoors: start on the route; on a floor the whole floor is small enough to show at once
             Set<Integer> ids = visibleIds();
             List<Node> onLevel = new ArrayList<>();
             for (Node n : route.nodes()) {
@@ -376,12 +387,13 @@ public class MapView extends Region {
         }
         double[] limits = scaleLimits();
         double wanted = fitScale(target, 36);
-        if (target == level && image().isPresent()) {
-            // Whole campus picture on a tall phone screen: fill the screen like Google Maps instead of showing a
-            // thin strip; the user can drag to see the rest.
+        if (target == level && (art() != null || image().isPresent() || floorBuilding3d() != null)) {
+            // Whole campus on a tall phone screen: halfway (geometric mean) between showing all of it as a thin
+            // strip and filling the screen, so most of the campus shows at a readable size; drag to see the rest.
             double areaW = Math.max(20, canvas.getWidth());
             double areaH = Math.max(20, canvas.getHeight() - padTop - padBottom);
-            wanted = Math.max(areaW / (level[2] - level[0]), areaH / (level[3] - level[1]));
+            double cover = Math.max(areaW / (level[2] - level[0]), areaH / (level[3] - level[1]));
+            wanted = Math.sqrt(wanted * cover);
         }
         scale = Math.max(limits[0], Math.min(limits[1], wanted));
         viewX = (target[0] + target[2]) / 2;
@@ -420,29 +432,99 @@ public class MapView extends Region {
         double maxX = lb[2];
         double maxY = lb[3];
 
+        CampusArt art3d = art();
+        if (art3d != null) {
+            // 3D campus: ground and field, walkways on the ground, then buildings and trees, then the route on top
+            CampusArt.View view = view();
+            art3d.drawGround(g, view);
+            drawWalkways(g, ids, Color.web("#FFFFFF", 0.85), 5);
+            art3d.drawRaised(g, view);
+            drawRoute(g, ids);
+            drawPlaces(g, nodes, true);
+            return;
+        }
+        Integer floorOf = floorBuilding3d();
+        if (floorOf != null) {
+            // 3D floor: the building outline as a slab, hallways on it, stairs and elevators as blocks
+            CampusArt.View view = view();
+            allArt().drawFloor(g, view, floorOf);
+            drawWalkways(g, ids, Color.web("#D9DCE1"), 9);
+            for (Node n : nodes) {
+                if ("STAIRS".equals(n.nodeType()) || "ELEVATOR".equals(n.nodeType())) {
+                    CampusArt.cube(g, view, n.x(), n.y(), 16, 14, GREEN);
+                }
+            }
+            drawRoute(g, ids);
+            drawPlaces(g, nodes, false);
+            return;
+        }
         if (img.isPresent()) {
             g.drawImage(img.get(), sx(0), sy(0), img.get().getWidth() * scale, img.get().getHeight() * scale);
         } else {
             drawGround(g, minX, minY, maxX, maxY);
-        }
-
-        // walkways on this level (a map picture already shows them)
-        g.setLineCap(StrokeLineCap.ROUND);
-        g.setLineJoin(StrokeLineJoin.ROUND);
-        for (Edge e : img.isPresent() ? List.<Edge>of() : data.graph().edges()) {
-            if (ids.contains(e.fromNodeId()) && ids.contains(e.toNodeId())) {
-                Node a = data.graph().node(e.fromNodeId()).orElseThrow();
-                Node b = data.graph().node(e.toNodeId()).orElseThrow();
-                g.setStroke(level == null ? Color.web("#FFFFFF") : Color.web("#EEF0F3"));
-                g.setLineWidth(level == null ? 7 : 12);
-                g.strokeLine(sx(a.x()), sy(a.y()), sx(b.x()), sy(b.y()));
-            }
+            // walkways on this level (a map picture already shows them)
+            drawWalkways(g, ids, level == null ? Color.web("#FFFFFF") : Color.web("#EEF0F3"), level == null ? 7 : 12);
         }
         if (level == null && !img.isPresent()) {
             drawBuildings(g, ids);
         }
         drawRoute(g, ids);
         drawPlaces(g, nodes, img.isPresent());
+    }
+
+    private void drawWalkways(GraphicsContext g, Set<Integer> ids, Color color, double width) {
+        g.setLineCap(StrokeLineCap.ROUND);
+        g.setLineJoin(StrokeLineJoin.ROUND);
+        g.setStroke(color);
+        g.setLineWidth(width);
+        for (Edge e : data.graph().edges()) {
+            if (ids.contains(e.fromNodeId()) && ids.contains(e.toNodeId())) {
+                Node a = data.graph().node(e.fromNodeId()).orElseThrow();
+                Node b = data.graph().node(e.toNodeId()).orElseThrow();
+                g.strokeLine(sx(a.x()), sy(a.y()), sx(b.x()), sy(b.y()));
+            }
+        }
+    }
+
+    /** The 3D campus shapes, for the campus level only (floors use a plan picture or a simple plan). */
+    private CampusArt art() {
+        return level != null ? null : allArt();
+    }
+
+    private static CampusArt allArt() {
+        if (!artLoaded) {
+            campusArt = CampusArt.load("/maps/campus-3d.json");
+            artLoaded = true;
+        }
+        return campusArt;
+    }
+
+    /** The building whose floor is shown, when that building has 3D blocks and the floor has no plan picture. */
+    private Integer floorBuilding3d() {
+        if (level == null || image().isPresent() || allArt() == null) {
+            return null;
+        }
+        Integer b = data.floor(level).map(Floor::buildingId).orElse(null);
+        return b != null && allArt().footprintBounds(b) != null ? b : null;
+    }
+
+    private CampusArt.View view() {
+        return new CampusArt.View() {
+            @Override
+            public double x(double mapX) {
+                return sx(mapX);
+            }
+
+            @Override
+            public double y(double mapY) {
+                return sy(mapY);
+            }
+
+            @Override
+            public double scale() {
+                return scale;
+            }
+        };
     }
 
     private void drawGround(GraphicsContext g, double minX, double minY, double maxX, double maxY) {
@@ -581,8 +663,10 @@ public class MapView extends Region {
                     || (first != null && n.id() == first.id()) || (last != null && n.id() == last.id());
             String type = n.nodeType();
             if (("STAIRS".equals(type) || "ELEVATOR".equals(type)) && !onPicture) {
-                g.setFill(GREEN);
-                g.fillRoundRect(x - 7, y - 7, 14, 14, 4, 4);
+                if (floorBuilding3d() == null) {
+                    g.setFill(GREEN);
+                    g.fillRoundRect(x - 7, y - 7, 14, 14, 4, 4);
+                }
                 if (level != null) {
                     tag(g, "STAIRS".equals(type) ? "Stairs" : "Elevator", x, y + 18, Color.WHITE, INK);
                 }

@@ -182,8 +182,8 @@ final class AdminScreens {
 
     /** Server address, map version and sending status. Shown under the login form. */
     private VBox serverCard() {
-        TextField server = new TextField(settings.serverUrl());
-        server.setPromptText("http://192.168.1.10:8080");
+        TextField server = new TextField(settings.typedUrl());
+        server.setPromptText(settings.builtInUrl().isEmpty() ? "https://your-server-address" : settings.builtInUrl());
         server.getStyleClass().add("nv-input");
         HBox.setHgrow(server, Priority.ALWAYS);
         Button save = new Button("Save");
@@ -203,7 +203,9 @@ final class AdminScreens {
             try {
                 settings.setServerUrl(server.getText());
                 server.setText(settings.serverUrl());
-                result.setText(settings.serverUrl().isEmpty() ? "Sending is off." : "Saved.");
+                result.setText(settings.serverUrl().isEmpty() ? "No server address: sending is off."
+                        : settings.usingBuiltIn() ? "Using the address built into the app." : "Saved.");
+                status.setText(statusText());
             } catch (IllegalArgumentException ex) {
                 result.setText(ex.getMessage());
             }
@@ -235,8 +237,8 @@ final class AdminScreens {
         });
 
         VBox card = Ui.card(Ui.label("SERVER & SYNC", "nv-label-caps"),
-                Ui.wrap("Needed for admin sign-in, map updates and sending usage. Directions work without it.",
-                        "nv-muted"),
+                Ui.wrap("Needed for admin sign-in, map updates and sending usage. Directions work without it. "
+                        + "Leave empty to use the address built into the app.", "nv-muted"),
                 new HBox(8, server, save), status, new HBox(8, update, send), result);
         card.setSpacing(8);
         card.setStyle("-fx-background-color: #F9FAFB; -fx-effect: null;");
@@ -246,7 +248,9 @@ final class AdminScreens {
     private String statusText() {
         CampusData d = store.current();
         String map = d == null ? "" : "Map data " + d.version() + (store.isDownloaded() ? " (downloaded)" : " (built in)");
-        return map + "\n" + host.syncStatus();
+        String server = settings.serverUrl().isEmpty() ? "Server: none set"
+                : "Server: " + settings.serverUrl() + (settings.usingBuiltIn() ? " (built in)" : "");
+        return server + "\n" + map + "\n" + host.syncStatus();
     }
 
     // ---------------------------------------------------------------- dashboard
