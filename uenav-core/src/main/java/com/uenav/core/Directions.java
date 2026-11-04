@@ -18,6 +18,8 @@ public final class Directions {
     static final double STRAIGHT_DEGREES = 35.0;
     /** Heading changes larger than this (degrees) count as "turn around". */
     static final double BACK_DEGREES = 150.0;
+    /** Walks shorter than this (metres) are small kinks in the walkway, not a step of their own. */
+    static final double MIN_STEP_M = 20.0;
 
     public enum StepKind { START, STRAIGHT, LEFT, RIGHT, BACK, STAIRS, ELEVATOR, ARRIVE }
 
@@ -36,7 +38,12 @@ public final class Directions {
         }
     }
 
-    private record Leg(EdgeType type, int from, int to, double meters) { }
+    /** turnFrom: first edge used to tell the direction of a leg (after any short kink folded into it). */
+    private record Leg(EdgeType type, int from, int to, double meters, int turnFrom) {
+        Leg(EdgeType type, int from, int to, double meters) {
+            this(type, from, to, meters, from);
+        }
+    }
 
     private Directions() { }
 
@@ -171,13 +178,53 @@ public final class Directions {
         if (edges.size() > legStart) {
             legs.add(new Leg(EdgeType.WALK, legStart, edges.size(), legMeters));
         }
-        return legs;
+        return joinStraightWalks(nodes, foldShortWalks(legs));
+    }
+
+    /** Joins two walks in a row that go the same way (left over after folding a kink) into one. */
+    private static List<Leg> joinStraightWalks(List<Node> nodes, List<Leg> legs) {
+        List<Leg> out = new ArrayList<>(legs);
+        for (int i = 0; i + 1 < out.size(); i++) {
+            Leg a = out.get(i);
+            Leg b = out.get(i + 1);
+            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK
+                    && turn(heading(nodes, a, true), heading(nodes, b, false)) == StepKind.STRAIGHT) {
+                out.set(i, new Leg(EdgeType.WALK, a.from(), b.to(), a.meters() + b.meters(), a.turnFrom()));
+                out.remove(i + 1);
+                i--;
+            }
+        }
+        return out;
+    }
+
+    /** Folds walks shorter than MIN_STEP_M into the next walk (or, at the end, into the walk before). */
+    private static List<Leg> foldShortWalks(List<Leg> legs) {
+        List<Leg> out = new ArrayList<>(legs);
+        for (int i = 0; i + 1 < out.size(); i++) {
+            Leg a = out.get(i);
+            Leg b = out.get(i + 1);
+            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && a.meters() < MIN_STEP_M) {
+                out.set(i, new Leg(EdgeType.WALK, a.from(), b.to(), a.meters() + b.meters(), b.turnFrom()));
+                out.remove(i + 1);
+                i--;
+            }
+        }
+        int last = out.size() - 1;
+        if (last > 0) {
+            Leg a = out.get(last - 1);
+            Leg b = out.get(last);
+            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && b.meters() < MIN_STEP_M) {
+                out.set(last - 1, new Leg(EdgeType.WALK, a.from(), b.to(), a.meters() + b.meters(), a.turnFrom()));
+                out.remove(last);
+            }
+        }
+        return out;
     }
 
     /** First (or last) non-zero direction of travel in a leg; null if every node in it is at the same spot. */
     private static double[] heading(List<Node> nodes, Leg leg, boolean lastOne) {
         double[] found = null;
-        for (int i = leg.from(); i < leg.to(); i++) {
+        for (int i = lastOne ? leg.from() : leg.turnFrom(); i < leg.to(); i++) {
             double[] v = vector(nodes.get(i), nodes.get(i + 1));
             if (v != null) {
                 found = v;

@@ -8,9 +8,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.uenav.mobile.Icons;
-import com.uenav.mobile.PlaceStyle;
-import com.uenav.mobile.Ui;
 import java.util.function.Consumer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -24,6 +21,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
@@ -141,7 +139,7 @@ public class DashboardView extends ScrollPane {
         }
         long max = d.top().stream().mapToLong(AdminModels.TopPlace::count).max().orElse(1);
         for (AdminModels.TopPlace t : d.top().subList(0, Math.min(5, d.top().size()))) {
-            topRows.getChildren().add(Ui.bar(t.name(), t.count(), max));
+            topRows.getChildren().add(bar(t.name(), t.count(), max));
         }
 
         recentRows.getChildren().clear();
@@ -231,10 +229,40 @@ public class DashboardView extends ScrollPane {
         del.setOnAction(e -> onPlace.accept(new PlaceAction(PlaceAction.Kind.DELETE, p.id(), null)));
         Region grow = new Region();
         HBox.setHgrow(grow, Priority.ALWAYS);
-        HBox row = new HBox(12, Ui.bubble(style.icon(), style.tone(), 36), new VBox(2, name, sub), grow, edit, del);
+        HBox row = new HBox(12, bubble(style.icon(), style.tone(), 36), new VBox(2, name, sub), grow, edit, del);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(8, 0, 8, 0));
         return row;
+    }
+
+    /** A soft coloured circle with an icon in it (Figma: place icons). */
+    private static StackPane bubble(String icon, String tone, double size) {
+        StackPane p = new StackPane(Icons.icon(icon, size * 0.46));
+        p.getStyleClass().addAll("nv-bubble", "nv-tone-" + tone);
+        p.setMinSize(size, size);
+        p.setMaxSize(size, size);
+        return p;
+    }
+
+    /** A "Most searched" row: name, count, and a red bar sized against the largest count. */
+    private static VBox bar(String name, long count, long max) {
+        Label n = new Label(name);
+        Label c = new Label(String.valueOf(count));
+        c.getStyleClass().add("bar-count");
+        Region grow = new Region();
+        HBox.setHgrow(grow, Priority.ALWAYS);
+        Region track = new Region();
+        track.getStyleClass().add("nv-bar-track");
+        track.setMinHeight(6);
+        track.setMaxHeight(6);
+        Region fill = new Region();
+        fill.getStyleClass().add("nv-bar-fill");
+        fill.setMinHeight(6);
+        fill.setMaxHeight(6);
+        StackPane barBox = new StackPane(track, fill);
+        StackPane.setAlignment(fill, Pos.CENTER_LEFT);
+        fill.maxWidthProperty().bind(barBox.widthProperty().multiply((double) count / Math.max(1, max)));
+        return new VBox(6, new HBox(8, n, grow, c), barBox);
     }
 
     private static Button iconButton(String icon, String text) {

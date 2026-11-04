@@ -7,18 +7,13 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import com.uenav.mobile.Icons;
-import javafx.scene.control.Separator;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
-/** Admin sign-in screen (Figma: Login). */
+/** Admin sign-in screen (Figma: Login). The PC app is for admins only, so there is no visitor option here. */
 public class LoginView extends StackPane {
 
-    public LoginView(AdminApi api, String serverUrl, String message, Consumer<AdminApi.LoginInfo> onSuccess,
-                     Runnable onVisitor) {
+    public LoginView(AdminApi api, String serverUrl, String message, Consumer<AdminApi.LoginInfo> onSuccess) {
         getStyleClass().add("login-bg");
 
         StackPane logo = new StackPane(Icons.icon("pin", 26, "nv-icon-brand"));
@@ -84,21 +79,7 @@ public class LoginView extends StackPane {
         password.setOnAction(ev -> submit.run());
         username.setOnAction(ev -> password.requestFocus());
 
-        Separator left = new Separator();
-        Separator right = new Separator();
-        HBox.setHgrow(left, Priority.ALWAYS);
-        HBox.setHgrow(right, Priority.ALWAYS);
-        Label or = new Label("or");
-        or.getStyleClass().add("muted");
-        HBox orRow = new HBox(10, left, or, right);
-        orRow.setAlignment(Pos.CENTER);
-        Button visitor = new Button("Continue as visitor");
-        visitor.getStyleClass().add("secondary-button");
-        visitor.setMaxWidth(Double.MAX_VALUE);
-        visitor.setOnAction(e -> onVisitor.run());
-
-        VBox body = new VBox(8, title, hint, userLabel, username, passLabel, password, signIn, error, orRow, visitor,
-                server);
+        VBox body = new VBox(8, title, hint, userLabel, username, passLabel, password, signIn, error, server);
         body.setPadding(new Insets(24, 28, 24, 28));
         VBox.setMargin(userLabel, new Insets(10, 0, 0, 0));
         VBox.setMargin(passLabel, new Insets(6, 0, 0, 0));

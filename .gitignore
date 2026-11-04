@@ -2,7 +2,9 @@ target/
 *.class
 *.log
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/extensions.json
 nbproject/private/
 *.iml
 .DS_Store

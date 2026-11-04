@@ -23,17 +23,17 @@ class PlaceStyleTest {
     void subtitleNamesBuildingAndFloor() throws IOException {
         CampusData d = CampusStore.bundled();
         assertEquals("Room · College of Engineering Building · 4th floor",
-                PlaceStyle.subtitle(d.graph().node(10).orElseThrow(), d));
-        assertEquals("Office", PlaceStyle.subtitle(d.graph().node(3).orElseThrow(), d));
+                PlaceStyle.subtitle(d.graph().node(42).orElseThrow(), d));
+        assertEquals("Office \u00B7 Administration Building", PlaceStyle.subtitle(d.graph().node(22).orElseThrow(), d));
     }
 
     @Test
     void mapLevelsFollowTheRoute() throws IOException {
         CampusData d = CampusStore.bundled();
-        Route r = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 10, com.uenav.core.RoutePreference.ANY)
+        Route r = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 42, com.uenav.core.RoutePreference.ANY)
                 .orElseThrow();
         assertEquals(Arrays.asList(null, 1, 2), MapView.levelsOf(r, d));
-        Route outdoor = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 3, com.uenav.core.RoutePreference.ANY)
+        Route outdoor = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 22, com.uenav.core.RoutePreference.ANY)
                 .orElseThrow();
         assertEquals(Arrays.asList((Integer) null), MapView.levelsOf(outdoor, d));
     }
