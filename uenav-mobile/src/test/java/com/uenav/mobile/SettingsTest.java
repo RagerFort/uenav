@@ -1,7 +1,9 @@
 package com.uenav.mobile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,5 +52,31 @@ class SettingsTest {
         assertEquals("", new Settings(store).serverUrl());
         store.text = "{\"serverUrl\":\"javascript:alert(1)\"}";
         assertEquals("", new Settings(store).serverUrl());
+    }
+
+    @Test
+    void builtInAddressIsUsedUntilOneIsTyped() {
+        Settings s = new Settings(store, "https://uenav-demo.ngrok-free.app/");
+        assertEquals("https://uenav-demo.ngrok-free.app", s.serverUrl());
+        assertTrue(s.usingBuiltIn());
+        s.setServerUrl("http://192.168.1.10:8080");
+        assertEquals("http://192.168.1.10:8080", s.serverUrl());
+        assertFalse(s.usingBuiltIn());
+        assertEquals("http://192.168.1.10:8080", new Settings(store, "https://uenav-demo.ngrok-free.app").serverUrl());
+        s.setServerUrl("");
+        assertEquals("https://uenav-demo.ngrok-free.app", s.serverUrl());
+        assertTrue(s.usingBuiltIn());
+    }
+
+    @Test
+    void aBadBuiltInAddressIsIgnored() {
+        assertEquals("", new Settings(store, "not an address").serverUrl());
+        assertEquals("", new Settings(store, null).serverUrl());
+    }
+
+    @Test
+    void builtInFileIsEmptyOrAValidAddress() {
+        String url = BuiltInServer.url();
+        assertTrue(url.isEmpty() || url.startsWith("http"), url);
     }
 }

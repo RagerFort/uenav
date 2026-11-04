@@ -7,7 +7,9 @@
     { "id": "adminUser", "type": "promptString", "default": "admin",
       "description": "Username for the first admin account" },
     { "id": "adminPassword", "type": "promptString", "password": true,
-      "description": "Password for the first admin account (at least 8 characters)" }
+      "description": "Password for the first admin account (at least 8 characters)" },
+    { "id": "ngrokUrl", "type": "promptString", "default": "https://YOUR-NAME.ngrok-free.app",
+      "description": "Your free ngrok static address (ngrok dashboard > Domains)" }
   ],
   "tasks": [
     {
@@ -36,6 +38,14 @@
         "UENAV_ADMIN_USER": "${input:adminUser}",
         "UENAV_ADMIN_PASSWORD": "${input:adminPassword}"
       } },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "UENav: put server online (ngrok)",
+      "detail": "Lets phones on any Wi-Fi or mobile data reach this PC's server. Start the server first.",
+      "type": "shell",
+      "command": "ngrok http 8080 --url=${input:ngrokUrl}",
       "isBackground": true,
       "problemMatcher": []
     },
