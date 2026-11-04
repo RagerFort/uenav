@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-04 (phone map drawn in basic 3D shapes; traced UE Caloocan walkways; map gestures fixed).
+Last updated: 2026-11-04 (phone connects to the server by itself: built-in address, ngrok for any network, background retry).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -134,6 +134,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | Admin login, map editing, usage log endpoints | Reported (login); all **Ran here** end to end through the apps |
 | Phone screens from Figma (Explore, Plan a route, Directions, Route unavailable, Campus map, bottom bar) | **Ran here** as a desktop window (390x820) under a virtual screen, screenshots checked against Figma; never on a phone |
 | Phone: search + Wrong route saved offline, then sent when the server address was set | **Ran here** end to end: rows appeared in MySQL `usage_log` |
+| Phone: built-in server address, background retry (search made with server off arrived ~30 s after it started) | **Ran here** with `http://localhost:8080` as the built-in address; ngrok not tried here (blocked) |
 | Phone: newer map downloaded from server (D9) | **Ran here**: a place added in the Admin tab appeared in Explore after restart |
 | Phone Admin tab (sign in, dashboard, add/edit/delete place, route reports, server address) | **Ran here** against the real server |
 | PC admin app: Figma sidebar (admin pages only), dashboard with Places card | **Ran here**, screenshots checked against the Figma desktop frame |
@@ -183,10 +184,10 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 ## 11. Next tasks (in dependency order)
 1. **Owner:** pull, open the folder in VS Code, run the tasks "UENav: start server" and "UENav: open PC admin app",
    then "UENav: open phone app on the PC". Report anything that looks wrong next to the Figma.
-2. **Owner:** push to `main` so GitHub builds the APK; install it and test: Explore, directions in airplane mode, then the
-   Admin tab with the PC's address (e.g. `http://192.168.1.10:8080`). If sign-in or sending fails only on the phone,
-   it is probably Android blocking plain `http://`: add a custom Android manifest that allows clear text
-   (GluonFX `src/android/AndroidManifest.xml`) or serve the API over HTTPS. Offline routing works either way.
+2. **Owner:** set up ngrok (section 12), put its HTTPS address in `uenav-server.json`, push to `main` so GitHub builds
+   the APK; install it and test: Explore, directions in airplane mode, then turn data on and check the dashboard
+   numbers move without typing an address. Plain `http://` addresses will likely be blocked by Android (clear text);
+   the ngrok HTTPS address avoids that.
 3. **Data:** walk the campus and check the traced places and walkway distances; fix them in the PC admin app.
    Add real indoor rooms and floors (order: Buildings, Floors, Places, Walkways). Then copy `GET /api/snapshot` into
    `uenav-mobile/src/main/resources/campus-snapshot.json` so the phone ships with the same data.
@@ -209,5 +210,20 @@ mvn -pl uenav-mobile javafx:run               # phone app in a phone-sized windo
 Database: edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
 `02_seed_sample.sql` into database `uenav`. `02_seed_sample.sql` can be run again: it first **deletes the usage log and
 all map rows** (admin accounts are kept), then loads the UE Caloocan map.
-Phone app server address: Admin tab, "Server & sync" card. Without it the phone still finds routes offline.
+Phone app server address: built into the app in `uenav-mobile/src/main/resources/uenav-server.json`
+(`{"serverUrl": "https://..."}`), so phones connect by themselves. An address typed in the Admin tab ("Server & sync")
+replaces it on that phone; clearing the box goes back to the built-in one. Without any address the phone still finds
+routes offline. While the app is open it retries sending every minute and checks for a newer map every 30 minutes.
+
+### Reaching the server from any Wi-Fi or mobile data (ngrok)
+A PC address like `http://192.168.1.10:8080` works only for phones on the **same** Wi-Fi, and Android blocks plain
+`http://` by default. A free ngrok address is HTTPS and works from any network:
+1. Sign up at ngrok.com, install ngrok for Windows, run `ngrok config add-authtoken <your token>` once.
+2. In the ngrok dashboard, open **Domains** and claim the free static domain (e.g. `uenav-xyz.ngrok-free.app`).
+3. Start the server, then the VS Code task "UENav: put server online (ngrok)" (or `ngrok http 8080 --url=https://uenav-xyz.ngrok-free.app`;
+   older ngrok versions use `--domain=` instead of `--url=`). Check `https://uenav-xyz.ngrok-free.app/api/health` in a browser.
+4. Put that address in `uenav-server.json`, commit, push, install the new APK. Every phone then connects by itself.
+The PC with the server and ngrok must stay on. For the school pilot, move the server and MySQL to a school or cloud
+server with its own HTTPS address and change `uenav-server.json` to it. Anyone on the internet can reach the server
+then: admin login is protected (BCrypt, lockout), but `/api/usage` is open (see task 5).
 Android: push to GitHub `main` (or run the "Android" workflow by hand), download artifact **Package**, install the `.apk` on the phone.

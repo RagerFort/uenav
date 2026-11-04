@@ -34,6 +34,9 @@ final class Http {
             c.setConnectTimeout(5000);
             c.setReadTimeout(15000);
             c.setRequestProperty("Accept", "application/json");
+            c.setRequestProperty("User-Agent", "UENav-app");
+            // free ngrok addresses show a warning page instead of the API unless this header is sent
+            c.setRequestProperty("ngrok-skip-browser-warning", "true");
             if (token != null) {
                 c.setRequestProperty("Authorization", "Bearer " + token);
             }
