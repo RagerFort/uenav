@@ -31,12 +31,14 @@ class CampusMapTest {
     }
 
     @Test
-    void placesAreOnTheMapPicture() throws IOException {
+    void placesAndShapesShareTheMapFrame() throws IOException {
         CampusData d = CampusStore.bundled();
         for (Node n : d.graph().nodes()) {
             assertTrue(n.x() >= 0 && n.x() <= 1560 && n.y() >= 0 && n.y() <= 924, n.name() + " is off the picture");
         }
-        assertTrue(MapView.class.getResource("/maps/campus.jpg") != null, "campus.jpg is missing");
+        CampusArt art = CampusArt.load("/maps/campus-3d.json");
+        assertTrue(art != null, "campus-3d.json is missing or unreadable");
+        assertTrue(art.buildingCount() >= 15, "buildings in the 3D map: " + art.buildingCount());
     }
 
     @Test
