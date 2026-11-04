@@ -362,8 +362,11 @@ public final class Navigator {
             VBox.setMargin(sheetBox, new Insets(-26, 0, 0, 0));
             VBox v = new VBox(mapStack, sheetBox);
             v.getStyleClass().add("nv-canvas");
+            // Fixed height: the sheet below must never squeeze the map (that looked like random zooming).
             mapStack.prefHeightProperty().bind(view.heightProperty().multiply(0.54));
-            mapStack.setMinHeight(260);
+            mapStack.minHeightProperty().bind(mapStack.prefHeightProperty());
+            mapStack.maxHeightProperty().bind(mapStack.prefHeightProperty());
+            sheetBox.setMinHeight(0);
             screen = v;
         }
         setScreen(screen, Tab.MAP);

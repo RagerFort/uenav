@@ -1,7 +1,5 @@
 package com.uenav.client;
 
-import com.uenav.mobile.Icons;
-import com.uenav.mobile.Navigator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -18,16 +16,14 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /**
- * The main window (Figma: desktop admin dashboard): side menu, top bar, and the page in the middle.
- * With a login it shows the admin pages too; without one (visitor mode) only Explore and Map.
+ * The admin window after login (Figma: desktop admin dashboard): side menu, top bar, and the page in the middle.
+ * The PC app is for admins only (proposal: Windows = admin app); visitors use the phone app.
  */
 public class AdminShell extends BorderPane {
 
     private final AdminApi api;
     private final AdminApi.LoginInfo info;
-    private final VisitorSupport visitor;
     private final Consumer<String> onSignOut;
-    private final Runnable onSignIn;
     private final StackPane content = new StackPane();
     private final Label crumbArea = new Label();
     private final Label crumbPage = new Label();
@@ -36,33 +32,15 @@ public class AdminShell extends BorderPane {
     private String current;
     private boolean signedOut;
 
-    /** Admin mode. */
-    public AdminShell(AdminApi api, AdminApi.LoginInfo info, VisitorSupport visitor, Consumer<String> onSignOut) {
-        this(api, info, visitor, onSignOut, null);
-    }
-
-    /** Visitor mode: no login, only Explore and Map; onSignIn opens the login screen. */
-    public static AdminShell visitor(VisitorSupport visitor, Runnable onSignIn) {
-        return new AdminShell(null, null, visitor, m -> { }, onSignIn);
-    }
-
-    private AdminShell(AdminApi api, AdminApi.LoginInfo info, VisitorSupport visitor, Consumer<String> onSignOut,
-                       Runnable onSignIn) {
+    public AdminShell(AdminApi api, AdminApi.LoginInfo info, Consumer<String> onSignOut) {
         this.api = api;
         this.info = info;
-        this.visitor = visitor;
         this.onSignOut = onSignOut;
-        this.onSignIn = onSignIn;
         getStyleClass().add("canvas");
         setLeft(buildSidebar());
         VBox.setVgrow(content, Priority.ALWAYS);
         setCenter(new VBox(buildTopBar(), content));
-        show(isAdmin() ? "dashboard" : "explore");
-        refreshBadge();
-    }
-
-    private boolean isAdmin() {
-        return info != null;
+        show("dashboard");
     }
 
     private VBox buildSidebar() {
@@ -79,27 +57,23 @@ public class AdminShell extends BorderPane {
         brand.setAlignment(Pos.CENTER_LEFT);
         brand.setPadding(new Insets(0, 0, 14, 4));
 
-        VBox nav = new VBox(4, brand, section("WORKSPACE"),
-                navItem("explore", "Explore", "search"),
-                navItem("map", "Map", "map"));
-        if (isAdmin()) {
-            nav.getChildren().addAll(navItem("dashboard", "Admin", "shield"),
-                    section("ADMINISTRATION"),
-                    navItem("places", "Places", "pin"),
-                    navItem("walkways", "Walkways", "navigation"),
-                    navItem("buildings", "Buildings", "building"),
-                    navItem("floors", "Floors", "stairs"),
-                    navItem("reports", "Route reports", "flag"));
-            reportsBadge.getStyleClass().add("nav-badge");
-            Button reports = navButtons.get("reports");
-            Region grow = new Region();
-            HBox.setHgrow(grow, Priority.ALWAYS);
-            HBox inner = new HBox(10, Icons.icon("flag", 18), new Label("Route reports"), grow, reportsBadge);
-            inner.setAlignment(Pos.CENTER_LEFT);
-            reports.setText(null);
-            reports.setGraphic(inner);
-            inner.prefWidthProperty().bind(reports.widthProperty().subtract(26));
-        }
+        VBox nav = new VBox(4, brand, section("ADMIN"),
+                navItem("dashboard", "Dashboard", "shield"),
+                section("ADMINISTRATION"),
+                navItem("places", "Places", "pin"),
+                navItem("walkways", "Walkways", "navigation"),
+                navItem("buildings", "Buildings", "building"),
+                navItem("floors", "Floors", "stairs"),
+                navItem("reports", "Route reports", "flag"));
+        reportsBadge.getStyleClass().add("nav-badge");
+        Button reports = navButtons.get("reports");
+        Region grow = new Region();
+        HBox.setHgrow(grow, Priority.ALWAYS);
+        HBox inner = new HBox(10, Icons.icon("flag", 18), new Label("Route reports"), grow, reportsBadge);
+        inner.setAlignment(Pos.CENTER_LEFT);
+        reports.setText(null);
+        reports.setGraphic(inner);
+        inner.prefWidthProperty().bind(reports.widthProperty().subtract(26));
 
         Label cardTitle = new Label("CAMPUS NAVIGATOR");
         cardTitle.getStyleClass().add("field-label");
@@ -112,21 +86,14 @@ public class AdminShell extends BorderPane {
         infoCard.setPadding(new Insets(10, 12, 12, 12));
         infoCard.getStyleClass().add("side-card");
 
-        Button bottom;
-        if (isAdmin()) {
-            bottom = new Button("Log out");
-            bottom.setGraphic(Icons.icon("logout", 18));
-            bottom.setOnAction(e -> {
-                Thread t = new Thread(api::logout);
-                t.setDaemon(true);
-                t.start();
-                signOut(null);
-            });
-        } else {
-            bottom = new Button("Admin sign in");
-            bottom.setGraphic(Icons.icon("lock", 18));
-            bottom.setOnAction(e -> onSignIn.run());
-        }
+        Button bottom = new Button("Log out");
+        bottom.setGraphic(Icons.icon("logout", 18));
+        bottom.setOnAction(e -> {
+            Thread t = new Thread(api::logout);
+            t.setDaemon(true);
+            t.start();
+            signOut(null);
+        });
         bottom.getStyleClass().add("nav-item");
         bottom.setGraphicTextGap(10);
         bottom.setMaxWidth(Double.MAX_VALUE);
@@ -169,26 +136,18 @@ public class AdminShell extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar;
-        if (isAdmin()) {
-            Label initials = new Label(initialsOf(info.fullName()));
-            initials.getStyleClass().add("avatar-text");
-            StackPane avatar = new StackPane(initials);
-            avatar.getStyleClass().add("avatar");
-            avatar.setMinSize(36, 36);
-            avatar.setMaxSize(36, 36);
-            Label who = new Label(info.fullName());
-            who.getStyleClass().add("card-title");
-            Label where = new Label("UE Caloocan");
-            where.getStyleClass().add("muted");
-            where.setStyle("-fx-font-size: 11px;");
-            bar = new HBox(12, crumb, spacer, new VBox(0, who, where), avatar);
-        } else {
-            Button signIn = new Button("Admin sign in");
-            signIn.getStyleClass().add("secondary-button");
-            signIn.setOnAction(e -> onSignIn.run());
-            bar = new HBox(12, crumb, spacer, signIn);
-        }
+        Label initials = new Label(initialsOf(info.fullName()));
+        initials.getStyleClass().add("avatar-text");
+        StackPane avatar = new StackPane(initials);
+        avatar.getStyleClass().add("avatar");
+        avatar.setMinSize(36, 36);
+        avatar.setMaxSize(36, 36);
+        Label who = new Label(info.fullName());
+        who.getStyleClass().add("card-title");
+        Label where = new Label("UE Caloocan");
+        where.getStyleClass().add("muted");
+        where.setStyle("-fx-font-size: 11px;");
+        HBox bar = new HBox(12, crumb, spacer, new VBox(0, who, where), avatar);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("topbar");
         bar.setPadding(new Insets(14, 28, 14, 28));
@@ -216,33 +175,7 @@ public class AdminShell extends BorderPane {
     }
 
     private void show(String key) {
-        if (!isAdmin() && !"explore".equals(key) && !"map".equals(key)) {
-            key = "explore";
-        }
         switch (key) {
-            case "explore", "map" -> {
-                Navigator nav = visitor.navigator();
-                if (nav == null) {
-                    Label msg = new Label(visitor.problem());
-                    msg.getStyleClass().add("error-label");
-                    msg.setPadding(new Insets(24));
-                    setPage(key, msg, "Workspace", "Explore");
-                    return;
-                }
-                nav.setOnTabChanged(t -> {
-                    String k = t == Navigator.Tab.MAP ? "map" : "explore";
-                    highlight(k);
-                    crumbPage.setText(t == Navigator.Tab.MAP ? "Map" : "Explore");
-                    current = k;
-                });
-                if ("map".equals(key)) {
-                    nav.openMap();
-                } else {
-                    nav.openExplore();
-                }
-                setPage(key, nav.view(), isAdmin() ? "Workspace" : "Visitor",
-                        "map".equals(key) ? "Map" : "Explore");
-            }
             case "places" -> openPlaces(null);
             case "walkways" -> setPage(key, new WalkwaysView(api, e -> expired()), "Admin", "Walkways");
             case "buildings" -> setPage(key, new BuildingsView(api, e -> expired()), "Admin", "Buildings");
@@ -283,9 +216,6 @@ public class AdminShell extends BorderPane {
 
     /** Number of new wrong-route reports next to "Route reports" in the menu. */
     private void refreshBadge() {
-        if (!isAdmin()) {
-            return;
-        }
         Async.run(api::usageSummary, s -> {
             long n = s.openReports();
             reportsBadge.setText(n > 0 ? String.valueOf(n) : "");
