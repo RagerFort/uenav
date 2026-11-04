@@ -31,4 +31,12 @@ public final class AdminModels {
 
     /** What the Add/Edit place form sends to the server. */
     public record NodeForm(Integer buildingId, Integer floorId, String name, String nodeType, int x, int y) { }
+
+    public record UsageSummary(long searches, long helpful, long openReports, long totalReports) { }
+
+    public record TopPlace(int nodeId, String name, long count) { }
+
+    /** One usage log row with place names. createdAt is an ISO UTC time like 2026-11-03T08:15:00Z. */
+    public record UsageEvent(int id, String createdAt, String eventType, String fromName, String toName,
+                             String routePref, String feedbackType, String status, String note) { }
 }

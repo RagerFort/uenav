@@ -127,7 +127,8 @@ abstract class ManagePage<T> extends VBox {
 
         TableColumn<T, Void> actions = new TableColumn<>("");
         actions.setSortable(false);
-        actions.setPrefWidth(150);
+        actions.setMinWidth(150);
+        actions.setMaxWidth(150);
         actions.setCellFactory(col -> new TableCell<T, Void>() {
             private final Button edit = new Button("Edit");
             private final Button del = new Button("Delete");
@@ -148,6 +149,7 @@ abstract class ManagePage<T> extends VBox {
             }
         });
         table.getColumns().add(actions);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         SortedList<T> sorted = new SortedList<>(filtered);
         sorted.comparatorProperty().bind(table.comparatorProperty());

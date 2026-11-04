@@ -143,7 +143,8 @@ public class PlacesView extends VBox {
 
         TableColumn<AdminModels.Place, Void> actions = new TableColumn<>("");
         actions.setSortable(false);
-        actions.setPrefWidth(150);
+        actions.setMinWidth(150);
+        actions.setMaxWidth(150);
         actions.setCellFactory(col -> new TableCell<AdminModels.Place, Void>() {
             private final Button edit = new Button("Edit");
             private final Button del = new Button("Delete");
@@ -171,6 +172,7 @@ public class PlacesView extends VBox {
         table.getColumns().add(x);
         table.getColumns().add(y);
         table.getColumns().add(actions);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPlaceholder(new Label("No places yet. Click \"+ Add place\" to create one."));
 
         SortedList<AdminModels.Place> sorted = new SortedList<>(filtered);

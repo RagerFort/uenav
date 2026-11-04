@@ -165,6 +165,52 @@ public class AdminApi {
         return m;
     }
 
+    // ---- usage log
+    public AdminModels.UsageSummary usageSummary() throws ApiException {
+        Map<String, Object> m = asObject(send("GET", "/api/admin/usage/summary", null, true));
+        return new AdminModels.UsageSummary((long) decimal(m, "searches"), (long) decimal(m, "helpful"),
+                (long) decimal(m, "openReports"), (long) decimal(m, "totalReports"));
+    }
+
+    public List<AdminModels.TopPlace> mostSearched(int limit) throws ApiException {
+        List<AdminModels.TopPlace> list = new ArrayList<>();
+        for (Object o : asList(send("GET", "/api/admin/usage/most-searched?limit=" + limit, null, true))) {
+            Map<String, Object> m = asObject(o);
+            list.add(new AdminModels.TopPlace(integer(m, "nodeId"), string(m, "name"), (long) decimal(m, "count")));
+        }
+        return list;
+    }
+
+    public List<AdminModels.UsageEvent> recentActivity(int limit) throws ApiException {
+        return events("/api/admin/usage/recent?limit=" + limit);
+    }
+
+    /** Wrong-route reports, newest first. */
+    public List<AdminModels.UsageEvent> reports() throws ApiException {
+        return events("/api/admin/reports");
+    }
+
+    public void setReportStatus(int logId, String status) throws ApiException {
+        send("PUT", "/api/admin/reports/" + logId + "/status", Map.of("status", status), true);
+    }
+
+    /** The whole usage log as CSV text. */
+    public String exportUsageCsv() throws ApiException {
+        String text = sendText("GET", "/api/admin/usage/export.csv", null, true, "text/csv");
+        return text == null ? "" : text;
+    }
+
+    private List<AdminModels.UsageEvent> events(String path) throws ApiException {
+        List<AdminModels.UsageEvent> list = new ArrayList<>();
+        for (Object o : asList(send("GET", path, null, true))) {
+            Map<String, Object> m = asObject(o);
+            list.add(new AdminModels.UsageEvent(integer(m, "id"), string(m, "createdAt"), string(m, "eventType"),
+                    string(m, "fromName"), string(m, "toName"), string(m, "routePref"),
+                    nullableString(m, "feedbackType"), nullableString(m, "status"), nullableString(m, "note")));
+        }
+        return list;
+    }
+
     private static Map<String, Object> nodeBody(AdminModels.NodeForm f) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("buildingId", f.buildingId());
@@ -178,6 +224,20 @@ public class AdminApi {
 
     // ---- HTTP
     private Object send(String method, String path, Object body, boolean needsLogin) throws ApiException {
+        String text = sendText(method, path, body, needsLogin, "application/json");
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            return MiniJson.parse(text);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(200, "The server sent a reply that could not be read");
+        }
+    }
+
+    /** Sends a request and returns the reply text (null if empty). Throws ApiException for any problem. */
+    private String sendText(String method, String path, Object body, boolean needsLogin, String accept)
+            throws ApiException {
         if (needsLogin && token == null) {
             throw new ApiException(401, "Please sign in first");
         }
@@ -187,7 +247,7 @@ public class AdminApi {
         } catch (IllegalArgumentException e) {
             throw new ApiException(0, "The server address is not valid: " + baseUrl);
         }
-        b.timeout(Duration.ofSeconds(10)).header("Accept", "application/json");
+        b.timeout(Duration.ofSeconds(15)).header("Accept", accept);
         if (needsLogin) {
             b.header("Authorization", "Bearer " + token);
         }
@@ -213,14 +273,7 @@ public class AdminApi {
         int status = res.statusCode();
         String text = res.body();
         if (status >= 200 && status < 300) {
-            if (text == null || text.isBlank()) {
-                return null;
-            }
-            try {
-                return MiniJson.parse(text);
-            } catch (IllegalArgumentException e) {
-                throw new ApiException(status, "The server sent a reply that could not be read");
-            }
+            return text;
         }
         throw new ApiException(status, errorMessages(status, text));
     }

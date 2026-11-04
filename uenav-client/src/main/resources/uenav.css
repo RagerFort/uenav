@@ -82,3 +82,11 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 24, 0, 0, 6);
 }
 .login-header { -fx-background-color: -brand; -fx-background-radius: 16 16 0 0; }
+
+.secondary-button {
+    -fx-background-color: #F3F4F6; -fx-text-fill: -ink; -fx-font-weight: bold;
+    -fx-background-radius: 10; -fx-padding: 9 16 9 16; -fx-cursor: hand;
+}
+.secondary-button:hover { -fx-background-color: #E5E7EB; }
+.progress-bar > .track { -fx-background-color: #F3F4F6; -fx-background-radius: 4; }
+.progress-bar > .bar { -fx-background-color: -brand; -fx-background-radius: 4; -fx-padding: 4; }

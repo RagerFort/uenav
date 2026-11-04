@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-03 (after the PC admin screens were written).
+Last updated: 2026-11-03 (after the usage log, real dashboard and Route reports page were written).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -80,8 +80,11 @@ uenav-server/                    Spring Boot: UenavServerApplication, HealthCont
   .../snapshot/                  GET /api/snapshot and /api/snapshot/version (reads MySQL)
   .../admin/                     BCrypt login, 8-hour token, lockout, /api/admin/login|logout|me, interceptor
   .../mapadmin/                  admin CRUD for buildings, floors, nodes, edges under /api/admin/**
+  .../usagelog/                  POST /api/usage (open, phone sync, idempotent by client_log_id);
+                                 admin: /api/admin/usage/summary|most-searched|recent|export.csv, /api/admin/reports, PUT reports/{id}/status
 uenav-client/                    desktop JavaFX admin app: UenavApp, LoginView, AdminShell, DashboardView,
-                                 PlacesView, AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css
+                                 PlacesView, BuildingsView, FloorsView, WalkwaysView (these three extend ManagePage),
+                                 ReportsView, TimeAgo, UsageText, AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css
 uenav-mobile/                    Gluon app: MobileApp (loads bundled campus-snapshot.json), RouteFormatter; `android` profile
 sql/00_create_database.sql       creates database `uenav` and user `uenav_app`
 sql/01_schema.sql                6 tables
@@ -114,10 +117,11 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | Admin login (BCrypt, token, lockout, `/api/admin/me`) | Reported working after a missing-file fix |
 | Admin map-editing endpoints (`mapadmin`), 11 unit tests | Tests **Ran here** with stand-ins; not reported by owner |
 | `AdminApi` (client) + `AdminApiTest` (8 tests, local fake server) | **Ran here** |
-| PC admin screens: login, shell/sidebar, dashboard, Places page | **Not run**: JavaFX code was never compiled (no JavaFX in AI sandbox) |
-| Usage log: sync endpoint, stats, reports, CSV export | Not written |
-| Admin pages for walkways, buildings and floors | Not written (needed before real data can be entered through the app) |
-| Phone: update snapshot from server, local log queue, Explore list, map image overlay, Helpful/Wrong route | Not written |
+| PC admin app: login, shell/sidebar, dashboard, Places page | Owner ran it and reported an HTTP 500 on edit/delete (cause: unnamed `@PathVariable`; fixed in code); fix not yet reported working |
+| PC admin pages: Buildings, Floors, Walkways (`ManagePage` base) | **Not run**: JavaFX code never compiled (no JavaFX in AI sandbox); syntax-checked only. `AdminApiMapTest` (7) and `AdminApiTest` (8) **Ran here** |
+| Usage log server (`usagelog`, 9 tests) | Tests **Ran here** with stand-ins; Spring/SQL parts **Not run** |
+| Dashboard numbers, Most searched, Recent activity, Route reports page, CSV export button | **Not run**: JavaFX never compiled in AI sandbox; syntax-checked only. `AdminApiUsageTest` (5) and `UsageFormatTest` (3) **Ran here** |
+| Phone: local log queue + sync to `POST /api/usage`, Helpful/Wrong route buttons, update snapshot from server, Explore list, map image overlay | Not written |
 | Real campus data and Photoshop map images | Not started |
 
 ## 9. Gotchas already hit (do not repeat)
@@ -134,6 +138,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 10. When adding code, **search the repo first** (`grep`) for an existing method or file. Duplicates of `MiniJson` writer and `SnapshotReader.isSearchable` were almost added twice.
 11. Spring/JavaFX code cannot be compiled in the AI sandbox: say so, and expect a first-run fix.
 12. This project does not use `spring-boot-starter-parent`, so Java does **not** keep parameter names. Always name them: `@PathVariable("id")`, `@RequestParam("x")`. Unnamed ones return HTTP 500 for PUT/DELETE `/api/admin/*/{id}`.
+13. Usage log rows block deleting the places they mention (database foreign keys). While testing with sample data, clear the log with `DELETE FROM usage_log;` in MySQL before removing sample places.
 
 ## 10. Known inconsistencies in the proposal deck (still to fix)
 - Slide text says 7 tables; there are 6 (D2). Class diagram must have no Room class.
@@ -145,15 +150,15 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 - Figma admin dashboard is shown on a phone; D7 says PC first.
 
 ## 11. Next tasks (in dependency order)
-1. **Owner:** compile and run the PC admin app (steps in the last reply), report errors. Confirm airplane-mode routing on the phone.
-2. **Admin pages for buildings and floors, then walkways** (extend `AdminApi` with edges, building and floor create/update/delete; same table-and-dialog pattern as `PlacesView`). Needed before real campus data can be entered.
-3. **Usage log:** `POST` sync endpoint using `client_log_id`, stats endpoints (most searched, recent activity, wrong-route reports), CSV export; make the dashboard cards real; "Route reports" page.
-4. **Phone:** update the snapshot from the server when online; local log queue and sync; Explore/search list; map image with route overlay; Helpful / Wrong route buttons.
-5. **HTTPS** for the server before anyone uses it over school Wi-Fi (tokens and passwords are plain HTTP today).
+1. **Owner:** run the PC admin app and report the new dashboard, Route reports page and CSV export. Confirm airplane-mode routing on the phone.
+2. **Phone logging:** save each search and Helpful / Wrong route tap on the device with a random `clientLogId` (UUID) and ISO UTC `createdAt`; send them to `POST /api/usage` (body `{"entries":[...]}`) when online; keep unsent ones; do not delete until the server says accepted or duplicate. Server address setting on the phone; Android cleartext HTTP exception or HTTPS.
+3. **Phone:** update the snapshot from the server when online; Explore/search list; map image with route overlay.
+4. **Admin extras:** export the snapshot JSON from the admin app (to refresh the phone's built-in copy).
+5. **HTTPS** and a request limit on the open `/api/usage` address before school use (anyone can send log entries; there is no rate limit yet).
 6. **Testing:** API tests, device tests, route correctness against real campus measurements.
 7. **Docs:** fix the deck items in section 10.
 
-**In parallel, owner action:** collect real campus data (each place: name, building, floor, distance in meters to neighbouring nodes) and prepare the Photoshop map images.
+**In parallel, owner action:** collect real campus data and prepare the Photoshop map images. Data entry order in the admin app: Buildings, Floors, Places, Walkways.
 
 ## 12. How to run
 ```

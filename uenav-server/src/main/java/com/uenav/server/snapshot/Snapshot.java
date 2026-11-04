@@ -12,7 +12,7 @@ public record Snapshot(String version,
     public record BuildingRow(int id, String name, String category, String description,
                               Integer mapX, Integer mapY, String imagePath) { }
 
-    public record FloorRow(int id, int buildingId, int floorNumber, String floorName,
+    public record FloorRow(int id, int  buildingId, int floorNumber, String floorName,
                            String planImagePath) { }
 
     public record NodeRow(int id, Integer buildingId, Integer floorId, String name,
