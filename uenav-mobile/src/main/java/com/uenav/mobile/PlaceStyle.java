@@ -27,7 +27,7 @@ public record PlaceStyle(String label, String icon, String tone) {
     public static String subtitle(Node n, CampusData data) {
         StringBuilder sb = new StringBuilder(of(n.nodeType()).label());
         data.building(n.buildingId()).ifPresent(b -> {
-            if (!"BUILDING_ENTRANCE".equals(n.nodeType())) {
+            if (!"BUILDING_ENTRANCE".equals(n.nodeType()) && !b.name().equalsIgnoreCase(n.name())) {
                 sb.append(" · ").append(b.name());
             }
         });
