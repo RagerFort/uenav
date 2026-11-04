@@ -90,3 +90,21 @@
 .secondary-button:hover { -fx-background-color: #E5E7EB; }
 .progress-bar > .track { -fx-background-color: #F3F4F6; -fx-background-radius: 4; }
 .progress-bar > .bar { -fx-background-color: -brand; -fx-background-radius: 4; -fx-padding: 4; }
+
+/* Figma desktop: sidebar icons, badge, breadcrumbs, Places card */
+.brand-name { -fx-font-weight: bold; -fx-font-size: 16px; }
+.nav-item .nv-icon { -fx-background-color: -muted; }
+.nav-item-active .nv-icon { -fx-background-color: -brand; }
+.nav-item-active .label { -fx-text-fill: -brand; -fx-font-weight: bold; }
+.nav-badge { -fx-text-fill: -brand; -fx-font-weight: bold; -fx-font-size: 12px; }
+.side-card { -fx-background-color: #F3F4F6; -fx-background-radius: 12; }
+.crumb-page { -fx-text-fill: -ink; -fx-font-weight: bold; }
+.link-button { -fx-background-color: transparent; -fx-text-fill: -brand; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 4 0 4 0; }
+.link-button:hover { -fx-underline: true; }
+.icon-button {
+    -fx-background-color: #F3F4F6; -fx-background-radius: 999; -fx-cursor: hand;
+    -fx-min-width: 34; -fx-min-height: 34; -fx-pref-width: 34; -fx-pref-height: 34; -fx-padding: 0;
+}
+.icon-button:hover { -fx-background-color: #E5E7EB; }
+.icon-button.danger .nv-icon { -fx-background-color: -brand; }
+.separator .line { -fx-border-color: -line; -fx-border-width: 1 0 0 0; }

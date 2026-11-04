@@ -1,0 +1,184 @@
+/* UENav visitor screens (Figma: Explore, Plan a route, Directions, Route unavailable, Main Function, Login, Dashboard).
+   Used by the phone app and by the PC app's Explore and Map pages. Classes start with nv- so they do not clash. */
+.root {
+    -nv-brand: #C8102E;
+    -nv-brand-dark: #8E0B21;
+    -nv-brand-soft: #FDECEF;
+    -nv-ink: #1F2330;
+    -nv-muted: #6B7280;
+    -nv-line: #E5E7EB;
+    -nv-canvas: #F2F3F5;
+    -nv-field: #F3F4F6;
+    -nv-blue: #2563EB;
+    -nv-blue-soft: #E8EFFC;
+    -nv-green: #15803D;
+    -nv-green-soft: #E3F4EA;
+    -nv-orange: #C2610C;
+    -nv-orange-soft: #FEF1E2;
+}
+
+.nv-canvas { -fx-background-color: -nv-canvas; }
+.nv-scroll, .nv-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.nv-scroll .scroll-bar:vertical { -fx-pref-width: 6; -fx-opacity: 0.5; }
+
+.nv-text { -fx-text-fill: -nv-ink; }
+.nv-muted { -fx-text-fill: -nv-muted; -fx-font-size: 12px; }
+.nv-small { -fx-font-size: 11px; }
+.nv-eyebrow { -fx-text-fill: -nv-brand; -fx-font-size: 10px; -fx-font-weight: bold; }
+.nv-title { -fx-text-fill: -nv-ink; -fx-font-size: 26px; -fx-font-weight: bold; }
+.nv-h2 { -fx-text-fill: -nv-ink; -fx-font-size: 18px; -fx-font-weight: bold; }
+.nv-h3 { -fx-text-fill: -nv-ink; -fx-font-size: 15px; -fx-font-weight: bold; }
+.nv-strong { -fx-text-fill: -nv-ink; -fx-font-size: 14px; -fx-font-weight: bold; }
+.nv-label-caps { -fx-text-fill: -nv-muted; -fx-font-size: 10px; -fx-font-weight: bold; }
+.nv-error { -fx-text-fill: -nv-brand; -fx-font-size: 12px; }
+.nv-ok { -fx-text-fill: -nv-green; -fx-font-size: 12px; }
+
+.nv-header { -fx-background-color: white; -fx-border-color: -nv-line; -fx-border-width: 0 0 1 0; }
+.nv-card {
+    -fx-background-color: white; -fx-background-radius: 14;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.07), 10, 0, 0, 1);
+}
+.nv-note { -fx-background-color: #ECEEF1; -fx-background-radius: 12; }
+.nv-sep { -fx-background-color: -nv-line; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+
+/* list rows */
+.nv-row { -fx-background-color: transparent; -fx-cursor: hand; }
+.nv-row:hover { -fx-background-color: #F9FAFB; }
+
+/* icon tones: a soft circle with a coloured icon */
+.nv-icon { -fx-background-color: -nv-ink; }
+.nv-icon-brand { -fx-background-color: -nv-brand; }
+.nv-icon-muted { -fx-background-color: #9CA3AF; }
+.nv-icon-white { -fx-background-color: white; }
+.nv-icon-blue { -fx-background-color: -nv-blue; }
+.nv-icon-green { -fx-background-color: -nv-green; }
+.nv-icon-orange { -fx-background-color: -nv-orange; }
+.nv-bubble { -fx-background-radius: 999; }
+.nv-tone-red { -fx-background-color: -nv-brand-soft; }
+.nv-tone-red .nv-icon { -fx-background-color: -nv-brand; }
+.nv-tone-orange { -fx-background-color: -nv-orange-soft; }
+.nv-tone-orange .nv-icon { -fx-background-color: -nv-orange; }
+.nv-tone-green { -fx-background-color: -nv-green-soft; }
+.nv-tone-green .nv-icon { -fx-background-color: -nv-green; }
+.nv-tone-blue { -fx-background-color: -nv-blue-soft; }
+.nv-tone-blue .nv-icon { -fx-background-color: -nv-blue; }
+.nv-tone-grey { -fx-background-color: -nv-field; }
+.nv-tone-grey .nv-icon { -fx-background-color: -nv-ink; }
+
+/* chips */
+.nv-chip { -fx-background-radius: 999; -fx-padding: 5 12 5 12; -fx-font-size: 12px; }
+.nv-chip-red { -fx-background-color: -nv-brand-soft; -fx-text-fill: -nv-brand; }
+.nv-chip-grey { -fx-background-color: -nv-field; -fx-text-fill: -nv-ink; }
+.nv-chip-blue { -fx-background-color: -nv-blue-soft; -fx-text-fill: -nv-blue; }
+.nv-chip-green { -fx-background-color: -nv-green-soft; -fx-text-fill: -nv-green; }
+
+/* buttons */
+.nv-primary {
+    -fx-background-color: -nv-brand; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;
+    -fx-background-radius: 12; -fx-padding: 13 18 13 18; -fx-cursor: hand;
+}
+.nv-primary:hover { -fx-background-color: -nv-brand-dark; }
+.nv-primary:disabled { -fx-opacity: 0.45; }
+.nv-primary .nv-icon { -fx-background-color: white; }
+.nv-secondary {
+    -fx-background-color: -nv-field; -fx-text-fill: -nv-ink; -fx-font-weight: bold; -fx-font-size: 14px;
+    -fx-background-radius: 12; -fx-padding: 13 18 13 18; -fx-cursor: hand;
+}
+.nv-secondary:hover { -fx-background-color: #E5E7EB; }
+.nv-secondary:disabled { -fx-opacity: 0.5; }
+.nv-ghost {
+    -fx-background-color: transparent; -fx-text-fill: -nv-ink; -fx-font-weight: bold; -fx-font-size: 14px;
+    -fx-padding: 12 18 12 18; -fx-cursor: hand;
+}
+.nv-link { -fx-background-color: transparent; -fx-text-fill: -nv-brand; -fx-font-weight: bold; -fx-padding: 4 0 4 0; -fx-cursor: hand; }
+.nv-round {
+    -fx-background-color: -nv-field; -fx-background-radius: 999; -fx-cursor: hand;
+    -fx-min-width: 38; -fx-min-height: 38; -fx-pref-width: 38; -fx-pref-height: 38; -fx-max-width: 38; -fx-max-height: 38;
+    -fx-padding: 0;
+}
+.nv-round:hover { -fx-background-color: #E5E7EB; }
+.nv-round-white { -fx-background-color: white; -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.12), 8, 0, 0, 1); }
+.nv-round-small { -fx-min-width: 34; -fx-min-height: 34; -fx-pref-width: 34; -fx-pref-height: 34; -fx-max-width: 34; -fx-max-height: 34; }
+.nv-danger .nv-icon { -fx-background-color: -nv-brand; }
+
+/* search and text fields */
+.nv-search { -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: -nv-line; -fx-border-radius: 12; }
+.nv-field-box { -fx-background-color: -nv-field; -fx-background-radius: 12; -fx-border-color: transparent; -fx-border-radius: 12; -fx-border-width: 1.5; }
+.nv-field-box-focused { -fx-background-color: white; -fx-border-color: -nv-brand; }
+.nv-bare-field, .nv-bare-field:focused {
+    -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 12 4 12 4;
+    -fx-font-size: 14px; -fx-text-fill: -nv-ink; -fx-prompt-text-fill: #9CA3AF;
+}
+.nv-input {
+    -fx-background-color: -nv-field; -fx-background-radius: 10; -fx-border-color: transparent; -fx-border-radius: 10;
+    -fx-padding: 10 12 10 12; -fx-font-size: 14px;
+}
+.nv-input:focused { -fx-background-color: white; -fx-border-color: -nv-brand; }
+.nv-combo { -fx-background-color: -nv-field; -fx-background-radius: 10; -fx-padding: 4 4 4 4; -fx-font-size: 14px; }
+
+/* starting point choices */
+.nv-choice {
+    -fx-background-color: white; -fx-background-radius: 14; -fx-border-color: -nv-line; -fx-border-radius: 14;
+    -fx-border-width: 1; -fx-cursor: hand;
+}
+.nv-choice-selected { -fx-border-color: -nv-brand; -fx-border-width: 1.5; -fx-background-color: #FFFBFB; }
+.nv-radio { -fx-background-color: white; -fx-border-color: #9CA3AF; -fx-border-width: 2; -fx-border-radius: 999; -fx-background-radius: 999; }
+.nv-radio-on { -fx-border-color: -nv-brand; -fx-border-width: 6; }
+
+/* map overlays and bottom sheet */
+.nv-map-bg { -fx-background-color: #E9ECEF; }
+.nv-floating {
+    -fx-background-color: white; -fx-background-radius: 14;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.14), 14, 0, 0, 2);
+}
+.nv-zoom { -fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.12), 8, 0, 0, 1); }
+.nv-zoom-btn { -fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;
+    -fx-min-width: 36; -fx-min-height: 36; -fx-pref-width: 36; -fx-pref-height: 36; }
+.nv-tabs { -fx-background-color: white; -fx-background-radius: 999; -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.12), 8, 0, 0, 1); }
+.nv-tab { -fx-background-color: transparent; -fx-background-radius: 999; -fx-text-fill: -nv-muted;
+    -fx-font-weight: bold; -fx-padding: 6 14 6 14; -fx-cursor: hand; }
+.nv-tab-on { -fx-background-color: -nv-brand; -fx-text-fill: white; }
+.nv-building-chip { -fx-background-color: white; -fx-background-radius: 999; -fx-padding: 6 12 6 10;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.12), 8, 0, 0, 1); }
+.nv-sheet {
+    -fx-background-color: white; -fx-background-radius: 22 22 0 0;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.10), 16, 0, 0, -2);
+}
+.nv-sheet-wide { -fx-background-radius: 16; }
+.nv-handle { -fx-background-color: #D1D5DB; -fx-background-radius: 3; }
+
+/* stairs / elevator option */
+.nv-option {
+    -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: -nv-line; -fx-border-radius: 12;
+    -fx-cursor: hand;
+}
+.nv-option-on { -fx-background-color: -nv-brand-soft; -fx-border-color: -nv-brand; -fx-border-width: 1.5; }
+.nv-option-on .nv-strong { -fx-text-fill: -nv-brand; }
+.nv-option-on .nv-icon { -fx-background-color: -nv-brand; }
+
+/* bottom navigation bar (phone) */
+.nv-navbar { -fx-background-color: white; -fx-border-color: -nv-line; -fx-border-width: 1 0 0 0; }
+.nv-navitem { -fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 8 0 10 0; }
+.nv-navitem .label { -fx-text-fill: #9CA3AF; -fx-font-size: 11px; }
+.nv-navitem .nv-icon { -fx-background-color: #9CA3AF; }
+.nv-navitem-on .label { -fx-text-fill: -nv-brand; -fx-font-weight: bold; }
+.nv-navitem-on .nv-icon { -fx-background-color: -nv-brand; }
+
+/* login hero */
+.nv-hero { -fx-background-color: linear-gradient(to bottom right, #D2133A, #8E0B21); -fx-background-radius: 0 0 28 28; }
+.nv-hero-circle { -fx-fill: rgba(255,255,255,0.10); }
+.nv-hero-logo { -fx-background-color: white; -fx-background-radius: 16; }
+.nv-hero-title { -fx-text-fill: white; -fx-font-size: 30px; -fx-font-weight: bold; }
+.nv-hero-sub { -fx-text-fill: rgba(255,255,255,0.88); -fx-font-size: 13px; }
+
+/* admin numbers and bars */
+.nv-stat { -fx-text-fill: -nv-brand; -fx-font-size: 28px; -fx-font-weight: bold; }
+.nv-count { -fx-text-fill: -nv-brand; -fx-font-weight: bold; }
+.nv-bar-track { -fx-background-color: #F1F2F4; -fx-background-radius: 4; }
+.nv-bar-fill { -fx-background-color: -nv-brand; -fx-background-radius: 4; }
+.nv-badge { -fx-background-color: -nv-field; -fx-background-radius: 6; -fx-padding: 2 8 2 8; -fx-font-size: 11px; -fx-text-fill: -nv-muted; }
+
+/* PC pages: headers sit on the grey page instead of a white bar */
+.nv-header-flat { -fx-background-color: transparent; -fx-border-width: 0; }
+.nv-tabs-scroll, .nv-tabs-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
