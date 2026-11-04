@@ -16,12 +16,6 @@
       <artifactId>uenav-core</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <!-- The visitor screens (Explore, Map) are shared with the phone app. -->
-    <dependency>
-      <groupId>com.uenav</groupId>
-      <artifactId>uenav-mobile</artifactId>
-      <version>${project.version}</version>
-    </dependency>
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>

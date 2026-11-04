@@ -1,0 +1,57 @@
+{
+  // Run these from VS Code: Terminal > Run Task... > pick a "UENav:" task.
+  "version": "2.0.0",
+  "inputs": [
+    { "id": "dbPassword", "type": "promptString", "password": true,
+      "description": "MySQL password for user uenav_app (the one in sql/00_create_database.sql)" },
+    { "id": "adminUser", "type": "promptString", "default": "admin",
+      "description": "Username for the first admin account" },
+    { "id": "adminPassword", "type": "promptString", "password": true,
+      "description": "Password for the first admin account (at least 8 characters)" }
+  ],
+  "tasks": [
+    {
+      "label": "UENav: build and test everything",
+      "type": "shell",
+      "command": "mvn clean verify",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "UENav: start server",
+      "detail": "Needs MySQL running. Leave this terminal open while you use the apps.",
+      "type": "shell",
+      "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -pl uenav-server spring-boot:run",
+      "options": { "env": { "UENAV_DB_PASSWORD": "${input:dbPassword}" } },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "UENav: start server (first time, creates the admin account)",
+      "detail": "Only needed once, while the admin_account table is empty.",
+      "type": "shell",
+      "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -pl uenav-server spring-boot:run",
+      "options": { "env": {
+        "UENAV_DB_PASSWORD": "${input:dbPassword}",
+        "UENAV_ADMIN_USER": "${input:adminUser}",
+        "UENAV_ADMIN_PASSWORD": "${input:adminPassword}"
+      } },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "UENav: open PC admin app",
+      "detail": "Start the server first.",
+      "type": "shell",
+      "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -pl uenav-client javafx:run",
+      "problemMatcher": []
+    },
+    {
+      "label": "UENav: open phone app on the PC (for testing)",
+      "detail": "Works without the server. Admin tab needs the server address.",
+      "type": "shell",
+      "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -pl uenav-mobile javafx:run",
+      "problemMatcher": []
+    }
+  ]
+}
