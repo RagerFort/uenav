@@ -38,6 +38,9 @@ public final class HttpSyncClient implements SyncClient {
             c.setDoOutput(true);
             c.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             c.setRequestProperty("Accept", "application/json");
+            c.setRequestProperty("User-Agent", "UENav-app");
+            // free ngrok addresses show a warning page instead of the API unless this header is sent
+            c.setRequestProperty("ngrok-skip-browser-warning", "true");
             c.setFixedLengthStreamingMode(body.length);
             try (OutputStream out = c.getOutputStream()) {
                 out.write(body);

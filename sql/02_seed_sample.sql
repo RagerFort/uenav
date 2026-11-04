@@ -1,5 +1,6 @@
--- UE Caloocan campus, outdoor places and walkways traced from the official campus map picture
--- (uenav-mobile/src/main/resources/maps/campus.jpg). X/Y are pixels of that picture.
+-- UE Caloocan campus, outdoor places and walkways traced from the official campus map.
+-- X/Y use the same frame as the app's 3D map (uenav-mobile/src/main/resources/maps/campus-3d.json):
+-- pixels of the campus map with its legend cut off (X to the right, Y downwards).
 -- Distances are ESTIMATES: picture length x 0.269 m per pixel (campus area 4.86 ha / outline area).
 -- Measure the real walkways and correct distance_m in the admin app (Walkways page).
 -- The College of Engineering indoor rooms (1F, 4F, EN 420) are still SAMPLE rows.
