@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-04 (campus map picture and traced UE Caloocan walkways added; phone map gestures fixed).
+Last updated: 2026-11-04 (phone map drawn in basic 3D shapes; traced UE Caloocan walkways; map gestures fixed).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -107,9 +107,12 @@ Routing rules in `PathFinder` (assumptions, change if the team decides otherwise
 `ANY` = all edges; `STAIRS` = no elevator edges; `ELEVATOR` = no stairs edges and only `is_accessible` edges.
 Walking time shown to users assumes 80 m per minute (`Directions`). No stairs/elevator time model yet.
 Turns ("Turn left/right") are worked out from node X/Y, treated as map-picture pixels: X to the right, **Y downwards**.
-Map pictures (D6): the campus picture is `uenav-mobile/src/main/resources/maps/campus.jpg` (the official UE Caloocan
-campus map, legend cut off, 1560x924). Node X/Y are pixels of that picture (X right, Y down). Floor plans go in
-`maps/<floor.plan_image_path>`; without one the app draws a simple plan of the floor.
+Map (D6, changed to drawn 3D): the campus is drawn in basic 3D shapes from
+`uenav-mobile/src/main/resources/maps/campus-3d.json` (roads, campus ground, field, buildings as raised blocks with
+shaded walls, trees), traced from the official UE Caloocan campus map. Node X/Y and the shapes use the same frame:
+pixels of that campus map with the legend cut off (X right, Y down). A floor is drawn as its building's outline
+(a thin slab) with stairs/elevators as green blocks; a floor plan picture `maps/<floor.plan_image_path>` is used
+instead if one is added. To move a building, edit its `points` in `campus-3d.json`; heights are in the same units.
 Map gestures (like Google Maps): drag = move, pinch / mouse wheel = zoom around the fingers, double-tap = zoom in,
 +/- buttons. Touch scroll events and flick "inertia" are ignored for zoom, and screen resizes keep the zoom.
 
@@ -136,7 +139,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | PC admin app: Figma sidebar (admin pages only), dashboard with Places card | **Ran here**, screenshots checked against the Figma desktop frame |
 | PC admin pages Places, Buildings, Floors, Walkways, Reports, CSV export | Compiled and the app opened them; add/edit dialogs not clicked through here |
 | Phone on Android: clear-text `http://` to the server | **Not tested** (see task 2) |
-| UE Caloocan outdoor map: campus picture, 9 buildings, 2 gates, offices, facilities, 46 walkways | **Ran here** (tests, MySQL, phone screenshots). Positions traced from the campus map; distances are **estimates** (0.269 m per picture pixel, from the 4.86 ha campus area). Not checked on site |
+| UE Caloocan outdoor map in 3D shapes (16 blocks, field, roads, trees), 9 buildings, 2 gates, offices, facilities, 46 walkways | **Ran here** (tests, MySQL, phone screenshots). Positions traced from the campus map; distances are **estimates** (0.269 m per picture pixel, from the 4.86 ha campus area). Not checked on site |
 | Indoor data (Engineering 1F/4F, EN 420) | Still SAMPLE rows; no floor plans yet |
 | Phone map: no zooming while dragging (touch scroll / flick events ignored), pinch and double-tap zoom | **Ran here** with simulated touch events; not tried on a phone |
 
