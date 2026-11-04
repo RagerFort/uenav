@@ -2,6 +2,7 @@ package com.uenav.core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +32,22 @@ public class Graph {
 
     public List<Edge> edgesAt(int nodeId) {
         return edgesByNode.getOrDefault(nodeId, List.of());
+    }
+
+    /** Every node, in no particular order. */
+    public List<Node> nodes() {
+        return List.copyOf(nodes.values());
+    }
+
+    /** Every edge once, in no particular order. */
+    public List<Edge> edges() {
+        Map<Integer, Edge> unique = new LinkedHashMap<>();
+        for (List<Edge> list : edgesByNode.values()) {
+            for (Edge e : list) {
+                unique.putIfAbsent(e.id(), e);
+            }
+        }
+        return List.copyOf(unique.values());
     }
 
     public int nodeCount() {
