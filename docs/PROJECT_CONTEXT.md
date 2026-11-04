@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-04 (PC app made admin-only to match the proposal; VS Code tasks added).
+Last updated: 2026-11-04 (campus map picture and traced UE Caloocan walkways added; phone map gestures fixed).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -107,8 +107,11 @@ Routing rules in `PathFinder` (assumptions, change if the team decides otherwise
 `ANY` = all edges; `STAIRS` = no elevator edges; `ELEVATOR` = no stairs edges and only `is_accessible` edges.
 Walking time shown to users assumes 80 m per minute (`Directions`). No stairs/elevator time model yet.
 Turns ("Turn left/right") are worked out from node X/Y, treated as map-picture pixels: X to the right, **Y downwards**.
-Map pictures (D6): put the campus picture at `uenav-mobile/src/main/resources/maps/campus.png` and floor plans at
-`maps/<floor.plan_image_path>`; node X/Y must be pixels of that picture. Without pictures the app draws a simple plan.
+Map pictures (D6): the campus picture is `uenav-mobile/src/main/resources/maps/campus.jpg` (the official UE Caloocan
+campus map, legend cut off, 1560x924). Node X/Y are pixels of that picture (X right, Y down). Floor plans go in
+`maps/<floor.plan_image_path>`; without one the app draws a simple plan of the floor.
+Map gestures (like Google Maps): drag = move, pinch / mouse wheel = zoom around the fingers, double-tap = zoom in,
++/- buttons. Touch scroll events and flick "inertia" are ignored for zoom, and screen resizes keep the zoom.
 
 ## 8. Status
 Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported** = owner said so, no output seen.
@@ -133,7 +136,9 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | PC admin app: Figma sidebar (admin pages only), dashboard with Places card | **Ran here**, screenshots checked against the Figma desktop frame |
 | PC admin pages Places, Buildings, Floors, Walkways, Reports, CSV export | Compiled and the app opened them; add/edit dialogs not clicked through here |
 | Phone on Android: clear-text `http://` to the server | **Not tested** (see task 2) |
-| Real campus data and Photoshop map images | Not started |
+| UE Caloocan outdoor map: campus picture, 9 buildings, 2 gates, offices, facilities, 46 walkways | **Ran here** (tests, MySQL, phone screenshots). Positions traced from the campus map; distances are **estimates** (0.269 m per picture pixel, from the 4.86 ha campus area). Not checked on site |
+| Indoor data (Engineering 1F/4F, EN 420) | Still SAMPLE rows; no floor plans yet |
+| Phone map: no zooming while dragging (touch scroll / flick events ignored), pinch and double-tap zoom | **Ran here** with simulated touch events; not tried on a phone |
 
 ## 9. Gotchas already hit (do not repeat)
 1. Android apps with Gluon **cannot be built on Windows**. Build on GitHub Actions (Ubuntu). Windows only downloads and installs the APK.
@@ -142,14 +147,16 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 4. `uenav-mobile` uses a plain JavaFX `Application` with no Gluon Attach services. If the phone shows a blank screen, add `display`, `lifecycle`, `storage` (and `util`) as in Gluon's `hello-gluon-ci` sample (Attach 4.0.25).
 5. `uenav-core` uses Java `record`s. If a future native-image build complains, rewrite them as plain classes.
 6. Git shows "LF will be replaced by CRLF" warnings on Windows. They are harmless.
-7. The sample/test campus data is invented. Do not present its distances as real.
+7. The outdoor campus data is traced from the campus map picture; its distances are estimates (picture pixels x 0.269 m), not measurements. The indoor Engineering rooms are invented sample rows. Say so when presenting.
 
 8. Do **not** add a `resourcesList` entry like `.*\\.json$` to the gluonfx plugin config: it produced an invalid resource-config file and broke the native build.
 9. **Give the owner every file** a step needs (use the file list, not just the interesting ones). A missing `JdbcAdminAccountRepository` caused a Spring "no bean" start-up error.
 10. When adding code, **search the repo first** (`grep`) for an existing method or file. Duplicates of `MiniJson` writer and `SnapshotReader.isSearchable` were almost added twice.
 11. Spring/JavaFX code cannot be compiled in the AI sandbox: say so, and expect a first-run fix.
 12. This project does not use `spring-boot-starter-parent`, so Java does **not** keep parameter names. Always name them: `@PathVariable("id")`, `@RequestParam("x")`. Unnamed ones return HTTP 500 for PUT/DELETE `/api/admin/*/{id}`.
-13. Usage log rows block deleting the places they mention (database foreign keys). While testing with sample data, clear the log with `DELETE FROM usage_log;` in MySQL before removing sample places.
+13. Node ids in the phone's built-in `campus-snapshot.json` must match the database, or sent usage entries are rejected.
+    After changing the map in the admin app, copy `GET /api/snapshot` into the phone app before building the APK.
+    Usage log rows block deleting the places they mention (database foreign keys). While testing with sample data, clear the log with `DELETE FROM usage_log;` in MySQL before removing sample places.
 
 14. Tables must fit the window with no sideways scrolling: use `TableView.CONSTRAINED_RESIZE_POLICY` and pin the button column's min and max width (owner could not reach the Mark reviewed button before this).
 15. Phone sending uses plain `HttpURLConnection`, not `java.net.http`, on purpose (safer in the Android native build). The phone keeps unsent entries and never deletes one unless the server answered 200 for its batch.
@@ -177,9 +184,10 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
    Admin tab with the PC's address (e.g. `http://192.168.1.10:8080`). If sign-in or sending fails only on the phone,
    it is probably Android blocking plain `http://`: add a custom Android manifest that allows clear text
    (GluonFX `src/android/AndroidManifest.xml`) or serve the API over HTTPS. Offline routing works either way.
-3. **Data:** replace the sample rows with real campus data (order: Buildings, Floors, Places, Walkways), then copy
-   `GET /api/snapshot` into `uenav-mobile/src/main/resources/campus-snapshot.json` so the phone ships with it.
-4. **Map pictures (D6):** add `maps/campus.png` and floor plans (see section 7) and enter node X/Y as picture pixels.
+3. **Data:** walk the campus and check the traced places and walkway distances; fix them in the PC admin app.
+   Add real indoor rooms and floors (order: Buildings, Floors, Places, Walkways). Then copy `GET /api/snapshot` into
+   `uenav-mobile/src/main/resources/campus-snapshot.json` so the phone ships with the same data.
+4. **Floor plans (D6):** add floor plan pictures to `maps/` and set each floor's plan image path.
 5. **HTTPS** and a request limit on the open `/api/usage` address before school use (anyone can send log entries).
 6. **Testing:** device tests, route correctness against real campus measurements.
 7. **Docs:** fix the deck items in section 10 (see decisions D11, D12).
@@ -196,6 +204,7 @@ mvn -pl uenav-client javafx:run               # PC admin app; start the server f
 mvn -pl uenav-mobile javafx:run               # phone app in a phone-sized window; works without the server
 ```
 Database: edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
-`02_seed_sample.sql` into database `uenav`.
+`02_seed_sample.sql` into database `uenav`. `02_seed_sample.sql` can be run again: it first **deletes the usage log and
+all map rows** (admin accounts are kept), then loads the UE Caloocan map.
 Phone app server address: Admin tab, "Server & sync" card. Without it the phone still finds routes offline.
 Android: push to GitHub `main` (or run the "Android" workflow by hand), download artifact **Package**, install the `.apk` on the phone.
