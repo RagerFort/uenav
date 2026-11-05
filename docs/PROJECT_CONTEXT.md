@@ -2,7 +2,7 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-04 (phone connects to the server by itself: built-in address, ngrok for any network, background retry).
+Last updated: 2026-11-05 (Windows .exe packages for the admin app and the server; guide for adding floors/rooms).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -95,7 +95,10 @@ uenav-client/                    PC admin app, **admins only** (proposal: Window
                                  AdminShell (Figma sidebar), DashboardView (+ Places card), PlacesView, BuildingsView,
                                  FloorsView, WalkwaysView (ManagePage), ReportsView, Icons, PlaceStyle, TimeAgo, UsageText,
                                  AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css. Does not depend on uenav-mobile.
-.vscode/tasks.json               VS Code tasks: build, start server, open PC admin app, open phone app on PC
+.vscode/tasks.json               VS Code tasks: build, start server, put server online (ngrok), make Windows .exe files, open apps
+packaging/package-apps.ps1|.sh   jpackage: target/package/dist/UENav Admin (.exe) and UENav Server (.exe), Java built in
+.github/workflows/windows.yml    builds the two Windows apps on GitHub, artifact "UENav-Windows"
+docs/editing-the-map.md          how to add floors, rooms, stairs/elevators and walkways later (no rebuild needed)
 sql/00_create_database.sql       creates database `uenav` and user `uenav_app`
 sql/01_schema.sql                6 tables
 sql/02_seed_sample.sql           SAMPLE data only (made-up campus)
@@ -135,6 +138,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | Phone screens from Figma (Explore, Plan a route, Directions, Route unavailable, Campus map, bottom bar) | **Ran here** as a desktop window (390x820) under a virtual screen, screenshots checked against Figma; never on a phone |
 | Phone: search + Wrong route saved offline, then sent when the server address was set | **Ran here** end to end: rows appeared in MySQL `usage_log` |
 | Phone: built-in server address, background retry (search made with server off arrived ~30 s after it started) | **Ran here** with `http://localhost:8080` as the built-in address; ngrok not tried here (blocked) |
+| Packaged apps (jpackage app-image): UENav Server reads ~/.uenav/server.properties; UENav Admin login has a server box | **Ran here** as Linux app-images (server connected to MySQL and created the admin from the file; admin app opened). Windows .exe build (workflow and .ps1) **not run** |
 | Phone: newer map downloaded from server (D9) | **Ran here**: a place added in the Admin tab appeared in Explore after restart |
 | Phone Admin tab (sign in, dashboard, add/edit/delete place, route reports, server address) | **Ran here** against the real server |
 | PC admin app: Figma sidebar (admin pages only), dashboard with Places card | **Ran here**, screenshots checked against the Figma desktop frame |
@@ -207,6 +211,15 @@ mvn -pl uenav-server spring-boot:run          # then open http://localhost:8080/
 mvn -pl uenav-client javafx:run               # PC admin app; start the server first
 mvn -pl uenav-mobile javafx:run               # phone app in a phone-sized window; works without the server
 ```
+### Windows programs (.exe)
+VS Code task "UENav: make Windows .exe files" (or `.\packaging\package-apps.ps1`) makes, in `target\package\dist`:
+`UENav Admin\UENav Admin.exe` and `UENav Server\UENav Server.exe` (Java built in; MySQL must still be installed).
+GitHub also builds them on every push to `main` (Actions > Windows > artifact **UENav-Windows**).
+The server .exe needs no environment variables: create `C:\Users\<you>\.uenav\server.properties` with
+`UENAV_DB_PASSWORD=...` (and `UENAV_ADMIN_USER` / `UENAV_ADMIN_PASSWORD` for the very first start).
+The admin .exe remembers the server address typed on its login screen (`~/.uenav/admin.properties`).
+Adding floors and rooms later needs no rebuild: see `docs/editing-the-map.md`.
+
 Database: edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
 `02_seed_sample.sql` into database `uenav`. `02_seed_sample.sql` can be run again: it first **deletes the usage log and
 all map rows** (admin accounts are kept), then loads the UE Caloocan map.
