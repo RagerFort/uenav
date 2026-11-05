@@ -118,7 +118,7 @@ public class ReportsView extends VBox {
             }
         });
         table.getColumns().add(actions);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         table.setPlaceholder(new Label("No open reports."));
         table.setItems(filtered);
     }

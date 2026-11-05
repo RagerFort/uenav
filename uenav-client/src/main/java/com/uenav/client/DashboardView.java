@@ -39,7 +39,6 @@ public class DashboardView extends ScrollPane {
     /** Rows shown in the Places card before "View all places". */
     static final int PLACE_ROWS = 4;
 
-    private final AdminApi api;
     private final Consumer<ApiException> onProblem;
     private final Label placesNumber = new Label("\u2026");
     private final Label searchesNumber = new Label("\u2026");
@@ -57,7 +56,6 @@ public class DashboardView extends ScrollPane {
 
     public DashboardView(AdminApi api, Consumer<ApiException> onProblem, Runnable openReports,
                          Consumer<PlaceAction> onPlace) {
-        this.api = api;
         this.onProblem = onProblem;
         this.onPlace = onPlace;
         setFitToWidth(true);
