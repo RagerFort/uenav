@@ -43,6 +43,12 @@
       <artifactId>storage</artifactId>
       <version>${attach.version}</version>
     </dependency>
+    <!-- Camera QR scanning for the "You are here" signs (D16). On a PC it is simply not available. -->
+    <dependency>
+      <groupId>com.gluonhq.attach</groupId>
+      <artifactId>barcode-scan</artifactId>
+      <version>${attach.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
@@ -78,6 +84,7 @@
           <appIdentifier>${app.identifier}</appIdentifier>
           <attachList>
             <list>storage</list>
+            <list>barcode-scan</list>
           </attachList>
           <releaseConfiguration>
             <vendor>UENav</vendor>

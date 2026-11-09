@@ -25,6 +25,33 @@ public final class Ui {
         return url == null ? null : url.toExternalForm();
     }
 
+    /** Address of the dark-mode stylesheet (loaded on top of css()), or null if it is missing. */
+    public static String darkCss() {
+        URL url = Ui.class.getResource("/uenav-nav-dark.css");
+        return url == null ? null : url.toExternalForm();
+    }
+
+    /** An on/off switch drawn like a phone setting. */
+    public static StackPane toggleSwitch(boolean on) {
+        Region track = new Region();
+        track.getStyleClass().add("nv-switch");
+        if (on) {
+            track.getStyleClass().add("nv-switch-on");
+        }
+        track.setMinSize(44, 26);
+        track.setMaxSize(44, 26);
+        Region knob = new Region();
+        knob.getStyleClass().add("nv-switch-knob");
+        knob.setMinSize(20, 20);
+        knob.setMaxSize(20, 20);
+        StackPane box = new StackPane(track, knob);
+        StackPane.setAlignment(knob, on ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        StackPane.setMargin(knob, new Insets(0, 3, 0, 3));
+        box.setMinSize(44, 26);
+        box.setMaxSize(44, 26);
+        return box;
+    }
+
     public static Label label(String text, String... classes) {
         Label l = new Label(text);
         l.getStyleClass().addAll(classes);
@@ -93,8 +120,11 @@ public final class Ui {
         return r;
     }
 
+    /** A small rounded label. It never shrinks into "..." (the row around it gives way instead). */
     public static Label chip(String text, String tone) {
-        return label(text, "nv-chip", "nv-chip-" + tone);
+        Label l = label(text, "nv-chip", "nv-chip-" + tone);
+        l.setMinWidth(Region.USE_PREF_SIZE);
+        return l;
     }
 
     /** Title + subtitle stacked, the subtitle muted. */

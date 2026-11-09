@@ -147,8 +147,10 @@ public class MapAdminService {
                 }
             }
         }
+        String description = keepOrClear(in.description(), "description", 500, errors);
+        String hours = keepOrClear(in.openHours(), "openHours", 100, errors);
         fail(errors);
-        return new MapInput.NodeInput(in.buildingId(), in.floorId(), name, type, in.x(), in.y());
+        return new MapInput.NodeInput(in.buildingId(), in.floorId(), name, type, in.x(), in.y(), description, hours);
     }
 
     private MapInput.EdgeInput checkEdge(MapInput.EdgeInput in, Integer editingId) {
@@ -204,6 +206,22 @@ public class MapAdminService {
     private static String optional(String value, String field, int max, List<String> errors) {
         String v = blankToNull(value);
         if (v != null && v.length() > max) {
+            errors.add(field + " must be at most " + max + " characters");
+            return null;
+        }
+        return v;
+    }
+
+    /**
+     * Optional text that older apps do not send: null means "not sent, keep what is saved" (on update; nothing on
+     * insert), blank means "clear it" and becomes "", anything else is trimmed and length-checked.
+     */
+    private static String keepOrClear(String value, String field, int max, List<String> errors) {
+        if (value == null) {
+            return null;
+        }
+        String v = value.trim();
+        if (v.length() > max) {
             errors.add(field + " must be at most " + max + " characters");
             return null;
         }

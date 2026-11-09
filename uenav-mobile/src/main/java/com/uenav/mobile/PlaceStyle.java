@@ -15,7 +15,11 @@ public record PlaceStyle(String label, String icon, String tone) {
             case "OFFICE" -> new PlaceStyle("Office", "office", "orange");
             case "ROOM", "CLASSROOM", "LAB" -> new PlaceStyle(t.equals("LAB") ? "Lab" : "Room", "room", "red");
             case "GATE" -> new PlaceStyle("Gate", "gate", "blue");
-            case "FACILITY", "GYM", "CANTEEN", "LIBRARY", "CLINIC" -> new PlaceStyle(capitalise(t), "facility", "green");
+            case "EXIT" -> new PlaceStyle("Exit", "run", "blue");
+            case "RESTROOM" -> new PlaceStyle("Restroom", "restroom", "blue");
+            case "CANTEEN", "FOOD" -> new PlaceStyle("Canteen", "food", "orange");
+            case "CLINIC" -> new PlaceStyle("Clinic", "clinic", "red");
+            case "FACILITY", "GYM", "LIBRARY" -> new PlaceStyle(capitalise(t), "facility", "green");
             case "STAIRS" -> new PlaceStyle("Stairs", "stairs", "green");
             case "ELEVATOR" -> new PlaceStyle("Elevator", "elevator", "green");
             case "JUNCTION" -> new PlaceStyle("Junction", "dot", "grey");
