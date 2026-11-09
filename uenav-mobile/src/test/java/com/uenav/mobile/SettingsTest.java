@@ -69,6 +69,30 @@ class SettingsTest {
     }
 
     @Test
+    void darkModeAndAvoidStairsAreRememberedWithTheAddress() {
+        Settings s = new Settings(store);
+        assertFalse(s.darkMode());
+        assertFalse(s.avoidStairs());
+        s.setServerUrl("http://10.0.0.5:8080");
+        s.setDarkMode(true);
+        s.setAvoidStairs(true);
+        Settings again = new Settings(store);
+        assertTrue(again.darkMode());
+        assertTrue(again.avoidStairs());
+        assertEquals("http://10.0.0.5:8080", again.serverUrl());
+        again.setServerUrl("");
+        assertTrue(new Settings(store).darkMode());
+    }
+
+    @Test
+    void aChoiceThatCannotBeSavedStillApplies() {
+        Settings s = new Settings(store);
+        store.failSaves = true;
+        s.setDarkMode(true);
+        assertTrue(s.darkMode());
+    }
+
+    @Test
     void aBadBuiltInAddressIsIgnored() {
         assertEquals("", new Settings(store, "not an address").serverUrl());
         assertEquals("", new Settings(store, null).serverUrl());

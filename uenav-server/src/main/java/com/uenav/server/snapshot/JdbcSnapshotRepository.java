@@ -37,11 +37,13 @@ public class JdbcSnapshotRepository implements SnapshotRepository {
     @Override
     public List<Snapshot.NodeRow> nodes() {
         return jdbc.query(
-                "SELECT node_id, building_id, floor_id, name, node_type, x, y FROM node ORDER BY node_id",
+                "SELECT node_id, building_id, floor_id, name, node_type, x, y, description, open_hours "
+                        + "FROM node ORDER BY node_id",
                 (rs, i) -> new Snapshot.NodeRow(
                         rs.getInt("node_id"), rs.getObject("building_id", Integer.class),
                         rs.getObject("floor_id", Integer.class), rs.getString("name"),
-                        rs.getString("node_type"), rs.getInt("x"), rs.getInt("y")));
+                        rs.getString("node_type"), rs.getInt("x"), rs.getInt("y"),
+                        rs.getString("description"), rs.getString("open_hours")));
     }
 
     @Override

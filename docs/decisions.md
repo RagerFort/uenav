@@ -49,3 +49,41 @@ the Figma 3D frames. The app now draws the campus from `maps/campus-3d.json`: fl
 raised blocks (buildings, trees), traced from the official campus map. Floors are drawn as their building's outline.
 A floor plan picture can still be added per floor. The database and ERD do not change (shapes are app files, like
 the map pictures in D9).
+
+## D14: office info on places (implemented 2026-11-09, owner has not confirmed)
+
+The `node` table gets two optional columns: `description` (what the office handles, up to 500 characters) and
+`open_hours` (up to 100 characters). The phone shows them on the destination's info card; the PC admin app edits
+them on the Places form. Still 6 tables (D2); the ERD's Node needs these two attributes added. Older databases are
+upgraded with `sql/03_place_details.sql`. When a place is edited, a field that is **not sent** (older apps, the phone
+Admin tab) keeps the saved text, and an **empty** field clears it, so older apps cannot wipe office info.
+The descriptions and hours in the seed data are SAMPLE text to be confirmed with each office.
+
+## D15: more place types and home-screen categories (implemented 2026-11-09, owner has not confirmed)
+
+New node types: RESTROOM, CANTEEN, CLINIC, LIBRARY, EXIT (no database change; `node_type` is free text).
+`PlaceCategory` in uenav-core groups places for the kiosk-style home screen (Offices, Classrooms, Restrooms, Food,
+Exits, Facilities) by type, or by a word in the name for older rows. Two SAMPLE restrooms were added to the
+Engineering building (1F, 4F) so the "Nearest restroom" button can be shown; there is no canteen or clinic on the map
+until the team adds the real ones.
+
+## D16: "You are here" QR codes (implemented 2026-11-09, owner has not confirmed)
+
+A QR code holds only `UENAV:<node id>` (`QrCodes` in uenav-core), so scanning sets the starting point with no
+internet. The same code is printed under the QR for typing it in. The PC admin app prints the signs (QR codes page,
+ZXing library, PC only). The phone scans with Gluon Attach `barcode-scan` (added to `attachList`); on a PC, or if
+the service is missing, the visitor types the code. Node ids must stay the same after signs are printed: deleting
+and re-adding a place gives it a new id and its old signs stop working.
+
+## D17: dark mode (implemented 2026-11-09, owner asked for it)
+
+Both apps have a light/dark switch (phone: Explore header and Admin dashboard; PC: top bar). The light stylesheets
+now use colour variables only; `uenav-nav-dark.css` / `uenav-dark.css` change the variables. The phone map draws
+its own darker colours. The choice is remembered (phone `settings.json`, PC `admin.properties`).
+
+## D18: route modes (implemented 2026-11-09, owner has not confirmed)
+
+"Avoid stairs" (phone setting) uses the existing ELEVATOR preference: no stairs edges and only accessible walkways.
+The emergency exit route uses the STAIRS preference (no elevators) to the nearest GATE or EXIT. "Nearest ..." buttons
+run one Dijkstra search that stops at the first place of the category it reaches (`PathFinder.findNearest`).
+Usage log `route_pref` values are unchanged (ANY / STAIRS / ELEVATOR).
