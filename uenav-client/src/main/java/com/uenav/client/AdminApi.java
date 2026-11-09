@@ -1,6 +1,8 @@
 package com.uenav.client;
 
+import com.uenav.core.CampusData;
 import com.uenav.core.MiniJson;
+import com.uenav.core.SnapshotReader;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -73,7 +75,8 @@ public class AdminApi {
             Map<String, Object> m = asObject(o);
             list.add(new AdminModels.Place(integer(m, "id"), nullableInteger(m, "buildingId"),
                     nullableInteger(m, "floorId"), string(m, "name"), string(m, "nodeType"),
-                    integer(m, "x"), integer(m, "y")));
+                    integer(m, "x"), integer(m, "y"), nullableString(m, "description"),
+                    nullableString(m, "openHours")));
         }
         return list;
     }
@@ -219,7 +222,22 @@ public class AdminApi {
         m.put("nodeType", f.nodeType());
         m.put("x", f.x());
         m.put("y", f.y());
+        m.put("description", f.description());
+        m.put("openHours", f.openHours());
         return m;
+    }
+
+    /**
+     * The whole map as the phones get it (GET /api/snapshot, no sign-in needed), for the map health check and
+     * the QR sign page.
+     */
+    public CampusData snapshot() throws ApiException {
+        String text = sendText("GET", "/api/snapshot", null, false, "application/json");
+        try {
+            return SnapshotReader.read(text == null ? "" : text);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(200, "The server sent a map that could not be read: " + e.getMessage());
+        }
     }
 
     // ---- HTTP

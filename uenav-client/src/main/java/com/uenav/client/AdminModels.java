@@ -22,15 +22,27 @@ public final class AdminModels {
 
     public record Floor(int id, int buildingId, int floorNumber, String floorName) { }
 
-    /** One row of the node table, as shown in the Places list. */
-    public record Place(int id, Integer buildingId, Integer floorId, String name, String nodeType, int x, int y) {
+    /** One row of the node table, as shown in the Places list. description and openHours may be null. */
+    public record Place(int id, Integer buildingId, Integer floorId, String name, String nodeType, int x, int y,
+                        String description, String openHours) {
+
+        public Place(int id, Integer buildingId, Integer floorId, String name, String nodeType, int x, int y) {
+            this(id, buildingId, floorId, name, nodeType, x, y, null, null);
+        }
+
         public boolean isSearchable() {
             return SnapshotReader.isSearchable(nodeType);
         }
     }
 
-    /** What the Add/Edit place form sends to the server. */
-    public record NodeForm(Integer buildingId, Integer floorId, String name, String nodeType, int x, int y) { }
+    /** What the Add/Edit place form sends to the server. description and openHours may be null. */
+    public record NodeForm(Integer buildingId, Integer floorId, String name, String nodeType, int x, int y,
+                           String description, String openHours) {
+
+        public NodeForm(Integer buildingId, Integer floorId, String name, String nodeType, int x, int y) {
+            this(buildingId, floorId, name, nodeType, x, y, null, null);
+        }
+    }
 
     public record UsageSummary(long searches, long helpful, long openReports, long totalReports) { }
 

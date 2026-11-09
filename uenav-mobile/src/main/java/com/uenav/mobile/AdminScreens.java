@@ -44,9 +44,18 @@ final class AdminScreens {
         void syncNow(java.util.function.Consumer<String> done);
 
         void mapUpdated(CampusData data);
+
+        /** True while the app uses the dark look. */
+        default boolean dark() {
+            return false;
+        }
+
+        /** Switches between the light and dark look (the same switch as on Explore). */
+        default void toggleDark() {
+        }
     }
 
-    private static final List<String> TYPES = List.of("BUILDING_ENTRANCE", "OFFICE", "ROOM", "GATE", "FACILITY",
+    private static final List<String> TYPES = List.of("BUILDING_ENTRANCE", "OFFICE", "ROOM", "GATE", "FACILITY", "RESTROOM", "CANTEEN", "CLINIC", "LIBRARY", "EXIT",
             "JUNCTION", "STAIRS", "ELEVATOR");
 
     /** A choice in a drop-down list. */
@@ -130,8 +139,7 @@ final class AdminScreens {
         body.setPadding(new Insets(22, 20, 24, 20));
 
         VBox page = new VBox(hero, body);
-        page.getStyleClass().add("nv-canvas");
-        page.setStyle("-fx-background-color: white;");
+        page.getStyleClass().add("nv-surface");
         return Ui.scroll(page);
     }
 
@@ -241,7 +249,7 @@ final class AdminScreens {
                         + "Leave empty to use the address built into the app.", "nv-muted"),
                 new HBox(8, server, save), status, new HBox(8, update, send), result);
         card.setSpacing(8);
-        card.setStyle("-fx-background-color: #F9FAFB; -fx-effect: null;");
+        card.getStyleClass().add("nv-soft-card");
         return card;
     }
 
@@ -266,7 +274,14 @@ final class AdminScreens {
             }, ok -> { }, ex -> { });
             host.show(login(null));
         });
-        VBox screen = new VBox(Ui.header("ADMIN", "Dashboard", null, out));
+        Button theme = Ui.round(host.dark() ? "sun" : "moon", host.dark() ? "Light mode" : "Dark mode");
+        theme.setOnAction(e -> {
+            host.toggleDark();
+            host.show(dashboard());
+        });
+        HBox right = new HBox(8, theme, out);
+        right.setAlignment(Pos.CENTER_RIGHT);
+        VBox screen = new VBox(Ui.header("ADMIN", "Dashboard", null, right));
         screen.getStyleClass().add("nv-canvas");
 
         Label places = Ui.label("…", "nv-stat");

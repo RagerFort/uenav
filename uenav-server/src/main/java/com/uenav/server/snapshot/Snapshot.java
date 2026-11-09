@@ -15,8 +15,9 @@ public record Snapshot(String version,
     public record FloorRow(int id, int  buildingId, int floorNumber, String floorName,
                            String planImagePath) { }
 
+    /** description and openHours may be null (office info card). */
     public record NodeRow(int id, Integer buildingId, Integer floorId, String name,
-                          String nodeType, int x, int y) { }
+                          String nodeType, int x, int y, String description, String openHours) { }
 
     public record EdgeRow(int id, int fromNodeId, int toNodeId, double distanceM,
                           String edgeType, boolean accessible) { }

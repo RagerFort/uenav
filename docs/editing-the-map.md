@@ -16,6 +16,34 @@ and every 30 minutes). Only the 3D building shapes and the phone's built-in fall
    - one `ELEVATOR` walkway between the elevator places of two floors (accessible).
    Each floor must be connected to the building entrance through these, or routes to it are "unavailable".
 4. Open the phone app: Explore shows the new rooms; the Directions screen gets floor tabs (1F, 2F, ...).
+5. **Map health** page (Tools): fix anything it lists (places nothing connects to, floors without stairs, places
+   with no step-free route, distances that do not fit the map, duplicate names, offices without hours).
+
+## Place types for the home screen buttons
+The phone's big buttons and "Nearest ..." buttons find places by type:
+
+| Button | Types (or a word in the name) |
+|---|---|
+| Offices | `OFFICE` |
+| Classrooms | `ROOM`, `CLASSROOM`, `LAB` |
+| Restrooms / Nearest restroom | `RESTROOM` (or "restroom", "comfort room", "CR", "toilet" in the name) |
+| Food / Nearest food | `CANTEEN` (or "canteen", "cafeteria", "food" in the name) |
+| Exits / Emergency exit | `GATE`, `EXIT` |
+| Clinic | `CLINIC` |
+| Facilities | `FACILITY`, `LIBRARY`, `CLINIC`, `CANTEEN` |
+
+The map has no canteen or clinic yet: add the real ones (type `CANTEEN`, `CLINIC`) with a walkway to the nearest
+junction. The two EN restrooms are SAMPLE places.
+
+## Office hours and "What it handles"
+On the Places form, fill in **Office hours** (e.g. `Mon-Fri 8:00 AM - 5:00 PM`) and **What it handles**. The phone
+shows them on the office's info card. The seeded text is SAMPLE text: confirm it with each office.
+
+## "You are here" QR signs
+**QR codes** page (Tools): pick places (gates, building entrances, stairs, elevators, hallway junctions), press
+**Save signs**, print the PNG files at 100% and post them where those places are. Each code holds only the place's id
+(`UENAV:12`), so scanning works offline. Do not delete and re-add a place that has a sign: it would get a new id and
+the printed sign would stop working (edit it instead).
 
 ## X and Y of indoor places
 X/Y are in the same frame as the 3D campus map (X to the right, Y downwards, units of the campus map picture).
@@ -37,6 +65,6 @@ Use the same X/Y for the stairs (and the elevator) on every floor, since they ar
 Distances (metres) are typed per walkway: measure them, or use about 0.27 m per X/Y unit as an estimate.
 
 ## When to rebuild the APK
-Not needed for new floors, rooms or walkways. Rebuild only to change the 3D building shapes
+Not needed for new floors, rooms, walkways, office hours or QR signs. Rebuild only to change the 3D building shapes
 (`uenav-mobile/src/main/resources/maps/campus-3d.json`), the built-in server address, or to refresh the phone's
 built-in map copy (copy `GET /api/snapshot` into `campus-snapshot.json`) so brand-new phones have it even offline.

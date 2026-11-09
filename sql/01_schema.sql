@@ -39,8 +39,9 @@ CREATE TABLE floor (
 
 -- Node = any point a route can pass through or end at: room, office, gate, junction, stairs, elevator.
 -- Per D3 it has a name and X/Y map position. building_id and floor_id are NULL for outdoor nodes.
--- node_type examples: GATE, BUILDING_ENTRANCE, OFFICE, ROOM, JUNCTION, STAIRS, ELEVATOR.
--- By convention JUNCTION, STAIRS and ELEVATOR are not offered in the search list.
+-- node_type examples: GATE, BUILDING_ENTRANCE, OFFICE, ROOM, FACILITY, RESTROOM, CANTEEN, CLINIC, LIBRARY, EXIT,
+-- JUNCTION, STAIRS, ELEVATOR. By convention JUNCTION, STAIRS and ELEVATOR are not offered in the search list.
+-- description and open_hours are optional; the phone shows them on the place's info card (D14).
 CREATE TABLE node (
   node_id     INT          NOT NULL AUTO_INCREMENT,
   building_id INT          NULL,
@@ -49,6 +50,8 @@ CREATE TABLE node (
   node_type   VARCHAR(30)  NOT NULL,
   x           INT          NOT NULL,
   y           INT          NOT NULL,
+  description VARCHAR(500) NULL,
+  open_hours  VARCHAR(100) NULL,
   PRIMARY KEY (node_id),
   CONSTRAINT fk_node_building FOREIGN KEY (building_id) REFERENCES building (building_id),
   CONSTRAINT fk_node_floor    FOREIGN KEY (floor_id)    REFERENCES floor (floor_id)

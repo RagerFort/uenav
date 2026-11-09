@@ -1,3 +1,4 @@
+/* UENav admin app, light look. Every colour is a variable on .root, so uenav-dark.css can change them all. */
 .root {
     -brand: #C8102E;
     -brand-dark: #8E0B21;
@@ -6,8 +7,24 @@
     -muted: #6B7280;
     -line: #E5E7EB;
     -canvas: #F0F4F4;
+    -surface: white;
+    -surface-2: #F3F4F6;
+    -surface-hover: #E5E7EB;
+    -table-head: #F9FAFB;
+    -track: #F1F2F4;
+    -shadow: rgba(16,24,40,0.08);
+    -tone-red: #FDECEF;
+    -tone-orange: #FEF1E2;
+    -tone-green: #E3F4EA;
+    -tone-blue: #E8EFFC;
+    -tone-grey: #F3F4F6;
+    -orange: #C2610C;
+    -green: #15803D;
+    -blue: #2563EB;
     -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     -fx-font-size: 13px;
+    -fx-accent: -brand;
+    -fx-focus-color: -brand;
 }
 
 .label { -fx-text-fill: -ink; }
@@ -18,7 +35,7 @@
 .scroll-pane.canvas > .viewport { -fx-background-color: -canvas; }
 .scroll-pane { -fx-background-insets: 0; -fx-padding: 0; }
 
-.sidebar { -fx-background-color: white; -fx-border-color: -line; -fx-border-width: 0 1 0 0; }
+.sidebar { -fx-background-color: -surface; -fx-border-color: -line; -fx-border-width: 0 1 0 0; }
 .logo-box { -fx-background-color: -brand; -fx-background-radius: 9; }
 .logo-text { -fx-text-fill: white; -fx-font-weight: bold; }
 .nav-section { -fx-text-fill: -muted; -fx-font-size: 10px; -fx-font-weight: bold; }
@@ -26,26 +43,29 @@
     -fx-background-color: transparent; -fx-text-fill: -ink; -fx-alignment: CENTER_LEFT;
     -fx-background-radius: 9; -fx-padding: 9 12 9 12; -fx-cursor: hand;
 }
-.nav-item:hover { -fx-background-color: #F3F4F6; }
+.nav-item:hover { -fx-background-color: -surface-2; }
 .nav-item:disabled { -fx-opacity: 0.45; }
 .nav-item-active, .nav-item-active:hover {
     -fx-background-color: -brand-soft; -fx-text-fill: -brand; -fx-font-weight: bold;
 }
 
-.topbar { -fx-background-color: white; -fx-border-color: -line; -fx-border-width: 0 0 1 0; }
+.topbar { -fx-background-color: -surface; -fx-border-color: -line; -fx-border-width: 0 0 1 0; }
 .avatar { -fx-background-color: -brand-soft; -fx-background-radius: 16; }
 .avatar-text { -fx-text-fill: -brand; -fx-font-weight: bold; -fx-font-size: 11px; }
 
 .card {
-    -fx-background-color: white; -fx-background-radius: 12;
+    -fx-background-color: -surface; -fx-background-radius: 12;
     -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.08), 8, 0, 0, 1);
 }
 .card-title { -fx-font-weight: bold; -fx-font-size: 14px; }
 .stat-number { -fx-text-fill: -brand; -fx-font-size: 30px; -fx-font-weight: bold; }
 .chip {
-    -fx-background-color: #F3F4F6; -fx-background-radius: 10; -fx-padding: 3 10 3 10;
+    -fx-background-color: -surface-2; -fx-background-radius: 10; -fx-padding: 3 10 3 10;
     -fx-text-fill: -muted; -fx-font-size: 11px;
 }
+.chip-ok { -fx-background-color: -tone-green; -fx-text-fill: -green; -fx-font-weight: bold; }
+.chip-warn { -fx-background-color: -tone-orange; -fx-text-fill: -orange; -fx-font-weight: bold; }
+.chip-bad { -fx-background-color: -tone-red; -fx-text-fill: -brand; -fx-font-weight: bold; }
 
 .primary-button {
     -fx-background-color: -brand; -fx-text-fill: white; -fx-font-weight: bold;
@@ -54,41 +74,47 @@
 .primary-button:hover { -fx-background-color: -brand-dark; }
 .primary-button:disabled { -fx-opacity: 0.6; }
 .small-button {
-    -fx-background-color: #F3F4F6; -fx-background-radius: 8; -fx-padding: 4 10 4 10;
+    -fx-background-color: -surface-2; -fx-text-fill: -ink; -fx-background-radius: 8; -fx-padding: 4 10 4 10;
     -fx-font-size: 12px; -fx-cursor: hand;
 }
-.small-button:hover { -fx-background-color: #E5E7EB; }
+.small-button:hover { -fx-background-color: -surface-hover; }
 .small-button.danger { -fx-text-fill: -brand; }
 
-.text-field, .password-field {
-    -fx-background-color: white; -fx-background-radius: 8; -fx-border-radius: 8;
-    -fx-border-color: -line; -fx-padding: 8 10 8 10;
+.text-field, .password-field, .text-area {
+    -fx-background-color: -surface; -fx-background-radius: 8; -fx-border-radius: 8;
+    -fx-border-color: -line; -fx-padding: 8 10 8 10; -fx-text-fill: -ink; -fx-prompt-text-fill: -muted;
 }
-.text-field:focused, .password-field:focused { -fx-border-color: -brand; }
-.combo-box { -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: -line; -fx-background-color: white; }
+.text-area { -fx-padding: 2; }
+.text-area .content { -fx-background-color: -surface; -fx-background-radius: 8; }
+.text-field:focused, .password-field:focused, .text-area:focused { -fx-border-color: -brand; }
+.combo-box { -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: -line; -fx-background-color: -surface; }
+.combo-box .list-cell { -fx-text-fill: -ink; }
+.check-box { -fx-text-fill: -ink; }
 
 .table-view { -fx-background-color: transparent; -fx-table-cell-border-color: -line; }
-.table-view .column-header-background { -fx-background-color: #F9FAFB; }
+.table-view .column-header-background { -fx-background-color: -table-head; }
 .table-view .column-header .label { -fx-text-fill: -muted; -fx-font-size: 11px; -fx-font-weight: bold; }
 .table-row-cell:selected { -fx-background-color: -brand-soft; }
 .table-row-cell:selected .table-cell { -fx-text-fill: -ink; }
+.list-view { -fx-background-color: -surface; -fx-border-color: -line; -fx-border-radius: 8; -fx-background-radius: 8; }
 
 .field-label { -fx-text-fill: -muted; -fx-font-size: 10px; -fx-font-weight: bold; }
 .error-label { -fx-text-fill: -brand; }
 
 .login-bg { -fx-background-color: linear-gradient(to bottom right, #C8102E, #6D0A1C); }
 .login-card {
-    -fx-background-color: white; -fx-background-radius: 16;
+    -fx-background-color: -surface; -fx-background-radius: 16;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 24, 0, 0, 6);
 }
-.login-header { -fx-background-color: -brand; -fx-background-radius: 16 16 0 0; }
+.login-header { -fx-background-color: #C8102E; -fx-background-radius: 16 16 0 0; }
 
 .secondary-button {
-    -fx-background-color: #F3F4F6; -fx-text-fill: -ink; -fx-font-weight: bold;
+    -fx-background-color: -surface-2; -fx-text-fill: -ink; -fx-font-weight: bold;
     -fx-background-radius: 10; -fx-padding: 9 16 9 16; -fx-cursor: hand;
 }
-.secondary-button:hover { -fx-background-color: #E5E7EB; }
-.progress-bar > .track { -fx-background-color: #F3F4F6; -fx-background-radius: 4; }
+.secondary-button:hover { -fx-background-color: -surface-hover; }
+.secondary-button:disabled { -fx-opacity: 0.6; }
+.progress-bar > .track { -fx-background-color: -surface-2; -fx-background-radius: 4; }
 .progress-bar > .bar { -fx-background-color: -brand; -fx-background-radius: 4; -fx-padding: 4; }
 
 /* Figma desktop: sidebar icons, badge, breadcrumbs, Places card */
@@ -97,15 +123,15 @@
 .nav-item-active .nv-icon { -fx-background-color: -brand; }
 .nav-item-active .label { -fx-text-fill: -brand; -fx-font-weight: bold; }
 .nav-badge { -fx-text-fill: -brand; -fx-font-weight: bold; -fx-font-size: 12px; }
-.side-card { -fx-background-color: #F3F4F6; -fx-background-radius: 12; }
+.side-card { -fx-background-color: -surface-2; -fx-background-radius: 12; }
 .crumb-page { -fx-text-fill: -ink; -fx-font-weight: bold; }
 .link-button { -fx-background-color: transparent; -fx-text-fill: -brand; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 4 0 4 0; }
 .link-button:hover { -fx-underline: true; }
 .icon-button {
-    -fx-background-color: #F3F4F6; -fx-background-radius: 999; -fx-cursor: hand;
+    -fx-background-color: -surface-2; -fx-background-radius: 999; -fx-cursor: hand;
     -fx-min-width: 34; -fx-min-height: 34; -fx-pref-width: 34; -fx-pref-height: 34; -fx-padding: 0;
 }
-.icon-button:hover { -fx-background-color: #E5E7EB; }
+.icon-button:hover { -fx-background-color: -surface-hover; }
 .icon-button.danger .nv-icon { -fx-background-color: -brand; }
 .separator .line { -fx-border-color: -line; -fx-border-width: 1 0 0 0; }
 
@@ -113,16 +139,23 @@
 .nv-icon { -fx-background-color: -ink; }
 .nv-icon-brand { -fx-background-color: -brand; }
 .nv-icon-white { -fx-background-color: white; }
+.nv-icon-muted { -fx-background-color: -muted; }
+.nv-icon-green { -fx-background-color: -green; }
+.nv-icon-orange { -fx-background-color: -orange; }
 .nv-bubble { -fx-background-radius: 999; }
-.nv-tone-red { -fx-background-color: #FDECEF; }
-.nv-tone-red .nv-icon { -fx-background-color: #C8102E; }
-.nv-tone-orange { -fx-background-color: #FEF1E2; }
-.nv-tone-orange .nv-icon { -fx-background-color: #C2610C; }
-.nv-tone-green { -fx-background-color: #E3F4EA; }
-.nv-tone-green .nv-icon { -fx-background-color: #15803D; }
-.nv-tone-blue { -fx-background-color: #E8EFFC; }
-.nv-tone-blue .nv-icon { -fx-background-color: #2563EB; }
-.nv-tone-grey { -fx-background-color: #F3F4F6; }
-.nv-bar-track { -fx-background-color: #F1F2F4; -fx-background-radius: 4; }
+.nv-tone-red { -fx-background-color: -tone-red; }
+.nv-tone-red .nv-icon { -fx-background-color: -brand; }
+.nv-tone-orange { -fx-background-color: -tone-orange; }
+.nv-tone-orange .nv-icon { -fx-background-color: -orange; }
+.nv-tone-green { -fx-background-color: -tone-green; }
+.nv-tone-green .nv-icon { -fx-background-color: -green; }
+.nv-tone-blue { -fx-background-color: -tone-blue; }
+.nv-tone-blue .nv-icon { -fx-background-color: -blue; }
+.nv-tone-grey { -fx-background-color: -tone-grey; }
+.nv-bar-track { -fx-background-color: -track; -fx-background-radius: 4; }
 .nv-bar-fill { -fx-background-color: -brand; -fx-background-radius: 4; }
 .bar-count { -fx-text-fill: -brand; -fx-font-weight: bold; }
+
+/* map health and QR signs */
+.issue-row { -fx-background-color: transparent; }
+.qr-preview { -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: -line; -fx-border-radius: 12; }

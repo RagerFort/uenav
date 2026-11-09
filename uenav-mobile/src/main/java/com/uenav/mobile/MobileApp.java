@@ -36,6 +36,7 @@ public class MobileApp extends Application {
     private final StackPane content = new StackPane();
     private final HBox navBar = new HBox();
     private Tab tab = Tab.EXPLORE;
+    private Scene scene;
 
     @Override
     public void start(Stage stage) {
@@ -56,7 +57,14 @@ public class MobileApp extends Application {
             return;
         }
 
-        navigator = new Navigator(data, UsageLog.of(queue, this::syncAsync), false);
+        PlacesMemory memory = new PlacesMemory(new FileTextStore(new File(dir, "places.json")));
+        navigator = new Navigator(data, UsageLog.of(queue, this::syncAsync), false, settings, memory);
+        navigator.setDark(settings.darkMode());
+        navigator.setOnThemeToggle(() -> {
+            settings.setDarkMode(!settings.darkMode());
+            applyTheme();
+            navigator.setDark(settings.darkMode());
+        });
         navigator.setOnTabChanged(t -> {
             if (tab != Tab.ADMIN) {
                 tab = t == Navigator.Tab.MAP ? Tab.MAP : Tab.EXPLORE;
@@ -95,6 +103,18 @@ public class MobileApp extends Application {
             @Override
             public void mapUpdated(CampusData fresh) {
                 navigator.setData(fresh);
+            }
+
+            @Override
+            public boolean dark() {
+                return settings.darkMode();
+            }
+
+            @Override
+            public void toggleDark() {
+                settings.setDarkMode(!settings.darkMode());
+                applyTheme();
+                navigator.setDark(settings.darkMode());
             }
         });
 
@@ -148,14 +168,27 @@ public class MobileApp extends Application {
         boolean desktop = !isAndroidOrIos();
         double w = desktop ? 390 : Screen.getPrimary().getVisualBounds().getWidth();
         double h = desktop ? 820 : Screen.getPrimary().getVisualBounds().getHeight();
-        Scene scene = new Scene(root, w, h);
-        String css = Ui.css();
-        if (css != null) {
-            scene.getStylesheets().add(css);
-        }
+        scene = new Scene(root, w, h);
+        applyTheme();
         stage.setScene(scene);
         stage.setTitle("UENav");
         stage.show();
+    }
+
+    /** Light stylesheet always; the dark one on top when dark mode is on (Explore's moon/sun button). */
+    private void applyTheme() {
+        if (scene == null) {
+            return;
+        }
+        String css = Ui.css();
+        String dark = Ui.darkCss();
+        scene.getStylesheets().removeIf(s -> s.equals(css) || s.equals(dark));
+        if (css != null) {
+            scene.getStylesheets().add(css);
+        }
+        if (dark != null && settings != null && settings.darkMode()) {
+            scene.getStylesheets().add(dark);
+        }
     }
 
     private static boolean isAndroidOrIos() {

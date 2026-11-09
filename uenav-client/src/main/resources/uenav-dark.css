@@ -1,0 +1,57 @@
+/* UENav admin app, dark look. Loaded after uenav.css: it only changes the colour variables (and Java's built-in
+   control colours), so every page, table and pop-up follows. */
+.root {
+    -brand: #F0556C;
+    -brand-dark: #C8102E;
+    -brand-soft: #3B1C24;
+    -ink: #E7E9EF;
+    -muted: #9CA4B4;
+    -line: #2D3340;
+    -canvas: #11141B;
+    -surface: #1A1E27;
+    -surface-2: #242a36;
+    -surface-hover: #2E3544;
+    -table-head: #1F2430;
+    -track: #2A303D;
+    -shadow: rgba(0,0,0,0.45);
+    -tone-red: #3B1C24;
+    -tone-orange: #3A2A18;
+    -tone-green: #17301F;
+    -tone-blue: #1A2640;
+    -tone-grey: #242a36;
+    -orange: #F59E4B;
+    -green: #4ADE80;
+    -blue: #7BA5FF;
+
+    /* Java's built-in controls (tables, scroll bars, pop-ups, menus) */
+    -fx-base: #242a36;
+    -fx-background: #11141B;
+    -fx-control-inner-background: #1A1E27;
+    -fx-control-inner-background-alt: #1E232D;
+    -fx-text-base-color: #E7E9EF;
+    -fx-text-background-color: #E7E9EF;
+    -fx-text-inner-color: #E7E9EF;
+    -fx-mark-color: #E7E9EF;
+    -fx-selection-bar: #4A2230;
+    -fx-selection-bar-non-focused: #2E3544;
+    -fx-selection-bar-text: #FFFFFF;
+    -fx-faint-focus-color: transparent;
+}
+
+.card { -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0, 0, 2); }
+.table-row-cell { -fx-background-color: -fx-control-inner-background; -fx-text-fill: -ink; }
+.table-row-cell:odd { -fx-background-color: -fx-control-inner-background-alt; }
+.table-row-cell:selected { -fx-background-color: -brand-soft; }
+.table-view .column-header, .table-view .filler { -fx-background-color: -table-head; -fx-border-color: -line; }
+.table-view .placeholder .label { -fx-text-fill: -muted; }
+.list-cell { -fx-background-color: -surface; -fx-text-fill: -ink; }
+.list-cell:odd { -fx-background-color: #1E232D; }
+.list-cell:filled:selected, .list-cell:filled:hover { -fx-background-color: -brand-soft; }
+.combo-box-popup .list-view, .context-menu { -fx-background-color: -surface; }
+.tooltip { -fx-background-color: #2E3544; -fx-text-fill: -ink; }
+.dialog-pane { -fx-background-color: -surface; }
+.dialog-pane > .header-panel { -fx-background-color: -surface-2; }
+.dialog-pane > .header-panel .label, .dialog-pane > .content.label { -fx-text-fill: -ink; }
+.scroll-bar { -fx-background-color: transparent; }
+.scroll-bar .thumb { -fx-background-color: #3A4152; -fx-background-radius: 6; }
+.scroll-bar .increment-button, .scroll-bar .decrement-button { -fx-background-color: transparent; }
