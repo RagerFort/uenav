@@ -90,6 +90,19 @@ public final class ScreenTour {
         nav.openPlan(node(22));
         shot(p + "05-directions-registrar");
 
+        Node keep = nav.start();
+        set("start", null);
+        nav.openPlan(node(22));
+        call("showPlanScreen", false, false);
+        shot(p + "05b-plan-route-before-pick");
+        call("pickStart", node(1), false);
+        shot(p + "05c-plan-route-picked-gate");
+        call("pickStart", node(42), false);
+        shot(p + "05d-plan-route-picked-room-4f");
+        set("start", keep);
+        call("showCategory", PlaceCategory.CLASSROOMS);
+        shot(p + "05e-classrooms-nearest-first");
+
         nav.openPlan(node(42));
         shot(p + "06-directions-en420");
 

@@ -536,7 +536,7 @@ public class MapView extends Region {
             allArt().drawFloor(g, view, floorOf);
             drawWalkways(g, ids, dark ? Color.web("#3A4152") : Color.web("#D9DCE1"), 9);
             for (Node n : nodes) {
-                if ("STAIRS".equals(n.nodeType()) || "ELEVATOR".equals(n.nodeType())) {
+                if ("ELEVATOR".equals(n.nodeType())) {
                     CampusArt.cube(g, view, n.x(), n.y(), 16, 14, GREEN);
                 }
             }
@@ -862,7 +862,11 @@ public class MapView extends Region {
             boolean isEnd = n == first || n == last
                     || (first != null && n.id() == first.id()) || (last != null && n.id() == last.id());
             String type = n.nodeType();
-            if (("STAIRS".equals(type) || "ELEVATOR".equals(type)) && !onPicture) {
+            if ("STAIRS".equals(type) && !onPicture) {
+                stairsIcon(g, x, y);
+                continue;
+            }
+            if ("ELEVATOR".equals(type) && !onPicture) {
                 if (floorBuilding3d() == null) {
                     g.setFill(GREEN);
                     g.fillRoundRect(x - 7, y - 7, 14, 14, 4, 4);
@@ -907,6 +911,25 @@ public class MapView extends Region {
                 taken.add(box);
             }
         }
+    }
+
+    /** Stairs on a floor map: a small tile with a green staircase in it. */
+    private void stairsIcon(GraphicsContext g, double x, double y) {
+        double s = 24;
+        g.setFill(Color.web("#000000", 0.15));
+        g.fillRoundRect(x - s / 2 + 1, y - s / 2 + 2, s, s, 7, 7);
+        g.setFill(dark ? Color.web("#1A1E27") : Color.WHITE);
+        g.fillRoundRect(x - s / 2, y - s / 2, s, s, 7, 7);
+        g.setStroke(GREEN);
+        g.setLineWidth(1.6);
+        g.strokeRoundRect(x - s / 2, y - s / 2, s, s, 7, 7);
+        double a = x - 7.5;
+        double b = y + 7;
+        double w = 5;
+        double h = 4.7;
+        g.setFill(dark ? Color.web("#4ADE80") : GREEN);
+        g.fillPolygon(new double[] {a, a, a + w, a + w, a + 2 * w, a + 2 * w, a + 3 * w, a + 3 * w},
+                new double[] {b, b - h, b - h, b - 2 * h, b - 2 * h, b - 3 * h, b - 3 * h, b}, 8);
     }
 
     private static boolean isEnd(Node n, Node first, Node last) {
