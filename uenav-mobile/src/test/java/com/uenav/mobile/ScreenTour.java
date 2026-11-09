@@ -95,6 +95,21 @@ public final class ScreenTour {
         nav.openPlan(node(22));
         call("showPlanScreen", false, false);
         shot(p + "05b-plan-route-before-pick");
+        // like the phone: the map panel slides open from almost 0 high, and only then reaches its full size
+        call("showPlanScreen", false, true);
+        current = null;
+        Scene grow = scene();
+        for (double hgt : new double[] {0, 12, 40, 150, 380}) {
+            for (javafx.scene.Node n : grow.getRoot().lookupAll(".nv-map-bg")) {
+                if (n instanceof javafx.scene.layout.StackPane sp && sp.getChildren().get(0) instanceof MapView) {
+                    sp.setPrefHeight(hgt);
+                    sp.setOpacity(1); // the fade-in animation does not run here
+                }
+            }
+            grow.getRoot().applyCss();
+            grow.getRoot().layout();
+        }
+        save(grow, p + "05a-plan-route-after-slide-open");
         call("pickStart", node(1), false);
         shot(p + "05c-plan-route-picked-gate");
         call("pickStart", node(42), false);
