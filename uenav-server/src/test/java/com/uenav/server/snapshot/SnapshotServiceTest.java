@@ -24,8 +24,8 @@ class SnapshotServiceTest {
 
         public List<Snapshot.NodeRow> nodes() {
             List<Snapshot.NodeRow> list = new ArrayList<>();
-            list.add(new Snapshot.NodeRow(1, null, null, "Gate", "GATE", 0, 0));
-            list.add(new Snapshot.NodeRow(2, 1, 1, "Lobby", "JUNCTION", 10, 0));
+            list.add(new Snapshot.NodeRow(1, null, null, "Gate", "GATE", 0, 0, null, null));
+            list.add(new Snapshot.NodeRow(2, 1, 1, "Lobby", "JUNCTION", 10, 0, null, null));
             return list;
         }
 

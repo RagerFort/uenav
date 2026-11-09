@@ -214,10 +214,7 @@ abstract class ManagePage<T> extends VBox {
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle(title);
         DialogPane pane = dlg.getDialogPane();
-        String css = Theme.css();
-        if (css != null) {
-            pane.getStylesheets().add(css);
-        }
+        Theme.style(pane);
         ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         pane.getButtonTypes().addAll(saveType, ButtonType.CANCEL);
 
@@ -308,9 +305,6 @@ abstract class ManagePage<T> extends VBox {
     }
 
     private static void style(Alert a) {
-        String css = Theme.css();
-        if (css != null) {
-            a.getDialogPane().getStylesheets().add(css);
-        }
+        Theme.style(a.getDialogPane());
     }
 }

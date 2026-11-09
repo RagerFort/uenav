@@ -2,7 +2,8 @@
 
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
-Last updated: 2026-11-05 (Windows .exe packages for the admin app and the server; guide for adding floors/rooms).
+Last updated: 2026-11-09 (kiosk-style phone home, QR "You are here", nearest/emergency routes, office info, recent and
+favorite places, graph view, avoid stairs, dark mode on phone and PC, map health and QR sign pages in the admin app).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -64,6 +65,14 @@ Android phone / desktop app (JavaFX)         Admin PC (JavaFX, later)
 
 D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library, no reflection); the server uses Spring's Jackson. Owner has not explicitly confirmed; see `docs/decisions.md`.
 
+| ID | Decision (2026-11-09, full text in `docs/decisions.md`) |
+|----|----------|
+| D14 | Node gets optional `description` and `open_hours` (office info card). Not sent = keep, empty = clear. Upgrade: `sql/03_place_details.sql`. |
+| D15 | New place types RESTROOM, CANTEEN, CLINIC, LIBRARY, EXIT; `PlaceCategory` groups places for the home screen buttons. |
+| D16 | QR signs hold only `UENAV:<node id>`. PC admin prints them (ZXing); phone scans with Attach `barcode-scan` or the code is typed. |
+| D17 | Dark mode on phone and PC: stylesheets use colour variables; a dark stylesheet changes them. |
+| D18 | Avoid stairs = ELEVATOR preference; emergency exit = STAIRS preference to the nearest GATE/EXIT; "nearest" = one Dijkstra run. |
+
 ## 6. Technology and versions
 - Java 17 release level (owner's PC runs JDK 21; CI uses Temurin 17 plus Gluon's GraalVM 22.1.0.1-Final java17).
 - Maven multi-module. Spring Boot 3.3.5. JavaFX 21.0.5. gluonfx-maven-plugin 1.0.28. MySQL 8.0.16+.
@@ -73,10 +82,15 @@ D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library
 ## 7. Repository layout
 ```
 pom.xml                          parent; modules: core, server, client, mobile
-uenav-core/                      Node, Edge, EdgeType, RoutePreference, Graph, Route, PathFinder (Dijkstra),
-                                 Building, Floor, CampusData, Directions (route -> steps: Start walking / Turn left /
-                                 Take the elevator to 4th floor / Arrive), MiniJson (reader+writer), SnapshotReader, Version
-  src/test/...                   PathFinderTest, SnapshotReaderTest, DirectionsTest, VersionTest
+uenav-core/                      Node (+ description, openHours), Edge, EdgeType, RoutePreference, Graph, Route,
+                                 PathFinder (Dijkstra: findRoute, trace = route + places checked, findNearest,
+                                 distancesFrom, reachable), Building, Floor, CampusData, Directions (route -> steps with
+                                 landmarks: "Turn left at Registrar's Office", "Turn right after Gazebo"; each step knows
+                                 its node), PlaceSearch (ranked search: room codes "en420", synonyms "cr", "pay"),
+                                 PlaceCategory (home buttons), QrCodes (UENAV:<id>), GraphCheck (map health),
+                                 MiniJson (reader+writer), SnapshotReader, Version
+  src/test/...                   PathFinderTest, NearestAndTraceTest, SnapshotReaderTest, DirectionsTest, PlaceSearchTest,
+                                 QrCodesTest, GraphCheckTest, VersionTest
 uenav-server/                    Spring Boot: UenavServerApplication, HealthController
   .../snapshot/                  GET /api/snapshot and /api/snapshot/version (reads MySQL)
   .../admin/                     BCrypt login, 8-hour token, lockout, /api/admin/login|logout|me, interceptor
@@ -90,24 +104,40 @@ uenav-mobile/                    Gluon phone app (visitors and admins):
                                  PlaceStyle, uenav-nav.css; CampusStore (bundled snapshot, downloads a newer one, D9);
                                  AdminScreens + MobileAdminApi (phone Admin tab: sign in, dashboard, add/edit/delete place,
                                  route reports, server address); usage log: UsageEntry, UsageQueue, Settings, SyncService,
-                                 HttpSyncClient, Http, FileTextStore/TextStore, AppStorage; `android` profile
+                                 HttpSyncClient, Http, FileTextStore/TextStore, AppStorage; `android` profile.
+                                 2026-11-09: Explore is a kiosk home (search, You are here card, category tiles, Nearest
+                                 buttons, Emergency exit, Favorites, Recent, Avoid stairs switch, light/dark button);
+                                 category lists sorted by walking distance; QrScanner (Attach barcode-scan, typed code
+                                 on PC); "Tap where you are" map; Directions: office info card, favorite star, tappable
+                                 steps that switch the floor and zoom in, graph view button (nodes, walkway lengths,
+                                 places Dijkstra checked). PlacesMemory (places.json: recent + favorites).
+                                 uenav-nav-dark.css; MapView/CampusArt draw dark colours.
+                                 src/test/.../ScreenTour.java: dev tool that saves PNGs of every screen (not a test)
 uenav-client/                    PC admin app, **admins only** (proposal: Windows = admin app). JavaFX: UenavApp, LoginView,
                                  AdminShell (Figma sidebar), DashboardView (+ Places card), PlacesView, BuildingsView,
                                  FloorsView, WalkwaysView (ManagePage), ReportsView, Icons, PlaceStyle, TimeAgo, UsageText,
                                  AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css. Does not depend on uenav-mobile.
+                                 2026-11-09: Theme switches light/dark (top bar button, uenav-dark.css, remembered in
+                                 admin.properties); MapHealthView + dashboard Map health card (GraphCheck on
+                                 GET /api/snapshot); QrCodesView + QrSigns (printable "You are here" PNG signs, ZXing);
+                                 Places form: Office hours, What it handles, new types.
+                                 src/test/.../ScreenTour.java: dev tool that saves PNGs of the admin pages (not a test)
 .vscode/tasks.json               VS Code tasks: build, start server, put server online (ngrok), make Windows .exe files, open apps
 packaging/package-apps.ps1|.sh   jpackage: target/package/dist/UENav Admin (.exe) and UENav Server (.exe), Java built in
 .github/workflows/windows.yml    builds the two Windows apps on GitHub, artifact "UENav-Windows"
 docs/editing-the-map.md          how to add floors, rooms, stairs/elevators and walkways later (no rebuild needed)
 sql/00_create_database.sql       creates database `uenav` and user `uenav_app`
 sql/01_schema.sql                6 tables
-sql/02_seed_sample.sql           SAMPLE data only (made-up campus)
+sql/02_seed_sample.sql           UE Caloocan outdoor map (traced) + SAMPLE indoor rows, office info, EN restrooms
+sql/03_place_details.sql         upgrade for older databases: node.description/open_hours, sample office info and
+                                 EN restrooms (safe to run again; keeps data and the usage log)
 .github/workflows/android.yml    builds the APK on GitHub (Ubuntu) and uploads it as artifact "Package"
 docs/decisions.md                decisions D1 to D10
 docs/PROJECT_CONTEXT.md          this file
 ```
 Routing rules in `PathFinder` (assumptions, change if the team decides otherwise): edges are walkable both ways;
 `ANY` = all edges; `STAIRS` = no elevator edges; `ELEVATOR` = no stairs edges and only `is_accessible` edges.
+The phone's "Avoid stairs" switch uses `ELEVATOR`; the emergency exit route uses `STAIRS` (D18).
 Walking time shown to users assumes 80 m per minute (`Directions`). No stairs/elevator time model yet.
 Turns ("Turn left/right") are worked out from node X/Y, treated as map-picture pixels: X to the right, **Y downwards**.
 Map (D6, changed to drawn 3D): the campus is drawn in basic 3D shapes from
@@ -147,6 +177,12 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | UE Caloocan outdoor map in 3D shapes (16 blocks, field, roads, trees), 9 buildings, 2 gates, offices, facilities, 46 walkways | **Ran here** (tests, MySQL, phone screenshots). Positions traced from the campus map; distances are **estimates** (0.269 m per picture pixel, from the 4.86 ha campus area). Not checked on site |
 | Indoor data (Engineering 1F/4F, EN 420) | Still SAMPLE rows; no floor plans yet |
 | Phone map: no zooming while dragging (touch scroll / flick events ignored), pinch and double-tap zoom | **Ran here** with simulated touch events; not tried on a phone |
+| `mvn clean verify` on the owner's Windows PC (160 tests: core 46, server 33, admin 27, phone 54) | **Ran here** 2026-11-09 |
+| Owner's MySQL upgraded with `03_place_details.sql` (backup first in `~/UENav/backup`); new server build on port 8081 served office info and the EN restrooms; phone's `campus-snapshot.json` copied from it (version `9944eeeaf8d7cf92`) | **Ran here** 2026-11-09 |
+| Phone: kiosk home, categories (nearest first), You are here (typed QR code, tap on map), nearest restroom/exit, emergency route, avoid stairs, office info card, favorites/recent, tappable steps, graph view, dark mode | **Ran here** as off-screen 390x820 screenshots (ScreenTour), light and dark; never on a phone |
+| Phone: camera QR scanning (Attach barcode-scan) | Compiled; **not run** (no camera on the PC, APK not built yet) |
+| PC admin: dark mode, Map health page and dashboard card, QR codes page, Places form office fields | **Ran here** as off-screen screenshots against a stand-in server; Save signs and the Places dialog not clicked through |
+| QR code content | **Ran here**: a generated sign's QR decodes back to `UENAV:42` (ZXing reader in QrSignsTest) |
 
 ## 9. Gotchas already hit (do not repeat)
 1. Android apps with Gluon **cannot be built on Windows**. Build on GitHub Actions (Ubuntu). Windows only downloads and installs the APK.
@@ -175,6 +211,12 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
     (wrong password showed a generic message). `Http.java` does not use streaming mode for that reason.
 19. The phone opens on **Explore** (visitors need no login); the Figma Login screen is the **Admin** tab, with
     "Continue as visitor". The PC app opens on the admin login, with no visitor option.
+20. **No hard-coded colours** in CSS or Java styles any more: use the colour variables (`-nv-surface`, `-surface`,
+    ...) so dark mode keeps working. Canvas drawing (MapView, CampusArt) picks dark colours itself.
+21. Attach 4.0.25 `BarcodeScanService` has `asyncScan(...)` and `resultProperty()` (not "resultsProperty").
+22. Printed QR signs depend on node ids. Edit a place instead of deleting and re-adding it.
+23. Editing a place from an older app sends no office info: the server keeps the saved text (D14). The PC form sends
+    an empty text to clear it.
 
 ## 10. Known inconsistencies in the proposal deck (still to fix)
 - Slide text says 7 tables; there are 6 (D2). Class diagram must have no Room class.
@@ -186,6 +228,10 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 - Figma admin dashboard is shown on a phone; D7 says PC first.
 
 ## 11. Next tasks (in dependency order)
+0. **2026-11-09 work:** push the branch so GitHub builds the APK and the Windows .exe files; on the phone check the
+   camera QR scan (print one sign from the QR codes page), dark mode, and airplane mode. Confirm the SAMPLE office
+   hours with each office; add the real canteen, clinic, library and restrooms (types CANTEEN, CLINIC, LIBRARY,
+   RESTROOM); print and post QR signs at entrances, stairwells and hallway corners.
 1. **Owner:** pull, open the folder in VS Code, run the tasks "UENav: start server" and "UENav: open PC admin app",
    then "UENav: open phone app on the PC". Report anything that looks wrong next to the Figma.
 2. **Owner:** set up ngrok (section 12), put its HTTPS address in `uenav-server.json`, push to `main` so GitHub builds
@@ -221,7 +267,8 @@ The admin .exe remembers the server address typed on its login screen (`~/.uenav
 Adding floors and rooms later needs no rebuild: see `docs/editing-the-map.md`.
 
 Database: edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
-`02_seed_sample.sql` into database `uenav`. `02_seed_sample.sql` can be run again: it first **deletes the usage log and
+`02_seed_sample.sql` into database `uenav`. A database made before 2026-11-09 needs `03_place_details.sql` once
+(`mysql -u root -p uenav < sql/03_place_details.sql`) before the new server is started. `02_seed_sample.sql` can be run again: it first **deletes the usage log and
 all map rows** (admin accounts are kept), then loads the UE Caloocan map.
 Phone app server address: built into the app in `uenav-mobile/src/main/resources/uenav-server.json`
 (`{"serverUrl": "https://..."}`), so phones connect by themselves. An address typed in the Admin tab ("Server & sync")

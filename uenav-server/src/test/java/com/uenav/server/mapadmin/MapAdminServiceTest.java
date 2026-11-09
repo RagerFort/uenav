@@ -69,7 +69,7 @@ class MapAdminServiceTest {
     }
 
     private int node(String name) {
-        return service.createNode(new MapInput.NodeInput(null, null, name, "JUNCTION", 0, 0));
+        return service.createNode(new MapInput.NodeInput(null, null, name, "JUNCTION", 0, 0, null, null));
     }
 
     private static MapInput.EdgeInput edge(int a, int b, double d, String type) {
@@ -107,18 +107,32 @@ class MapAdminServiceTest {
         int b1 = building();
         int b2 = building();
         int f1 = floor(b1);
-        assertTrue(service.createNode(new MapInput.NodeInput(b1, f1, "EN 101", "room", 1, 1)) > 0);
-        assertTrue(errorsOf(() -> service.createNode(new MapInput.NodeInput(b2, f1, "X", "ROOM", 1, 1)))
+        assertTrue(service.createNode(new MapInput.NodeInput(b1, f1, "EN 101", "room", 1, 1, null, null)) > 0);
+        assertTrue(errorsOf(() -> service.createNode(new MapInput.NodeInput(b2, f1, "X", "ROOM", 1, 1, null, null)))
                 .get(0).contains("does not belong"));
-        assertTrue(errorsOf(() -> service.createNode(new MapInput.NodeInput(null, f1, "X", "ROOM", 1, 1)))
+        assertTrue(errorsOf(() -> service.createNode(new MapInput.NodeInput(null, f1, "X", "ROOM", 1, 1, null, null)))
                 .get(0).contains("needs a buildingId"));
     }
 
     @Test
     void nodeTypeIsTidiedUp() {
-        service.createNode(new MapInput.NodeInput(null, null, "  Main Gate ", "building entrance", 5, 6));
+        service.createNode(new MapInput.NodeInput(null, null, "  Main Gate ", "building entrance", 5, 6, null, null));
         assertEquals("BUILDING_ENTRANCE", repo.lastNode.nodeType());
         assertEquals("Main Gate", repo.lastNode.name());
+    }
+
+    @Test
+    void officeInfoIsOptionalTrimmedAndLimited() {
+        service.createNode(new MapInput.NodeInput(null, null, "Registrar", "OFFICE", 1, 1,
+                "  Records and transcripts ", "   "));
+        assertEquals("Records and transcripts", repo.lastNode.description());
+        assertEquals("", repo.lastNode.openHours()); // blank = clear (stored as NULL)
+        service.createNode(new MapInput.NodeInput(null, null, "Old app", "OFFICE", 1, 1, null, null));
+        assertEquals(null, repo.lastNode.description()); // not sent = keep what is saved
+        assertTrue(errorsOf(() -> service.createNode(new MapInput.NodeInput(null, null, "X", "OFFICE", 1, 1,
+                "x".repeat(501), null))).get(0).contains("description"));
+        assertTrue(errorsOf(() -> service.createNode(new MapInput.NodeInput(null, null, "X", "OFFICE", 1, 1,
+                null, "x".repeat(101)))).get(0).contains("openHours"));
     }
 
     @Test

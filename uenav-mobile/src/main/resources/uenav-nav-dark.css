@@ -1,0 +1,53 @@
+/* UENav phone screens, dark look. Loaded after uenav-nav.css: it only changes the colour variables (plus Java's
+   built-in control colours), so every screen follows. The map draws its own dark colours (MapView). */
+.root {
+    -nv-brand: #F0556C;
+    -nv-brand-dark: #C8102E;
+    -nv-brand-soft: #3B1C24;
+    -nv-primary: #C8102E;
+    -nv-primary-hover: #E0203E;
+    -nv-ink: #E7E9EF;
+    -nv-muted: #9CA4B4;
+    -nv-line: #2D3340;
+    -nv-canvas: #11141B;
+    -nv-surface: #1A1E27;
+    -nv-field: #242a36;
+    -nv-hover: #212733;
+    -nv-hover-strong: #2E3544;
+    -nv-note: #1F2430;
+    -nv-map: #0E1117;
+    -nv-selected: #2A1A20;
+    -nv-handle: #3A4152;
+    -nv-track: #2A303D;
+    -nv-icon-muted: #737B8E;
+    -nv-blue: #7BA5FF;
+    -nv-blue-soft: #1A2640;
+    -nv-green: #4ADE80;
+    -nv-green-soft: #17301F;
+    -nv-orange: #F59E4B;
+    -nv-orange-soft: #3A2A18;
+    -nv-star: #FFC83D;
+    -nv-danger-soft: #3B1C24;
+
+    -fx-base: #242a36;
+    -fx-background: #11141B;
+    -fx-control-inner-background: #1A1E27;
+    -fx-text-base-color: #E7E9EF;
+    -fx-text-background-color: #E7E9EF;
+    -fx-text-inner-color: #E7E9EF;
+    -fx-accent: #C8102E;
+    -fx-focus-color: #F0556C;
+    -fx-faint-focus-color: transparent;
+    -fx-selection-bar: #4A2230;
+    -fx-selection-bar-non-focused: #2E3544;
+}
+
+.nv-card { -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0, 0, 1); }
+.nv-floating, .nv-zoom, .nv-tabs, .nv-building-chip, .nv-round-white {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 12, 0, 0, 2);
+}
+.nv-tile { -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.40), 8, 0, 0, 1); }
+.list-cell { -fx-background-color: #1A1E27; -fx-text-fill: #E7E9EF; }
+.list-cell:filled:hover, .list-cell:filled:selected { -fx-background-color: #3B1C24; }
+.combo-box-popup .list-view { -fx-background-color: #1A1E27; }
+.scroll-bar .thumb { -fx-background-color: #3A4152; }

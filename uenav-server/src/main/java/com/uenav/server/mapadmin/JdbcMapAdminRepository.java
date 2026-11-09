@@ -88,7 +88,8 @@ public class JdbcMapAdminRepository implements MapAdminRepository {
         KeyHolder keys = new GeneratedKeyHolder();
         jdbc.update(con -> {
             PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO node (building_id, floor_id, name, node_type, x, y) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO node (building_id, floor_id, name, node_type, x, y, description, open_hours) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''))",
                     Statement.RETURN_GENERATED_KEYS);
             setNullableInt(ps, 1, n.buildingId());
             setNullableInt(ps, 2, n.floorId());
@@ -96,6 +97,8 @@ public class JdbcMapAdminRepository implements MapAdminRepository {
             ps.setString(4, n.nodeType());
             ps.setInt(5, n.x());
             ps.setInt(6, n.y());
+            ps.setString(7, n.description());
+            ps.setString(8, n.openHours());
             return ps;
         }, keys);
         Number key = keys.getKey();
@@ -108,15 +111,23 @@ public class JdbcMapAdminRepository implements MapAdminRepository {
     @Override
     public boolean updateNode(int id, MapInput.NodeInput n) {
         return jdbc.update(con -> {
+            // null = not sent by an older app: keep the saved text; "" = clear it
             PreparedStatement ps = con.prepareStatement(
-                    "UPDATE node SET building_id=?, floor_id=?, name=?, node_type=?, x=?, y=? WHERE node_id=?");
+                    "UPDATE node SET building_id=?, floor_id=?, name=?, node_type=?, x=?, y=?, "
+                            + "description = CASE WHEN ? IS NULL THEN description ELSE NULLIF(?, '') END, "
+                            + "open_hours = CASE WHEN ? IS NULL THEN open_hours ELSE NULLIF(?, '') END "
+                            + "WHERE node_id=?");
             setNullableInt(ps, 1, n.buildingId());
             setNullableInt(ps, 2, n.floorId());
             ps.setString(3, n.name());
             ps.setString(4, n.nodeType());
             ps.setInt(5, n.x());
             ps.setInt(6, n.y());
-            ps.setInt(7, id);
+            ps.setString(7, n.description());
+            ps.setString(8, n.description());
+            ps.setString(9, n.openHours());
+            ps.setString(10, n.openHours());
+            ps.setInt(11, id);
             return ps;
         }) > 0;
     }
