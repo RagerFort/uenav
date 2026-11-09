@@ -50,6 +50,13 @@
       "problemMatcher": []
     },
     {
+      "label": "UENav: make Windows .exe files",
+      "detail": "Builds target/package/dist/UENav Admin and UENav Server (Java built in).",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File packaging/package-apps.ps1",
+      "problemMatcher": []
+    },
+    {
       "label": "UENav: open PC admin app",
       "detail": "Start the server first.",
       "type": "shell",

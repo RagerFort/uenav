@@ -1,5 +1,6 @@
 package com.uenav.client;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -13,7 +14,9 @@ import javafx.scene.layout.VBox;
 /** Admin sign-in screen (Figma: Login). The PC app is for admins only, so there is no visitor option here. */
 public class LoginView extends StackPane {
 
-    public LoginView(AdminApi api, String serverUrl, String message, Consumer<AdminApi.LoginInfo> onSuccess) {
+    /** @param onSuccess gets the signed-in connection and the server address that worked */
+    public LoginView(String serverUrl, String message, BiConsumer<AdminApi, AdminApi.LoginInfo> onSuccess,
+                     Consumer<String> onServerUsed) {
         getStyleClass().add("login-bg");
 
         StackPane logo = new StackPane(Icons.icon("pin", 26, "nv-icon-brand"));
@@ -54,9 +57,15 @@ public class LoginView extends StackPane {
         error.getStyleClass().add("error-label");
         error.setWrapText(true);
 
-        Label server = new Label("Server: " + serverUrl);
-        server.getStyleClass().add("muted");
+        Label serverLabel = new Label("SERVER");
+        serverLabel.getStyleClass().add("field-label");
+        TextField server = new TextField(serverUrl);
+        server.setPromptText("http://localhost:8080");
         server.setStyle("-fx-font-size: 11px;");
+        Label serverHint = new Label("Use http://localhost:8080 when UENav Server runs on this PC.");
+        serverHint.getStyleClass().add("muted");
+        serverHint.setStyle("-fx-font-size: 11px;");
+        serverHint.setWrapText(true);
 
         Runnable submit = () -> {
             String u = username.getText().trim();
@@ -65,10 +74,15 @@ public class LoginView extends StackPane {
                 error.setText("Enter your username and password.");
                 return;
             }
+            String address = server.getText().trim().isEmpty() ? "http://localhost:8080" : server.getText().trim();
+            AdminApi api = new AdminApi(address);
             signIn.setDisable(true);
             error.setText("");
             Async.run(() -> api.login(u, p),
-                    info -> onSuccess.accept(info),
+                    info -> {
+                        onServerUsed.accept(address);
+                        onSuccess.accept(api, info);
+                    },
                     e -> {
                         signIn.setDisable(false);
                         password.clear();
@@ -79,7 +93,8 @@ public class LoginView extends StackPane {
         password.setOnAction(ev -> submit.run());
         username.setOnAction(ev -> password.requestFocus());
 
-        VBox body = new VBox(8, title, hint, userLabel, username, passLabel, password, signIn, error, server);
+        VBox body = new VBox(8, title, hint, userLabel, username, passLabel, password, signIn, error, serverLabel, server,
+                serverHint);
         body.setPadding(new Insets(24, 28, 24, 28));
         VBox.setMargin(userLabel, new Insets(10, 0, 0, 0));
         VBox.setMargin(passLabel, new Insets(6, 0, 0, 0));
