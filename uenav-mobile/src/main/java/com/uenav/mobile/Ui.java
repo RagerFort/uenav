@@ -174,6 +174,7 @@ public final class Ui {
         s.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         s.getStyleClass().add("nv-scroll");
         VBox.setVgrow(s, Priority.ALWAYS);
+        Fling.install(s);
         return s;
     }
 

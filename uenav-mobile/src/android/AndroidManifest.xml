@@ -1,0 +1,30 @@
+<?xml version='1.0'?>
+<!-- UENav's Android manifest. GluonFX uses this file instead of its default one and still fills in versionCode,
+     versionName and the app label. Based on Gluon's template plus the permissions the default build added.
+     enableOnBackInvokedCallback="false": apps built for Android 16 get "predictive back" by default, which closed
+     UENav instead of passing the back key to it (Gluon turns the back key into ESCAPE, which goes back one screen). -->
+<manifest xmlns:android='http://schemas.android.com/apk/res/android' android:versionCode='1' android:versionName='1.0'>
+    <supports-screens android:xlargeScreens="true"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE"/>
+        </intent>
+    </queries>
+    <application android:label='UENav' android:icon="@mipmap/ic_launcher"
+                 android:requestLegacyExternalStorage="true"
+                 android:enableOnBackInvokedCallback="false">
+        <activity android:name='com.gluonhq.helloandroid.MainActivity'
+                  android:exported="true"
+                  android:configChanges="orientation|keyboardHidden">
+             <intent-filter>
+                <category android:name='android.intent.category.LAUNCHER'/>
+                <action android:name='android.intent.action.MAIN'/>
+             </intent-filter>
+        </activity>
+        <activity android:name='com.gluonhq.helloandroid.PermissionRequestActivity'
+                  android:exported="true"/>
+    </application>
+</manifest>

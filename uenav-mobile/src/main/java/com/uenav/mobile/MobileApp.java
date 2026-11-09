@@ -41,6 +41,7 @@ public class MobileApp extends Application {
     private boolean inAdmin;
     private SettingsScreen settingsScreen;
     private Scene scene;
+    private long lastBackAtHome;
 
     @Override
     public void start(Stage stage) {
@@ -241,8 +242,22 @@ public class MobileApp extends Application {
             boolean back = e.getCode() == javafx.scene.input.KeyCode.ESCAPE
                     || e.getCode() == javafx.scene.input.KeyCode.BACK_SPACE && !(e.getTarget()
                     instanceof javafx.scene.control.TextInputControl);
-            if (back && goBack()) {
-                e.consume();
+            if (!back) {
+                return;
+            }
+            e.consume();
+            if (goBack()) {
+                return;
+            }
+            // nothing left to go back to: a second press within 2 seconds closes the app (usual Android behaviour)
+            long now = System.currentTimeMillis();
+            if (now - lastBackAtHome < 2000) {
+                Platform.exit();
+                System.exit(0);
+            }
+            lastBackAtHome = now;
+            if (navigator != null) {
+                navigator.showMessage("Press back again to close UENav");
             }
         });
         stage.setScene(scene);
