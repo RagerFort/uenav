@@ -5,7 +5,10 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/** UENav admin app for the PC (admins only; visitors use the phone app). Server address: -Duenav.api=http://host:8080 (default http://localhost:8080). */
+/**
+ * UENav admin app for the PC (admins only; visitors use the phone app). The server address is typed on the login
+ * screen and remembered in ~/.uenav/admin.properties; -Duenav.api=http://host:8080 overrides it.
+ */
 public class UenavApp extends Application {
 
     private Stage stage;
@@ -14,7 +17,7 @@ public class UenavApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         stage = primaryStage;
-        server = System.getProperty("uenav.api", "http://localhost:8080");
+        server = System.getProperty("uenav.api", AdminSettings.serverUrl());
         stage.setTitle("UENav Admin");
         stage.setMinWidth(980);
         stage.setMinHeight(640);
@@ -23,8 +26,10 @@ public class UenavApp extends Application {
     }
 
     private void showLogin(String message) {
-        AdminApi api = new AdminApi(server);
-        setRoot(new LoginView(api, server, message, info -> showShell(api, info)));
+        setRoot(new LoginView(server, message, this::showShell, used -> {
+            server = used;
+            AdminSettings.saveServerUrl(used);
+        }));
     }
 
     private void showShell(AdminApi api, AdminApi.LoginInfo info) {

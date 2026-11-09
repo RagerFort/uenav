@@ -174,7 +174,7 @@ public class PlacesView extends VBox {
         table.getColumns().add(x);
         table.getColumns().add(y);
         table.getColumns().add(actions);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         table.setPlaceholder(new Label("No places yet. Click \"+ Add place\" to create one."));
 
         SortedList<AdminModels.Place> sorted = new SortedList<>(filtered);

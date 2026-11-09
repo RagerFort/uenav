@@ -29,7 +29,6 @@ public class AdminShell extends BorderPane {
     private final Label crumbPage = new Label();
     private final Map<String, Button> navButtons = new LinkedHashMap<>();
     private final Label reportsBadge = new Label();
-    private String current;
     private boolean signedOut;
 
     public AdminShell(AdminApi api, AdminApi.LoginInfo info, Consumer<String> onSignOut) {
@@ -197,7 +196,6 @@ public class AdminShell extends BorderPane {
     }
 
     private void setPage(String key, Node page, String area, String title) {
-        current = key;
         crumbArea.setText(area);
         crumbPage.setText(title);
         content.getChildren().setAll(page);
