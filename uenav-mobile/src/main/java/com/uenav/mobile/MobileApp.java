@@ -25,7 +25,7 @@ import javafx.stage.Stage;
  */
 public class MobileApp extends Application {
 
-    private enum Tab { EXPLORE, MAP, ADMIN }
+    private enum Tab { EXPLORE, MAP, SETTINGS }
 
     private UsageQueue queue;
     private Settings settings;
@@ -36,6 +36,9 @@ public class MobileApp extends Application {
     private final StackPane content = new StackPane();
     private final HBox navBar = new HBox();
     private Tab tab = Tab.EXPLORE;
+    /** True while the admin screens are open (they live under the Settings tab). */
+    private boolean inAdmin;
+    private SettingsScreen settingsScreen;
     private Scene scene;
 
     @Override
@@ -59,14 +62,9 @@ public class MobileApp extends Application {
 
         PlacesMemory memory = new PlacesMemory(new FileTextStore(new File(dir, "places.json")));
         navigator = new Navigator(data, UsageLog.of(queue, this::syncAsync), false, settings, memory);
-        navigator.setDark(settings.darkMode());
-        navigator.setOnThemeToggle(() -> {
-            settings.setDarkMode(!settings.darkMode());
-            applyTheme();
-            navigator.setDark(settings.darkMode());
-        });
+        navigator.setDark(dark());
         navigator.setOnTabChanged(t -> {
-            if (tab != Tab.ADMIN) {
+            if (tab != Tab.SETTINGS) {
                 tab = t == Navigator.Tab.MAP ? Tab.MAP : Tab.EXPLORE;
                 refreshNavBar();
             }
@@ -74,7 +72,7 @@ public class MobileApp extends Application {
         admin = new AdminScreens(settings, store, new AdminScreens.Host() {
             @Override
             public void show(Parent screen) {
-                if (tab == Tab.ADMIN) {
+                if (tab == Tab.SETTINGS && inAdmin) {
                     content.getChildren().setAll(screen);
                 }
             }
@@ -107,21 +105,43 @@ public class MobileApp extends Application {
 
             @Override
             public boolean dark() {
-                return settings.darkMode();
+                return MobileApp.this.dark();
             }
 
             @Override
             public void toggleDark() {
-                settings.setDarkMode(!settings.darkMode());
+                settings.setDarkMode(!MobileApp.this.dark());
                 applyTheme();
-                navigator.setDark(settings.darkMode());
+                navigator.setDark(MobileApp.this.dark());
+            }
+        });
+        settingsScreen = new SettingsScreen(settings, new SettingsScreen.Host() {
+            @Override
+            public void themeChanged() {
+                applyTheme();
+                navigator.setDark(dark());
+                select(Tab.SETTINGS);
+            }
+
+            @Override
+            public void openAdmin() {
+                inAdmin = true;
+                content.getChildren().setAll(admin.open());
+            }
+
+            @Override
+            public String mapInfo() {
+                CampusData d = store.current();
+                String where = store.isDownloaded() ? "Downloaded from the server" : "Built into the app";
+                return where + " · version " + (d == null ? "?" : d.version()) + " · "
+                        + (d == null ? 0 : d.places().size()) + " places";
             }
         });
 
         navBar.getStyleClass().add("nv-navbar");
         BorderPane root = new BorderPane(content);
         root.setBottom(navBar);
-        root.getStyleClass().add("nv-canvas");
+        root.getStyleClass().add("nv-surface");
         select(Tab.EXPLORE);
         show(stage, root);
 
@@ -166,28 +186,51 @@ public class MobileApp extends Application {
     private void show(Stage stage, Parent root) {
         // On a phone the window is the whole screen; on a PC it is a phone-sized window.
         boolean desktop = !isAndroidOrIos();
-        double w = desktop ? 390 : Screen.getPrimary().getVisualBounds().getWidth();
-        double h = desktop ? 820 : Screen.getPrimary().getVisualBounds().getHeight();
+        javafx.geometry.Rectangle2D all = Screen.getPrimary().getBounds();
+        javafx.geometry.Rectangle2D visual = Screen.getPrimary().getVisualBounds();
+        double w = desktop ? 390 : visual.getWidth();
+        double h = desktop ? 820 : visual.getHeight();
+        if (!desktop && root instanceof javafx.scene.layout.Region r) {
+            // The app is drawn under the phone's status bar and gesture bar: keep the screens clear of them
+            // (unless the system already left that space out of the window).
+            double top = visual.getMinY() > 0 ? 0 : STATUS_BAR;
+            double bottom = all.getMaxY() > visual.getMaxY() ? 0 : GESTURE_BAR;
+            r.setPadding(new Insets(top, 0, bottom, 0));
+        }
         scene = new Scene(root, w, h);
         applyTheme();
+        TapGuard.install(scene);
         stage.setScene(scene);
         stage.setTitle("UENav");
         stage.show();
     }
 
-    /** Light stylesheet always; the dark one on top when dark mode is on (Explore's moon/sun button). */
+    /** Room left for the phone's status bar (clock, battery) and its gesture bar, in screen units (dp). */
+    static final double STATUS_BAR = 34;
+    static final double GESTURE_BAR = 14;
+
+    /** Whether the app looks dark now: the chosen theme, or the phone's own setting for "Same as phone". */
+    private boolean dark() {
+        return settings != null && SystemTheme.dark(settings.theme());
+    }
+
+    /** Light stylesheet always, the dark one on top for dark mode, and the light-weight phone one on phones. */
     private void applyTheme() {
         if (scene == null) {
             return;
         }
         String css = Ui.css();
-        String dark = Ui.darkCss();
-        scene.getStylesheets().removeIf(s -> s.equals(css) || s.equals(dark));
+        String darkSheet = Ui.darkCss();
+        String phone = Ui.phoneCss();
+        scene.getStylesheets().removeIf(s -> s.equals(css) || s.equals(darkSheet) || s.equals(phone));
         if (css != null) {
             scene.getStylesheets().add(css);
         }
-        if (dark != null && settings != null && settings.darkMode()) {
-            scene.getStylesheets().add(dark);
+        if (darkSheet != null && dark()) {
+            scene.getStylesheets().add(darkSheet);
+        }
+        if (phone != null && isAndroidOrIos()) {
+            scene.getStylesheets().add(phone);
         }
     }
 
@@ -210,7 +253,10 @@ public class MobileApp extends Application {
                 navigator.openMap();
                 content.getChildren().setAll(navigator.view());
             }
-            case ADMIN -> content.getChildren().setAll(admin.open());
+            case SETTINGS -> {
+                inAdmin = false;
+                content.getChildren().setAll(settingsScreen.view());
+            }
         }
         refreshNavBar();
     }
@@ -219,7 +265,7 @@ public class MobileApp extends Application {
         navBar.getChildren().setAll(
                 navItem("search", "Explore", Tab.EXPLORE),
                 navItem("map", "Map", Tab.MAP),
-                navItem("shield", "Admin", Tab.ADMIN));
+                navItem("settings", "Settings", Tab.SETTINGS));
     }
 
     private VBox navItem(String icon, String text, Tab t) {

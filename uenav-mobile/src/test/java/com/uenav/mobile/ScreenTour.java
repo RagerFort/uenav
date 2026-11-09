@@ -74,6 +74,9 @@ public final class ScreenTour {
         nav.setDark(dark);
         nav.openExplore();
         shot(p + "01-home");
+        call("showPlanScreen", true, false); // final layout, without the slide-in animation
+        shot(p + "01b-where-are-you");
+        settingsShot(p + "01c-settings");
 
         call("showCategory", PlaceCategory.OFFICES);
         shot(p + "02-category-no-start");
@@ -139,6 +142,33 @@ public final class ScreenTour {
         shot(p + "17-map-tab-here-dot");
     }
 
+    /** The Settings tab, shown in place of the visitor screens for one screenshot. */
+    private static void settingsShot(String name) throws Exception {
+        SettingsScreen s = new SettingsScreen(settings, new SettingsScreen.Host() {
+            @Override
+            public void themeChanged() { }
+
+            @Override
+            public void openAdmin() { }
+
+            @Override
+            public String mapInfo() {
+                return "Built into the app · version " + data.version() + " · " + data.places().size()
+                        + " places";
+            }
+        });
+        BorderPane root = new BorderPane(s.view());
+        root.getStyleClass().add("nv-surface");
+        Scene sc = new Scene(root, 390, 820);
+        sc.getStylesheets().add(Ui.css());
+        if (settings.darkMode()) {
+            sc.getStylesheets().add(Ui.darkCss());
+        }
+        current = sc;
+        save(sc, name);
+        current = null;
+    }
+
     private static Node node(int id) {
         return data.graph().node(id).orElseThrow();
     }
@@ -190,7 +220,7 @@ public final class ScreenTour {
             old.setCenter(null);
         }
         HBox bar = new HBox(item("search", "Explore", nav.tab() == Navigator.Tab.EXPLORE),
-                item("map", "Map", nav.tab() == Navigator.Tab.MAP), item("shield", "Admin", false));
+                item("map", "Map", nav.tab() == Navigator.Tab.MAP), item("settings", "Settings", false));
         bar.getStyleClass().add("nv-navbar");
         BorderPane root = new BorderPane(view);
         root.setBottom(bar);
@@ -217,7 +247,10 @@ public final class ScreenTour {
 
     private static void shot(String name) throws Exception {
         current = null;
-        Scene s = scene();
+        save(scene(), name);
+    }
+
+    private static void save(Scene s, String name) throws Exception {
         s.getRoot().applyCss();
         s.getRoot().layout();
         WritableImage img = s.snapshot(null);

@@ -110,6 +110,34 @@ class DirectionsTest {
     }
 
     @Test
+    void flightsInARowAreOneStep() {
+        CampusData d = SnapshotReader.read("""
+            {"version":"f",
+             "buildings":[{"id":1,"name":"EN","category":"Building","description":null,"mapX":null,"mapY":null,
+                           "imagePath":null}],
+             "floors":[{"id":1,"buildingId":1,"floorNumber":1,"floorName":"1st floor","planImagePath":null},
+                       {"id":2,"buildingId":1,"floorNumber":2,"floorName":"2nd floor","planImagePath":null},
+                       {"id":3,"buildingId":1,"floorNumber":3,"floorName":"3rd floor","planImagePath":null}],
+             "nodes":[
+               {"id":1,"buildingId":1,"floorId":1,"name":"Lobby","nodeType":"BUILDING_ENTRANCE","x":0,"y":0},
+               {"id":2,"buildingId":1,"floorId":1,"name":"s1","nodeType":"STAIRS","x":0,"y":50},
+               {"id":3,"buildingId":1,"floorId":2,"name":"s2","nodeType":"STAIRS","x":0,"y":50},
+               {"id":4,"buildingId":1,"floorId":3,"name":"s3","nodeType":"STAIRS","x":0,"y":50},
+               {"id":5,"buildingId":1,"floorId":3,"name":"EN 310","nodeType":"ROOM","x":0,"y":100}],
+             "edges":[
+               {"id":1,"fromNodeId":1,"toNodeId":2,"distanceM":50,"edgeType":"WALK","accessible":true},
+               {"id":2,"fromNodeId":2,"toNodeId":3,"distanceM":9,"edgeType":"STAIRS","accessible":false},
+               {"id":3,"fromNodeId":3,"toNodeId":4,"distanceM":9,"edgeType":"STAIRS","accessible":false},
+               {"id":4,"fromNodeId":4,"toNodeId":5,"distanceM":50,"edgeType":"WALK","accessible":true}]}
+            """);
+        Route r = PathFinder.findRoute(d.graph(), 1, 5, RoutePreference.ANY).orElseThrow();
+        List<Directions.Step> steps = Directions.steps(r, d);
+        assertEquals(List.of("Start walking", "Take the stairs to 3rd floor", "Exit and continue walking",
+                "Arrive at EN 310"), steps.stream().map(Directions.Step::title).toList());
+        assertTrue(steps.get(1).detail().startsWith("Up 2 floors"), steps.get(1).detail());
+    }
+
+    @Test
     void minutesAreAtLeastOne() {
         assertEquals(1, Directions.minutes(5));
         assertEquals(4, Directions.minutes(310));

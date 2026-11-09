@@ -64,6 +64,8 @@ public class MapView extends Region {
     private List<Integer> visited = List.of();
     private Node here;
     private Node focused;
+    private List<Node> highlights = List.of();
+    private List<Node> fitNodes;
 
     // what the user sees: the map point at the middle of the free area, and screen pixels per map unit
     private double viewX;
@@ -206,6 +208,18 @@ public class MapView extends Region {
         return graphView;
     }
 
+    /** Places drawn as big labelled pins, such as the two gates on the "Where are you?" screen. */
+    public void setHighlights(List<Node> nodes) {
+        this.highlights = nodes == null ? List.of() : List.copyOf(nodes);
+        draw();
+    }
+
+    /** Starts the campus view around these places (for example both gates) instead of the whole campus. */
+    public void fitAround(List<Node> nodes) {
+        this.fitNodes = nodes == null || nodes.isEmpty() ? null : List.copyOf(nodes);
+        resetView();
+    }
+
     /** The "You are here" dot when no route is shown (or null). */
     public void setHere(Node node) {
         this.here = node;
@@ -293,12 +307,21 @@ public class MapView extends Region {
                         || (i + 1 < r.nodes().size() && r.nodes().get(i + 1).floorId() == null);
                 boolean onlyEntrance = linksOutside && r.nodes().stream()
                         .filter(x -> n.floorId().equals(x.floorId())).count() == 1;
-                if (!onlyEntrance) {
+                // a floor the route only climbs past on the stairs gets no tab of its own
+                boolean passingThrough = i > 0 && i + 1 < r.nodes().size() && r.nodes().stream()
+                        .filter(x -> n.floorId().equals(x.floorId()))
+                        .allMatch(x -> isVertical(x) && x != r.nodes().get(0)
+                                && x != r.nodes().get(r.nodes().size() - 1));
+                if (!onlyEntrance && !passingThrough) {
                     levels.add(n.floorId());
                 }
             }
         }
         return new ArrayList<>(levels);
+    }
+
+    private static boolean isVertical(Node n) {
+        return "STAIRS".equals(n.nodeType()) || "ELEVATOR".equals(n.nodeType());
     }
 
     @Override
@@ -422,7 +445,14 @@ public class MapView extends Region {
     private void fit() {
         double[] level = levelBounds();
         double[] target = level;
-        if (route != null && this.level == null) {
+        if (route == null && this.level == null && fitNodes != null) {
+            double[] b = bounds(fitNodes);
+            double size = Math.max(Math.max(b[2] - b[0], b[3] - b[1]), 0.45 * Math.max(level[2] - level[0],
+                    level[3] - level[1]));
+            double cx = (b[0] + b[2]) / 2;
+            double cy = (b[1] + b[3]) / 2;
+            target = new double[] {cx - size / 2, cy - size / 2.4, cx + size / 2, cy + size / 2.4};
+        } else if (route != null && this.level == null) {
             // outdoors: start on the route; on a floor the whole floor is small enough to show at once
             Set<Integer> ids = visibleIds();
             List<Node> onLevel = new ArrayList<>();
@@ -534,6 +564,21 @@ public class MapView extends Region {
             drawGraph(g, ids);
         }
         drawPlaces(g, nodes, onPicture);
+        for (Node h : highlights) {
+            if (ids.contains(h.id())) {
+                double x = sx(h.x());
+                double y = sy(h.y());
+                g.setFill(Color.web("#000000", 0.18));
+                g.fillOval(x - 15, y - 13, 30, 30);
+                g.setFill(Color.WHITE);
+                g.fillOval(x - 15, y - 15, 30, 30);
+                g.setFill(BLUE);
+                g.fillOval(x - 12, y - 12, 24, 24);
+                g.setFill(Color.WHITE);
+                g.fillPolygon(new double[] {x - 5, x + 6, x - 5}, new double[] {y - 6, y, y + 6}, 3);
+                tag(g, h.name(), x, y - 28, BLUE, Color.WHITE);
+            }
+        }
         if (route == null && here != null && ids.contains(here.id())) {
             youAreHere(g, sx(here.x()), sy(here.y()));
         }
@@ -802,7 +847,16 @@ public class MapView extends Region {
     private void drawPlaces(GraphicsContext g, List<Node> nodes, boolean onPicture) {
         Node first = route == null ? null : route.nodes().get(0);
         Node last = route == null ? null : route.nodes().get(route.nodes().size() - 1);
-        for (Node n : nodes) {
+        List<double[]> taken = new ArrayList<>();
+        Set<Integer> pinned = new HashSet<>();
+        highlights.forEach(h -> pinned.add(h.id()));
+        // route ends first, so their names are never the ones left out
+        List<Node> ordered = new ArrayList<>(nodes);
+        ordered.sort((a, b) -> Boolean.compare(!isEnd(b, first, last), !isEnd(a, first, last)));
+        for (Node n : ordered) {
+            if (pinned.contains(n.id())) {
+                continue;
+            }
             double x = sx(n.x());
             double y = sy(n.y());
             boolean isEnd = n == first || n == last
@@ -840,8 +894,23 @@ public class MapView extends Region {
                 g.setFill(dark ? Color.web("#9CA4B4") : Color.web("#6B7280"));
                 g.fillOval(x - 4, y - 4, 8, 8);
             }
-            label(g, shortName(n.name()), x, y + (isEnd ? 16 : 14), isEnd);
+            // names that would overlap one already drawn are left out (zoom in to see them)
+            String text = shortName(n.name());
+            double ly = y + (isEnd ? 16 : 14);
+            double[] box = {x - text.length() * 3.1 - 2, ly - 7, x + text.length() * 3.1 + 2, ly + 7};
+            boolean overlaps = false;
+            for (double[] t : taken) {
+                overlaps |= box[0] < t[2] && t[0] < box[2] && box[1] < t[3] && t[1] < box[3];
+            }
+            if (!overlaps || isEnd) {
+                label(g, text, x, ly, isEnd);
+                taken.add(box);
+            }
         }
+    }
+
+    private static boolean isEnd(Node n, Node first, Node last) {
+        return (first != null && n.id() == first.id()) || (last != null && n.id() == last.id());
     }
 
     private static void pin(GraphicsContext g, double x, double y) {

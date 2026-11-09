@@ -16,8 +16,11 @@ public final class Settings {
 
     private final TextStore store;
     private final String builtIn;
+    /** Look of the app: follow the phone's light/dark setting, or always light, or always dark. */
+    public enum Theme { SYSTEM, LIGHT, DARK }
+
     private String serverUrl = "";
-    private boolean darkMode;
+    private Theme theme = Theme.SYSTEM;
     private boolean avoidStairs;
 
     public Settings(TextStore store) {
@@ -77,14 +80,24 @@ public final class Settings {
         save();
     }
 
-    /** Dark look for the whole app (also the map). */
-    public synchronized boolean darkMode() {
-        return darkMode;
+    /** The chosen look (Same as phone by default). */
+    public synchronized Theme theme() {
+        return theme;
     }
 
-    public synchronized void setDarkMode(boolean on) {
-        darkMode = on;
+    public synchronized void setTheme(Theme t) {
+        theme = t == null ? Theme.SYSTEM : t;
         saveQuietly();
+    }
+
+    /** True only when Dark was chosen (Same as phone is decided by the app, see SystemTheme). */
+    public synchronized boolean darkMode() {
+        return theme == Theme.DARK;
+    }
+
+    /** Chooses Dark or Light (not Same as phone). */
+    public synchronized void setDarkMode(boolean on) {
+        setTheme(on ? Theme.DARK : Theme.LIGHT);
     }
 
     /** Accessibility: routes avoid stairs and use only accessible walkways, elevators and ramps. */
@@ -100,7 +113,7 @@ public final class Settings {
     private void save() {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("serverUrl", serverUrl);
-        root.put("darkMode", darkMode);
+        root.put("theme", theme.name());
         root.put("avoidStairs", avoidStairs);
         store.save(MiniJson.write(root));
     }
@@ -128,7 +141,15 @@ public final class Settings {
                 if (v instanceof String s && (s.isEmpty() || URL.matcher(s).matches())) {
                     serverUrl = s;
                 }
-                darkMode = Boolean.TRUE.equals(m.get("darkMode"));
+                if (m.get("theme") instanceof String s) {
+                    try {
+                        theme = Theme.valueOf(s);
+                    } catch (IllegalArgumentException unknown) {
+                        theme = Theme.SYSTEM;
+                    }
+                } else if (Boolean.TRUE.equals(m.get("darkMode"))) {
+                    theme = Theme.DARK; // saved by the first dark-mode version
+                }
                 avoidStairs = Boolean.TRUE.equals(m.get("avoidStairs"));
             }
         } catch (IllegalArgumentException damagedFile) {

@@ -1,0 +1,17 @@
+/* Loaded last on Android and iOS only. Soft drop shadows look nice on a PC but a phone redraws every one of them on
+   each scroll frame, which made scrolling slow. Here they are replaced by thin borders in the same rounded shapes. */
+.nv-card, .nv-tile, .nv-quick, .nv-floating, .nv-zoom, .nv-tabs, .nv-building-chip, .nv-round-white {
+    -fx-effect: null;
+    -fx-border-color: -nv-line;
+    -fx-border-width: 1;
+}
+.nv-card, .nv-floating { -fx-border-radius: 14; }
+.nv-tile { -fx-border-radius: 16; }
+.nv-quick { -fx-border-radius: 14; }
+.nv-zoom { -fx-border-radius: 10; }
+.nv-tabs, .nv-building-chip, .nv-round-white { -fx-border-radius: 999; }
+.nv-sheet { -fx-effect: null; -fx-border-color: -nv-line; -fx-border-width: 1 0 0 0; }
+.nv-soft-card { -fx-border-color: transparent; }
+/* bigger touch targets */
+.nv-pill { -fx-padding: 11 16 11 14; }
+.nv-navitem { -fx-padding: 10 0 12 0; }

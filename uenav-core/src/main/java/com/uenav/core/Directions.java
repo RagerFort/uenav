@@ -188,7 +188,14 @@ public final class Directions {
                 if (i > legStart) {
                     legs.add(new Leg(EdgeType.WALK, legStart, i, legMeters));
                 }
-                legs.add(new Leg(e.edgeType(), i, i + 1, e.distanceM()));
+                Leg prev = legs.isEmpty() ? null : legs.get(legs.size() - 1);
+                if (prev != null && prev.type() == e.edgeType() && prev.to() == i) {
+                    // several flights in a row are one step: "Take the stairs to 4th floor, up 3 floors"
+                    legs.set(legs.size() - 1, new Leg(e.edgeType(), prev.from(), i + 1,
+                            prev.meters() + e.distanceM()));
+                } else {
+                    legs.add(new Leg(e.edgeType(), i, i + 1, e.distanceM()));
+                }
                 legStart = i + 1;
                 legMeters = 0;
                 lastHeading = null;

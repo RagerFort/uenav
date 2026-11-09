@@ -85,6 +85,20 @@ class SettingsTest {
     }
 
     @Test
+    void themeDefaultsToSameAsPhoneAndOldDarkModeFilesStillLoad() {
+        assertEquals(Settings.Theme.SYSTEM, new Settings(store).theme());
+        Settings s = new Settings(store);
+        s.setTheme(Settings.Theme.LIGHT);
+        assertEquals(Settings.Theme.LIGHT, new Settings(store).theme());
+        store.text = "{\"serverUrl\":\"\",\"darkMode\":true}";
+        assertEquals(Settings.Theme.DARK, new Settings(store).theme());
+        store.text = "{\"theme\":\"PURPLE\"}";
+        assertEquals(Settings.Theme.SYSTEM, new Settings(store).theme());
+        assertFalse(SystemTheme.dark(Settings.Theme.LIGHT));
+        assertTrue(SystemTheme.dark(Settings.Theme.DARK));
+    }
+
+    @Test
     void aChoiceThatCannotBeSavedStillApplies() {
         Settings s = new Settings(store);
         store.failSaves = true;
