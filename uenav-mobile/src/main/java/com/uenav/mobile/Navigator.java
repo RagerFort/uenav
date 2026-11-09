@@ -522,10 +522,14 @@ public final class Navigator {
         toast("You are here: " + node.name());
     }
 
+    /**
+     * Opens the camera scanner with the "type the code" screen behind it. A good scan moves on by itself; if the
+     * scanner cannot open, cannot read the sign, or is closed, the visitor is left on the code screen (for example
+     * when Google's scanner is not downloaded yet and the phone is offline).
+     */
     private void scanQr() {
-        if (!QrScanner.scan(this::handleCode)) {
-            showCodeEntry();
-        }
+        showCodeEntry();
+        QrScanner.scan(this::handleCode);
     }
 
     /** Handles the text of a scanned or typed QR code. @return an error message, or null if it worked */
@@ -546,8 +550,9 @@ public final class Navigator {
         return null;
     }
 
-    /** No camera (or on a PC): type the code printed under the QR. */
+    /** Type the code printed under the QR: behind the camera scanner, or instead of it when there is no camera. */
     private void showCodeEntry() {
+        boolean camera = QrScanner.available();
         Runnable back = afterStart != null || destination != null ? () -> showPlan(false, afterStart != null || destination == null)
                 : this::showExplore;
         VBox screen = page(Ui.header("UENav · VISITOR", "Scan QR sign", back, null));
@@ -565,16 +570,20 @@ public final class Navigator {
         };
         use.setOnAction(e -> submit.run());
         code.setOnAction(e -> submit.run());
+        String help = camera
+                ? "Camera did not open or could not read the sign? Type the short code printed under the QR, such as "
+                        + "UENAV:12. It works with no internet."
+                : "Every UENav sign has a short code printed under the QR, such as UENAV:12. It works with no "
+                        + "internet.";
         VBox card = Ui.card(Ui.bubble("qrscan", "blue", 52), Ui.label("Type the code under the QR", "nv-h2"),
-                Ui.wrap("Every UENav sign has a short code printed under the QR, such as UENAV:12. It works with no "
-                        + "internet.", "nv-muted"), box, error, use);
+                Ui.wrap(help, "nv-muted"), box, error, use);
         card.setSpacing(10);
         card.setPadding(new Insets(20, 18, 20, 18));
         VBox body = limitWidth(new VBox(14, card));
-        if (QrScanner.available()) {
-            Button camera = Ui.secondary("Open the camera instead");
-            camera.setOnAction(e -> QrScanner.scan(this::handleCode));
-            body.getChildren().add(camera);
+        if (camera) {
+            Button again = Ui.secondary("Scan with the camera again");
+            again.setOnAction(e -> QrScanner.scan(this::handleCode));
+            body.getChildren().add(again);
         } else {
             body.getChildren().add(Ui.infoLine("This device has no camera scanner, so the code is typed in."));
         }
