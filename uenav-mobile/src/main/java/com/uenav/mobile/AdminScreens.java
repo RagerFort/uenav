@@ -348,11 +348,48 @@ final class AdminScreens {
             }
             Map<Integer, Long> counts = new HashMap<>();
             d.top().forEach(t -> counts.put(t.nodeId(), t.count()));
-            placeRows.getChildren().clear();
             searchable.sort((x, y) -> Long.compare(counts.getOrDefault(y.id(), 0L), counts.getOrDefault(x.id(), 0L)));
-            for (MobileAdminApi.Place p : searchable) {
-                placeRows.getChildren().add(placeRow(p, counts.getOrDefault(p.id(), 0L)));
-            }
+            // Building a row for every place (160+, three icons each) made the dashboard slow to open on a phone:
+            // most searched first, a page at a time, with a search box.
+            TextField find = new TextField();
+            find.setPromptText("Search " + searchable.size() + " places");
+            find.setFocusTraversable(false);
+            VBox list = new VBox();
+            Button more = Ui.secondary("");
+            List<MobileAdminApi.Place> matches = new ArrayList<>();
+            int[] shown = {0};
+            Runnable addPage = () -> {
+                int end = Math.min(matches.size(), shown[0] + PLACE_PAGE);
+                for (int i = shown[0]; i < end; i++) {
+                    MobileAdminApi.Place p = matches.get(i);
+                    list.getChildren().add(placeRow(p, counts.getOrDefault(p.id(), 0L)));
+                }
+                shown[0] = end;
+                int left = matches.size() - end;
+                more.setText("Show " + Math.min(left, PLACE_PAGE) + " more (" + left + " left)");
+                more.setVisible(left > 0);
+                more.setManaged(left > 0);
+            };
+            Runnable refill = () -> {
+                String q = find.getText() == null ? "" : find.getText().trim().toLowerCase(java.util.Locale.ROOT);
+                matches.clear();
+                for (MobileAdminApi.Place p : searchable) {
+                    if (q.isEmpty() || p.name().toLowerCase(java.util.Locale.ROOT).contains(q)
+                            || p.nodeType().toLowerCase(java.util.Locale.ROOT).contains(q)) {
+                        matches.add(p);
+                    }
+                }
+                list.getChildren().clear();
+                shown[0] = 0;
+                addPage.run();
+                if (matches.isEmpty()) {
+                    list.getChildren().add(Ui.label("No places match.", "nv-muted"));
+                }
+            };
+            find.textProperty().addListener((o, x, y) -> refill.run());
+            more.setOnAction(ev -> addPage.run());
+            refill.run();
+            placeRows.getChildren().setAll(Ui.fieldBox("search", find), gap(6), list, more);
         }, e -> {
             if (e instanceof MobileAdminApi.Problem p && p.status() == 401) {
                 api = null;
@@ -367,6 +404,9 @@ final class AdminScreens {
         });
         return screen;
     }
+
+    /** Place rows built at a time on the dashboard. */
+    static final int PLACE_PAGE = 12;
 
     private static VBox stat(Label number, String caption) {
         VBox card = Ui.card(number, Ui.wrap(caption, "nv-muted"));

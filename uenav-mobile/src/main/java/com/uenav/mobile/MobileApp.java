@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Screen;
@@ -162,7 +163,17 @@ public class MobileApp extends Application {
         BorderPane root = new BorderPane(content);
         root.setBottom(navBar);
         root.getStyleClass().add("nv-surface");
-        root.setPadding(phoneInsets());
+        Insets insets = phoneInsets();
+        if (insets.getTop() > 0) {
+            // The phone draws its clock and battery icons in white on top of the app: give them a coloured strip
+            // (UENav red in Light mode), or they vanish on the white header.
+            Region statusBar = new Region();
+            statusBar.getStyleClass().add("nv-statusbar");
+            statusBar.setMinHeight(insets.getTop());
+            statusBar.setPrefHeight(insets.getTop());
+            root.setTop(statusBar);
+        }
+        root.setPadding(new Insets(0, 0, insets.getBottom(), 0));
         select(Tab.EXPLORE);
         return root;
     }
