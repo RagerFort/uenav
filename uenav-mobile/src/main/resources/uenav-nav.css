@@ -249,3 +249,7 @@
 .nv-graph-chip { -fx-background-color: rgba(17,20,27,0.85); -fx-background-radius: 999; -fx-padding: 6 12 6 12; }
 .nv-graph-chip .label { -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; }
 .nv-code { -fx-font-family: "Consolas", "Courier New", monospace; -fx-font-size: 18px; }
+/* loading screen (SplashScreen): the same in light and dark */
+.nv-splash { -fx-background-color: linear-gradient(to bottom right, #D2133A, #8E0B21); }
+.nv-splash-title { -fx-text-fill: white; -fx-font-size: 38px; -fx-font-weight: bold; }
+.nv-splash-spinner { -fx-progress-color: white; }

@@ -120,6 +120,31 @@ public final class ScreenTour {
 
         nav.openPlan(node(42));
         shot(p + "06-directions-en420");
+        var levelField = Navigator.class.getDeclaredField("directionsLevel");
+        levelField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        java.util.function.Consumer<Integer> showLevel = (java.util.function.Consumer<Integer>) levelField.get(nav);
+        showLevel.accept(2); // the 4F tab
+        save(scene(), p + "06b-en420-4f-tab");
+        if (!dark) {
+            // back history: Explore -> Classrooms -> directions, then back twice
+            var key = Navigator.class.getDeclaredField("screenKey");
+            key.setAccessible(true);
+            nav.openExplore();
+            call("showCategory", PlaceCategory.CLASSROOMS);
+            nav.openPlan(node(42));
+            String a = (String) key.get(nav);
+            boolean b1 = nav.goBack();
+            String b = (String) key.get(nav);
+            boolean b2 = nav.goBack();
+            String c = (String) key.get(nav);
+            boolean b3 = nav.goBack();
+            System.out.println("BACK CHECK: " + a + " -> " + b + " (" + b1 + ") -> " + c + " (" + b2 + ") -> at home "
+                    + !b3);
+            Scene splash = new Scene(new SplashScreen().view(), 390, 820);
+            splash.getStylesheets().add(Ui.css());
+            save(splash, "00-loading-screen");
+        }
 
         tapStep(3);
         shot(p + "07-step-tapped");

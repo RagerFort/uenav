@@ -159,11 +159,50 @@ public final class Navigator {
         return settings != null && settings.avoidStairs();
     }
 
-    private void setScreen(Parent screen, Tab t, Runnable again) {
+    /**
+     * Shows a screen. key names the kind of screen: moving to a different kind remembers the one before, so the
+     * back arrow and the phone's back button return to it (Explore starts the history again).
+     */
+    private void setScreen(Parent screen, Tab t, String key, Runnable again) {
+        if ("explore".equals(key)) {
+            history.clear();
+        } else if (!goingBack && !key.equals(screenKey) && !screenKey.isEmpty()) {
+            history.push(redraw);
+            while (history.size() > 20) {
+                history.removeLast();
+            }
+        }
+        screenKey = key;
         view.getChildren().setAll(screen);
         redraw = again;
         tab = t;
         onTab.accept(t);
+    }
+
+    /** Back history: how to show each earlier screen again, newest first. */
+    private final java.util.Deque<Runnable> history = new java.util.ArrayDeque<>();
+    private String screenKey = "";
+    private boolean goingBack;
+
+    /**
+     * Goes back one screen (the back arrows and the phone's back button).
+     * @return false on Explore or the Map tab's first screen, where there is nothing to go back to
+     */
+    public boolean goBack() {
+        if (history.isEmpty()) {
+            if (!"explore".equals(screenKey) && !"map".equals(screenKey)) {
+                showExplore();
+                return true;
+            }
+            return false;
+        }
+        goingBack = true;
+        try {
+            history.pop().run();
+        } finally {
+            goingBack = false;
+        }
+        return true;
     }
 
     private VBox page(Region header) {
@@ -239,7 +278,7 @@ public final class Navigator {
         VBox body = limitWidth(new VBox(14, searchBox, dynamic));
         body.setPadding(bodyPad());
         screen.getChildren().add(Ui.scroll(body));
-        setScreen(screen, Tab.EXPLORE, this::showExplore);
+        setScreen(screen, Tab.EXPLORE, "explore", this::showExplore);
     }
 
     private List<javafx.scene.Node> homeSections() {
@@ -470,7 +509,7 @@ public final class Navigator {
     static final int CATEGORY_PAGE = 15;
 
     private void showCategory(PlaceCategory cat) {
-        VBox screen = page(Ui.header("UENav · VISITOR", cat.label(), this::showExplore, null));
+        VBox screen = page(Ui.header("UENav · VISITOR", cat.label(), this::goBack, null));
         List<Node> places = new ArrayList<>(cat.places(data));
         Map<Integer, Double> dist = start == null ? Map.of()
                 : PathFinder.distancesFrom(data.graph(), start.id(), avoidStairs() ? RoutePreference.ELEVATOR
@@ -518,7 +557,7 @@ public final class Navigator {
         }
         body.setPadding(bodyPad());
         screen.getChildren().add(Ui.scroll(body));
-        setScreen(screen, Tab.EXPLORE, () -> showCategory(cat));
+        setScreen(screen, Tab.EXPLORE, "category:" + cat, () -> showCategory(cat));
     }
 
     // ---------------------------------------------------------------- starting point: list, map, QR
@@ -576,9 +615,7 @@ public final class Navigator {
     /** Type the code printed under the QR: behind the camera scanner, or instead of it when there is no camera. */
     private void showCodeEntry() {
         boolean camera = QrScanner.available();
-        Runnable back = afterStart != null || destination != null ? () -> showPlan(false, afterStart != null || destination == null)
-                : this::showExplore;
-        VBox screen = page(Ui.header("UENav · VISITOR", "Scan QR sign", back, null));
+        VBox screen = page(Ui.header("UENav · VISITOR", "Scan QR sign", this::goBack, null));
         TextField code = new TextField();
         code.setPromptText("UENAV:12");
         code.getStyleClass().add("nv-code");
@@ -612,12 +649,12 @@ public final class Navigator {
         }
         body.setPadding(bodyPad());
         screen.getChildren().add(Ui.scroll(body));
-        setScreen(screen, Tab.EXPLORE, this::showCodeEntry);
+        setScreen(screen, Tab.EXPLORE, "code", this::showCodeEntry);
     }
 
     /** Tap the map where you are (any point, including hallway corners and stairs). */
     private void showPickOnMap(boolean startOnly) {
-        VBox screen = page(Ui.header("UENav · VISITOR", "Tap where you are", () -> showPlan(false, startOnly),
+        VBox screen = page(Ui.header("UENav · VISITOR", "Tap where you are", this::goBack,
                 null));
         MapView map = new MapView();
         map.setDark(dark);
@@ -636,7 +673,7 @@ public final class Navigator {
         StackPane.setMargin(hint, new Insets(0, 14, 14, 14));
         stack.getChildren().add(hint);
         screen.getChildren().add(stack);
-        setScreen(screen, Tab.MAP, () -> showPickOnMap(startOnly));
+        setScreen(screen, Tab.MAP, "pick", () -> showPickOnMap(startOnly));
     }
 
     // ---------------------------------------------------------------- Plan a route
@@ -674,7 +711,7 @@ public final class Navigator {
     private void showPlanScreen(boolean startOnly, boolean animate) {
         boolean noDest = startOnly || destination == null;
         VBox screen = page(Ui.header("UENav · VISITOR", noDest ? "Where are you?" : "Plan a route",
-                this::showExplore, null));
+                this::goBack, null));
 
         List<Node> gates = new ArrayList<>();
         for (Node n : data.places()) {
@@ -806,7 +843,7 @@ public final class Navigator {
         } else {
             mapPanel.setPrefHeight(target);
         }
-        setScreen(screen, noDest ? Tab.EXPLORE : Tab.MAP, () -> showPlanScreen(startOnly, false));
+        setScreen(screen, noDest ? Tab.EXPLORE : Tab.MAP, "plan", () -> showPlanScreen(startOnly, false));
     }
 
     /** A place picked on the map or in the list as the starting point. */
@@ -998,7 +1035,7 @@ public final class Navigator {
         VBox sheet = sheet(summary, map, levels);
         Parent screen;
         if (wide) {
-            Region head = Ui.header("UENav · VISITOR", "Directions", () -> showPlan(false, false), null);
+            Region head = Ui.header("UENav · VISITOR", "Directions", this::goBack, null);
             mapStack.getStyleClass().add("nv-card");
             clip(mapStack, 16);
             HBox.setHgrow(mapStack, Priority.ALWAYS);
@@ -1032,7 +1069,7 @@ public final class Navigator {
             sheetBox.setMinHeight(0);
             screen = v;
         }
-        setScreen(screen, Tab.MAP, this::showDirections);
+        setScreen(screen, Tab.MAP, "directions", this::showDirections);
     }
 
     /** Keeps a scroll area at the top when it first appears (it would otherwise jump to a focused button). */
@@ -1081,7 +1118,9 @@ public final class Navigator {
             destination = s;
             findDirections(true);
         });
-        HBox card = new HBox(10, rows, swap);
+        Button back = Ui.round("back", "Back");
+        back.setOnAction(e -> goBack());
+        HBox card = new HBox(10, back, rows, swap);
         card.setAlignment(Pos.CENTER_LEFT);
         card.getStyleClass().add("nv-floating");
         card.setPadding(new Insets(12, 12, 12, 16));
@@ -1442,7 +1481,7 @@ public final class Navigator {
     // ---------------------------------------------------------------- Route unavailable
 
     private void showUnavailable() {
-        VBox screen = page(Ui.header("UENav · VISITOR", "Directions", () -> showPlan(false, false), null));
+        VBox screen = page(Ui.header("UENav · VISITOR", "Directions", this::goBack, null));
         StackPane icon = Ui.bubble("warning", "orange", 56);
         boolean stepFree = pref == RoutePreference.ELEVATOR;
         VBox message = Ui.card(icon, Ui.label(stepFree ? "No step-free route" : "Route unavailable", "nv-h2"),
@@ -1470,7 +1509,7 @@ public final class Navigator {
         footer.getChildren().addAll(change, browse);
         footer.setPadding(wide ? new Insets(0, 28, 24, 28) : new Insets(8, 18, 14, 18));
         screen.getChildren().addAll(Ui.scroll(body), footer);
-        setScreen(screen, Tab.MAP, this::showUnavailable);
+        setScreen(screen, Tab.MAP, "unavailable", this::showUnavailable);
     }
 
     private static Label centred(String text) {
@@ -1510,7 +1549,7 @@ public final class Navigator {
             VBox.setMargin(stack, new Insets(12, 28, 24, 28));
         }
         screen.getChildren().add(stack);
-        setScreen(screen, Tab.MAP, this::showMapHome);
+        setScreen(screen, Tab.MAP, "map", this::showMapHome);
     }
 
     /** A map with floor tabs for every level and the zoom / graph buttons (Map tab and "Tap where you are"). */
