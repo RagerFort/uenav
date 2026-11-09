@@ -76,6 +76,12 @@ public final class ScreenTour {
             pause(400);
             shot(p + "04-qr-codes");
 
+            fx(() -> click("Dashboard"));
+            pause(1200);
+            fx(() -> scene = new Scene(swapRoot(), 1366, 689)); // a maximized window on a 1366x768 laptop
+            fx(() -> Theme.apply(scene));
+            shot(p + "02b-dashboard-1366x689");
+
             fx(() -> click("Places"));
             pause(1200);
             shot(p + "05-places");
@@ -94,6 +100,13 @@ public final class ScreenTour {
             }
         }
         throw new IllegalStateException("No menu item " + text);
+    }
+
+    /** Takes the current page out of its window so it can be shown in a window of another size. */
+    private static Parent swapRoot() {
+        Parent root = scene.getRoot();
+        scene.setRoot(new javafx.scene.layout.Pane());
+        return root;
     }
 
     private static void show(Parent root) {
