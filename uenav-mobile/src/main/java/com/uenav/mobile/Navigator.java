@@ -635,77 +635,153 @@ public final class Navigator {
         }
     }
 
-    /** @param startOnly true when only the starting point is asked for (no destination yet) */
+    /** Text typed in the "Where are you?" search box, kept while the screen is redrawn. */
+    private String startQuery = "";
+
+    /**
+     * "Where are you?" / "Plan a route": the top half is the campus map, which slides open, with both gates as big
+     * labelled pins and every place tappable; the bottom half lists the gates, then other places with a search box.
+     * @param showAll   kept for older callers (the search box replaced "Start from another place")
+     * @param startOnly true when only the starting point is asked for (no destination yet)
+     */
     private void showPlan(boolean showAll, boolean startOnly) {
+        showPlanScreen(startOnly, true);
+    }
+
+    private void showPlanScreen(boolean startOnly, boolean animate) {
         boolean noDest = startOnly || destination == null;
-        Runnable back = this::showExplore;
-        VBox screen = page(Ui.header("UENav · VISITOR", noDest ? "Where are you?" : "Plan a route", back, null));
+        VBox screen = page(Ui.header("UENav · VISITOR", noDest ? "Where are you?" : "Plan a route",
+                this::showExplore, null));
 
         List<Node> gates = new ArrayList<>();
-        List<Node> others = new ArrayList<>();
         for (Node n : data.places()) {
-            if (!noDest && n.id() == destination.id()) {
-                continue;
+            if ("GATE".equals(n.nodeType()) && (noDest || n.id() != destination.id())) {
+                gates.add(n);
             }
-            ("GATE".equals(n.nodeType()) ? gates : others).add(n);
         }
-        others.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
-        boolean noGates = gates.isEmpty();
-        boolean startIsOther = start != null && !"GATE".equals(start.nodeType());
 
-        Button find = Ui.primary("Find directions");
-        find.setDisable(start == null);
-        find.setOnAction(e -> findDirections(true));
+        // top half: the map
+        MapView map = new MapView();
+        map.setDark(dark);
+        map.setData(data);
+        map.setPickAnyNode(true);
+        map.setHighlights(gates);
+        map.fitAround(gates);
+        map.setHere(start);
+        map.setPadding(48, 16);
+        map.setOnPlaceClicked(n -> pickStart(n, startOnly));
+        HBox hint = new HBox(8, Icons.icon("touch", 16, "nv-icon-blue"),
+                Ui.label(gates.isEmpty() ? "Tap your spot on the map" : "Tap a gate or your spot on the map",
+                        "nv-strong"));
+        hint.setAlignment(Pos.CENTER_LEFT);
+        hint.getStyleClass().add("nv-floating");
+        hint.setPadding(new Insets(8, 12, 8, 10));
+        hint.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        hint.setMouseTransparent(true);
+        StackPane.setAlignment(hint, Pos.TOP_LEFT);
+        StackPane.setMargin(hint, new Insets(10, 0, 0, 12));
+        VBox zoom = new VBox(zoomButton("plus", map::zoomIn), Ui.sep(), zoomButton("minus", map::zoomOut));
+        zoom.getStyleClass().add("nv-zoom");
+        zoom.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        StackPane.setAlignment(zoom, Pos.CENTER_RIGHT);
+        StackPane.setMargin(zoom, new Insets(0, 12, 0, 0));
+        StackPane mapPanel = new StackPane(map, hint, zoom);
+        mapPanel.getStyleClass().add("nv-map-bg");
+        mapPanel.minHeightProperty().bind(mapPanel.prefHeightProperty());
+        mapPanel.maxHeightProperty().bind(mapPanel.prefHeightProperty());
+        clip(mapPanel, 0);
 
+        // bottom half: gates, then other places
         Button scan = pill("qrscan", "Scan QR sign");
         scan.setOnAction(e -> scanQr());
-        Button onMap = pill("map", "Tap on map");
-        onMap.setOnAction(e -> showPickOnMap(noDest));
-        HBox ways = new HBox(8, scan, onMap);
-
-        VBox choices = new VBox(10);
-        List<Node> shown = new ArrayList<>(gates);
-        if (showAll || noGates || startIsOther) {
-            shown.addAll(others);
+        VBox gateRows = new VBox(10);
+        for (Node g : gates) {
+            gateRows.getChildren().add(choice(g, false, startOnly));
         }
-        for (Node n : shown) {
-            choices.getChildren().add(choice(n, showAll, noDest));
-        }
-
-        VBox section = new VBox(2,
-                Ui.label(noGates ? "Choose your starting point" : "Or choose your starting gate", "nv-h3"),
-                Ui.wrap(noGates ? "Select where you are starting from." : "Select the gate you're starting from.",
+        TextField search = new TextField(startQuery);
+        search.setPromptText("Search another place (room, office, building)");
+        search.setFocusTraversable(false);
+        HBox searchBox = Ui.fieldBox("search", search);
+        VBox others = new VBox(8);
+        Runnable fillOthers = () -> {
+            startQuery = search.getText() == null ? "" : search.getText();
+            List<Node> found = PlaceSearch.search(data, startQuery);
+            found.removeIf(n -> "GATE".equals(n.nodeType()) || (!noDest && n.id() == destination.id()));
+            others.getChildren().clear();
+            int max = startQuery.isBlank() ? 12 : 40;
+            for (int i = 0; i < Math.min(max, found.size()); i++) {
+                others.getChildren().add(choice(found.get(i), false, startOnly));
+            }
+            if (found.size() > max) {
+                others.getChildren().add(Ui.infoLine((found.size() - max) + " more. Type a name to find yours."));
+            }
+            if (found.isEmpty()) {
+                others.getChildren().add(Ui.wrap("No places match “" + startQuery.trim() + "”.",
                         "nv-muted"));
-        VBox body = limitWidth(new VBox(14));
-        if (!noDest) {
-            body.getChildren().add(routeCard());
-        }
-        body.getChildren().addAll(new VBox(8, Ui.label("Fastest: scan the sign near you", "nv-h3"), ways),
-                section, choices);
-        if (!noGates && !showAll && !startIsOther && !others.isEmpty()) {
-            Button more = new Button("Start from another place");
-            more.getStyleClass().add("nv-link");
-            more.setOnAction(e -> showPlan(true, startOnly));
-            body.getChildren().add(more);
-        }
-        HBox note = new HBox(10, Icons.icon("info", 16, "nv-icon-muted"),
-                new VBox(2, Ui.label("No live location needed", "nv-strong"),
-                        Ui.wrap("UENav signs at entrances, stairwells and hallway corners have a QR code that sets "
-                                + "your starting point instantly, even offline.", "nv-muted")));
-        note.getStyleClass().add("nv-note");
-        note.setPadding(new Insets(12, 14, 12, 14));
-        body.getChildren().add(note);
-        body.setPadding(bodyPad());
+            }
+        };
+        search.textProperty().addListener((o, a, b) -> fillOthers.run());
+        fillOthers.run();
 
-        screen.getChildren().add(Ui.scroll(body));
+        VBox list = new VBox(12);
         if (!noDest) {
-            VBox footer = limitWidth(new VBox(10,
-                    Ui.wrap("Check whether directions are available for this route.", "nv-muted"), find));
-            footer.setAlignment(Pos.CENTER);
-            footer.setPadding(wide ? new Insets(0, 28, 24, 28) : new Insets(8, 18, 14, 18));
+            list.getChildren().add(routeCard());
+        }
+        if (!gates.isEmpty()) {
+            list.getChildren().addAll(Ui.label(gates.size() == 2 ? "The two campus gates" : "Campus gates", "nv-h3"),
+                    gateRows);
+        }
+        list.getChildren().addAll(new HBox(8, Ui.label("Somewhere else?", "nv-h3"), Ui.grow(), scan), searchBox,
+                others, Ui.infoLine("UENav signs at entrances, stairwells and hallway corners have a QR code that "
+                        + "sets your starting point instantly, even offline."));
+        list.setPadding(new Insets(14, 18, 18, 18));
+        ScrollPane listScroll = Ui.scroll(list);
+        VBox sheet = new VBox(listScroll);
+        sheet.getStyleClass().add("nv-sheet");
+        VBox.setVgrow(sheet, Priority.ALWAYS);
+        VBox.setMargin(sheet, new Insets(-18, 0, 0, 0));
+        screen.getChildren().addAll(mapPanel, sheet);
+
+        if (!noDest) {
+            Button find = Ui.primary("Find directions");
+            find.setDisable(start == null);
+            find.setOnAction(e -> findDirections(true));
+            VBox footer = new VBox(find);
+            footer.getStyleClass().add("nv-surface");
+            footer.setPadding(new Insets(8, 18, 12, 18));
             screen.getChildren().add(footer);
         }
-        setScreen(screen, noDest ? Tab.EXPLORE : Tab.MAP, () -> showPlan(showAll, startOnly));
+
+        double target = Math.max(260, (view.getHeight() > 0 ? view.getHeight() : 760) * 0.46);
+        if (animate) {
+            // the map slides open to half the screen, so it is clear the starting point can be picked on it
+            mapPanel.setPrefHeight(0);
+            mapPanel.setOpacity(0);
+            javafx.animation.Timeline open = new javafx.animation.Timeline(
+                    new javafx.animation.KeyFrame(Duration.millis(420),
+                            new javafx.animation.KeyValue(mapPanel.prefHeightProperty(), target,
+                                    javafx.animation.Interpolator.EASE_OUT),
+                            new javafx.animation.KeyValue(mapPanel.opacityProperty(), 1)));
+            open.play();
+        } else {
+            mapPanel.setPrefHeight(target);
+        }
+        setScreen(screen, noDest ? Tab.EXPLORE : Tab.MAP, () -> showPlanScreen(startOnly, false));
+    }
+
+    /** A place picked on the map or in the list as the starting point. */
+    private void pickStart(Node n, boolean startOnly) {
+        if (startOnly || destination == null) {
+            setStartAndContinue(n);
+            return;
+        }
+        if (destination.id() == n.id()) {
+            toast("That is your destination. Pick where you are now.");
+            return;
+        }
+        start = n;
+        routeChecked = false;
+        showPlanScreen(false, false);
     }
 
     private VBox routeCard() {
@@ -741,15 +817,7 @@ public final class Navigator {
         if (on) {
             row.getStyleClass().add("nv-choice-selected");
         }
-        row.setOnMouseClicked(e -> {
-            if (startOnly) {
-                setStartAndContinue(n);
-            } else {
-                start = n;
-                routeChecked = false;
-                showPlan(showAll, false);
-            }
-        });
+        row.setOnMouseClicked(e -> pickStart(n, startOnly));
         return row;
     }
 

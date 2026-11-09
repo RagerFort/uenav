@@ -4,6 +4,12 @@ Everything about the map is **data in MySQL**, edited in the PC admin app (UENav
 rebuilt when floors or rooms are added: phones download the new map by themselves (they check when the app opens
 and every 30 minutes). Only the 3D building shapes and the phone's built-in fallback copy live inside the APK.
 
+## The Engineering building
+Floors 1 to 4 of the College of Engineering building come from `sql/tools/engineering-building.ps1`, which writes
+`sql/04_engineering_building.sql` from the posted floor plans. To move rooms or add missing ones there, edit the
+lists at the top of the script, run it, then load the SQL file (`mysql -u root -p uenav < sql/04_engineering_building.sql`).
+It can be run again: it keeps the usage log and the ids it already uses. There is no elevator in this building.
+
 ## Order
 1. **Floors** page: add the missing floors of a building (for example Engineering 2F and 3F: floor number 2, name "2nd floor").
 2. **Places** page, for every floor:
