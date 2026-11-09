@@ -4,7 +4,7 @@ name: Windows
 # and uploads them as the artifact "UENav-Windows". jpackage can only make Windows apps on Windows.
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**' ]
   workflow_dispatch:
 
 jobs:
