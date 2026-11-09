@@ -329,9 +329,14 @@ public class MapView extends Region {
         double w = getWidth();
         double h = getHeight();
         if (canvas.getWidth() != w || canvas.getHeight() != h) {
-            // Keep the same zoom and middle point when the screen size changes (no automatic re-zoom).
+            // Until the user moves or zooms the map, fit it again to the new size: a map that slides open starts
+            // almost 0 high, and keeping that first zoom left the campus as a tiny speck. After the user has
+            // moved it, a size change keeps their zoom and middle point (no automatic re-zoom).
             canvas.setWidth(w);
             canvas.setHeight(h);
+            if (!userMoved) {
+                needsFit = true;
+            }
             draw();
         }
     }
