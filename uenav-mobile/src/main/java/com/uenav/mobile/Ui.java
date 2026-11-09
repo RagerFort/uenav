@@ -31,6 +31,15 @@ public final class Ui {
         return url == null ? null : url.toExternalForm();
     }
 
+    /**
+     * Address of the phone stylesheet (loaded last on Android and iOS), or null. It drops the soft shadows, which
+     * phones redraw on every scroll frame, and uses thin borders instead, so lists scroll smoothly.
+     */
+    public static String phoneCss() {
+        URL url = Ui.class.getResource("/uenav-nav-phone.css");
+        return url == null ? null : url.toExternalForm();
+    }
+
     /** An on/off switch drawn like a phone setting. */
     public static StackPane toggleSwitch(boolean on) {
         Region track = new Region();
