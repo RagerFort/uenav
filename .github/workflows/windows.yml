@@ -1,0 +1,33 @@
+name: Windows
+
+# Builds "UENav Admin" and "UENav Server" for Windows (each folder has an .exe, Java built in)
+# and uploads them as the artifact "UENav-Windows". jpackage can only make Windows apps on Windows.
+on:
+  push:
+    branches: [ main, 'claude/**' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Build, test and package
+        shell: bash
+        run: |
+          mvn -B verify
+          ./packaging/package-apps.sh
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: UENav-Windows
+          path: target/package/dist
