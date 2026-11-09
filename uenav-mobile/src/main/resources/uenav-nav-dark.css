@@ -51,3 +51,4 @@
 .list-cell:filled:hover, .list-cell:filled:selected { -fx-background-color: #3B1C24; }
 .combo-box-popup .list-view { -fx-background-color: #1A1E27; }
 .scroll-bar .thumb { -fx-background-color: #3A4152; }
+.nv-statusbar { -fx-background-color: -nv-surface; }

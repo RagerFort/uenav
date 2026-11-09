@@ -253,3 +253,6 @@
 .nv-splash { -fx-background-color: linear-gradient(to bottom right, #D2133A, #8E0B21); }
 .nv-splash-title { -fx-text-fill: white; -fx-font-size: 38px; -fx-font-weight: bold; }
 .nv-splash-spinner { -fx-progress-color: white; }
+
+/* strip behind the phone's white status bar icons (MobileApp) */
+.nv-statusbar { -fx-background-color: #C8102E; }
