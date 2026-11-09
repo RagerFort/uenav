@@ -189,6 +189,7 @@ public final class Navigator {
 
     /** A short message at the bottom of the screen for a few seconds. */
     private void toast(String text) {
+        view.getChildren().removeIf(n -> n.getStyleClass().contains("nv-toast")); // newest message only
         Label l = Ui.wrap(text);
         HBox box = new HBox(l);
         box.getStyleClass().add("nv-toast");
@@ -422,11 +423,17 @@ public final class Navigator {
     private List<javafx.scene.Node> searchResults(String query) {
         List<Node> matches = PlaceSearch.search(data, query);
         VBox rows = new VBox();
-        for (int i = 0; i < matches.size(); i++) {
+        int max = Math.min(matches.size(), 30); // a few letters can match ~100 places; best ones first
+        for (int i = 0; i < max; i++) {
             if (i > 0) {
                 rows.getChildren().add(Ui.sep());
             }
             rows.getChildren().add(destinationRow(matches.get(i), null));
+        }
+        if (matches.size() > max) {
+            Label moreText = Ui.wrap((matches.size() - max) + " more. Keep typing to narrow the list.", "nv-muted");
+            moreText.setPadding(new Insets(10, 0, 4, 0));
+            rows.getChildren().add(moreText);
         }
         if (matches.isEmpty()) {
             Label none = Ui.wrap("No places match “" + query.trim() + "”. Try a room code like EN 420, "
@@ -459,6 +466,9 @@ public final class Navigator {
 
     // ---------------------------------------------------------------- category list
 
+    /** Rows built at a time in a category list. */
+    static final int CATEGORY_PAGE = 15;
+
     private void showCategory(PlaceCategory cat) {
         VBox screen = page(Ui.header("UENav · VISITOR", cat.label(), this::showExplore, null));
         List<Node> places = new ArrayList<>(cat.places(data));
@@ -470,14 +480,27 @@ public final class Navigator {
             places.sort((a, b) -> Double.compare(dist.getOrDefault(a.id(), Double.MAX_VALUE),
                     dist.getOrDefault(b.id(), Double.MAX_VALUE)));
         }
+        // Building every row at once made long lists (about 100 classrooms) slow on a phone: show a page at a time.
         VBox rows = new VBox();
-        for (int i = 0; i < places.size(); i++) {
-            if (i > 0) {
-                rows.getChildren().add(Ui.sep());
+        Button more = Ui.secondary("");
+        int[] shown = {0};
+        Runnable addPage = () -> {
+            int end = Math.min(places.size(), shown[0] + CATEGORY_PAGE);
+            for (int i = shown[0]; i < end; i++) {
+                if (i > 0) {
+                    rows.getChildren().add(Ui.sep());
+                }
+                Node n = places.get(i);
+                rows.getChildren().add(destinationRow(n, dist.get(n.id())));
             }
-            Node n = places.get(i);
-            rows.getChildren().add(destinationRow(n, dist.get(n.id())));
-        }
+            shown[0] = end;
+            int left = places.size() - end;
+            more.setText("Show " + Math.min(left, CATEGORY_PAGE) + " more (" + left + " left)");
+            more.setVisible(left > 0);
+            more.setManaged(left > 0);
+        };
+        more.setOnAction(e -> addPage.run());
+        addPage.run();
         VBox body = limitWidth(new VBox(14));
         if (places.isEmpty()) {
             body.getChildren().add(Ui.card(Ui.bubble(cat.icon(), toneOf(cat), 48),
@@ -486,7 +509,7 @@ public final class Navigator {
         } else {
             String hint = start == null ? "A to Z. Set where you are to sort them by walking distance."
                     : "Nearest first, from " + start.name() + ".";
-            body.getChildren().addAll(Ui.infoLine(hint), Ui.card(rows));
+            body.getChildren().addAll(Ui.infoLine(hint), Ui.card(rows), more);
             if (start == null) {
                 Button set = Ui.secondary("Set where I am");
                 set.setOnAction(e -> chooseStartThen(() -> showCategory(cat)));
@@ -662,6 +685,8 @@ public final class Navigator {
 
         // top half: the map
         MapView map = new MapView();
+        planMap = map;
+        planRows.clear();
         map.setDark(dark);
         map.setData(data);
         map.setPickAnyNode(true);
@@ -685,7 +710,17 @@ public final class Navigator {
         zoom.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         StackPane.setAlignment(zoom, Pos.CENTER_RIGHT);
         StackPane.setMargin(zoom, new Insets(0, 12, 0, 0));
-        StackPane mapPanel = new StackPane(map, hint, zoom);
+        // after picking a room inside a building the map shows that floor; this goes back to the campus
+        Button campus = pill("map", "Campus map");
+        campus.setVisible(false);
+        campus.setOnAction(e -> {
+            map.setLevel(null);
+            campus.setVisible(false);
+        });
+        planCampus = campus;
+        StackPane.setAlignment(campus, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(campus, new Insets(0, 0, 26, 12));
+        StackPane mapPanel = new StackPane(map, hint, zoom, campus);
         mapPanel.getStyleClass().add("nv-map-bg");
         mapPanel.minHeightProperty().bind(mapPanel.prefHeightProperty());
         mapPanel.maxHeightProperty().bind(mapPanel.prefHeightProperty());
@@ -707,6 +742,7 @@ public final class Navigator {
             startQuery = search.getText() == null ? "" : search.getText();
             List<Node> found = PlaceSearch.search(data, startQuery);
             found.removeIf(n -> "GATE".equals(n.nodeType()) || (!noDest && n.id() == destination.id()));
+            planRows.removeIf(r -> others.getChildren().contains(r));
             others.getChildren().clear();
             int max = startQuery.isBlank() ? 12 : 40;
             for (int i = 0; i < Math.min(max, found.size()); i++) {
@@ -724,8 +760,10 @@ public final class Navigator {
         fillOthers.run();
 
         VBox list = new VBox(12);
+        planRouteHolder = new VBox();
         if (!noDest) {
-            list.getChildren().add(routeCard());
+            planRouteHolder.getChildren().add(routeCard());
+            list.getChildren().add(planRouteHolder);
         }
         if (!gates.isEmpty()) {
             list.getChildren().addAll(Ui.label(gates.size() == 2 ? "The two campus gates" : "Campus gates", "nv-h3"),
@@ -742,8 +780,10 @@ public final class Navigator {
         VBox.setMargin(sheet, new Insets(-18, 0, 0, 0));
         screen.getChildren().addAll(mapPanel, sheet);
 
+        planFind = null;
         if (!noDest) {
             Button find = Ui.primary("Find directions");
+            planFind = find;
             find.setDisable(start == null);
             find.setOnAction(e -> findDirections(true));
             VBox footer = new VBox(find);
@@ -781,8 +821,47 @@ public final class Navigator {
         }
         start = n;
         routeChecked = false;
-        showPlanScreen(false, false);
+        // update this screen in place: the map keeps its zoom and moves to show the pick
+        if (planMap != null) {
+            Integer floor = n.floorId();
+            if (!java.util.Objects.equals(planMap.level(), floor)) {
+                planMap.setLevel(floor);
+            }
+            planMap.setHere(n);
+            if (planCampus != null) {
+                planCampus.setVisible(floor != null);
+            }
+            planMap.focusOn(n);
+        }
+        for (HBox row : planRows) {
+            boolean on = row.getProperties().get("node") instanceof Node rn && rn.id() == n.id();
+            Object radio = row.getProperties().get("radio");
+            row.getStyleClass().remove("nv-choice-selected");
+            if (radio instanceof Region r) {
+                r.getStyleClass().remove("nv-radio-on");
+                if (on) {
+                    r.getStyleClass().add("nv-radio-on");
+                }
+            }
+            if (on) {
+                row.getStyleClass().add("nv-choice-selected");
+            }
+        }
+        if (planRouteHolder != null) {
+            planRouteHolder.getChildren().setAll(routeCard());
+        }
+        if (planFind != null) {
+            planFind.setDisable(false);
+        }
+        toast("Starting point: " + n.name());
     }
+
+    /** The "Plan a route" screen's map, list rows, route card and button, updated in place when a start is picked. */
+    private MapView planMap;
+    private final List<HBox> planRows = new ArrayList<>();
+    private VBox planRouteHolder;
+    private Button planCampus;
+    private Button planFind;
 
     private VBox routeCard() {
         PlaceStyle ds = PlaceStyle.of(destination.nodeType());
@@ -818,6 +897,9 @@ public final class Navigator {
             row.getStyleClass().add("nv-choice-selected");
         }
         row.setOnMouseClicked(e -> pickStart(n, startOnly));
+        row.getProperties().put("node", n);
+        row.getProperties().put("radio", radio);
+        planRows.add(row);
         return row;
     }
 
