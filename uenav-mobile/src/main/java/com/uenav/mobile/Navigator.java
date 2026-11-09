@@ -226,6 +226,11 @@ public final class Navigator {
         return body;
     }
 
+    /** A short message at the bottom of the visitor screens (for the app around them). */
+    public void showMessage(String text) {
+        toast(text);
+    }
+
     /** A short message at the bottom of the screen for a few seconds. */
     private void toast(String text) {
         view.getChildren().removeIf(n -> n.getStyleClass().contains("nv-toast")); // newest message only
@@ -500,6 +505,8 @@ public final class Navigator {
         row.setPadding(new Insets(10, 0, 10, 0));
         row.getStyleClass().add("nv-row");
         row.setOnMouseClicked(e -> openPlan(n));
+        // drawn once and then only moved while the list scrolls (rows were the slow part on a phone)
+        row.setCache(true);
         return row;
     }
 
@@ -934,6 +941,7 @@ public final class Navigator {
             row.getStyleClass().add("nv-choice-selected");
         }
         row.setOnMouseClicked(e -> pickStart(n, startOnly));
+        row.setCache(true);
         row.getProperties().put("node", n);
         row.getProperties().put("radio", radio);
         planRows.add(row);
