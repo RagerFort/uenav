@@ -39,10 +39,7 @@ public class UenavApp extends Application {
     private void setRoot(Parent root) {
         if (stage.getScene() == null) {
             Scene scene = new Scene(root, 1180, 760);
-            String css = Theme.css();
-            if (css != null) {
-                scene.getStylesheets().add(css);
-            }
+            Theme.apply(scene);
             stage.setScene(scene);
         } else {
             stage.getScene().setRoot(root);

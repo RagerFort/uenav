@@ -21,6 +21,12 @@
       <artifactId>javafx-controls</artifactId>
       <version>${javafx.version}</version>
     </dependency>
+    <!-- Makes the "You are here" QR code signs (QR codes page). Apache 2.0 licence. -->
+    <dependency>
+      <groupId>com.google.zxing</groupId>
+      <artifactId>core</artifactId>
+      <version>3.5.3</version>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

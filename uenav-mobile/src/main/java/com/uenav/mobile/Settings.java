@@ -17,6 +17,8 @@ public final class Settings {
     private final TextStore store;
     private final String builtIn;
     private String serverUrl = "";
+    private boolean darkMode;
+    private boolean avoidStairs;
 
     public Settings(TextStore store) {
         this(store, "");
@@ -72,9 +74,44 @@ public final class Settings {
             throw new IllegalArgumentException("Enter an address like http://192.168.1.10:8080");
         }
         serverUrl = t;
+        save();
+    }
+
+    /** Dark look for the whole app (also the map). */
+    public synchronized boolean darkMode() {
+        return darkMode;
+    }
+
+    public synchronized void setDarkMode(boolean on) {
+        darkMode = on;
+        saveQuietly();
+    }
+
+    /** Accessibility: routes avoid stairs and use only accessible walkways, elevators and ramps. */
+    public synchronized boolean avoidStairs() {
+        return avoidStairs;
+    }
+
+    public synchronized void setAvoidStairs(boolean on) {
+        avoidStairs = on;
+        saveQuietly();
+    }
+
+    private void save() {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("serverUrl", serverUrl);
+        root.put("darkMode", darkMode);
+        root.put("avoidStairs", avoidStairs);
         store.save(MiniJson.write(root));
+    }
+
+    /** A look or route choice that cannot be saved still applies until the app closes. */
+    private void saveQuietly() {
+        try {
+            save();
+        } catch (RuntimeException diskProblem) {
+            // keep the choice for this session only
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -86,10 +123,13 @@ public final class Settings {
         try {
             Object root = MiniJson.parse(text);
             if (root instanceof Map) {
-                Object v = ((Map<String, Object>) root).get("serverUrl");
+                Map<String, Object> m = (Map<String, Object>) root;
+                Object v = m.get("serverUrl");
                 if (v instanceof String s && (s.isEmpty() || URL.matcher(s).matches())) {
                     serverUrl = s;
                 }
+                darkMode = Boolean.TRUE.equals(m.get("darkMode"));
+                avoidStairs = Boolean.TRUE.equals(m.get("avoidStairs"));
             }
         } catch (IllegalArgumentException damagedFile) {
             serverUrl = "";

@@ -3,7 +3,9 @@
 -- pixels of the campus map with its legend cut off (X to the right, Y downwards).
 -- Distances are ESTIMATES: picture length x 0.269 m per pixel (campus area 4.86 ha / outline area).
 -- Measure the real walkways and correct distance_m in the admin app (Walkways page).
--- The College of Engineering indoor rooms (1F, 4F, EN 420) are still SAMPLE rows.
+-- The College of Engineering indoor rooms (1F, 4F, EN 420, the two EN restrooms) are still SAMPLE rows.
+-- Office descriptions and hours at the end are SAMPLE text too. Needs the description/open_hours columns
+-- (01_schema.sql from 2026-11-09, or run 03_place_details.sql on an older database first).
 -- Run:  mysql -u root -p uenav < sql/02_seed_sample.sql
 -- WARNING: this first DELETES the usage log and all map rows (admin accounts are kept).
 
@@ -72,7 +74,9 @@ INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y) VALUES
   (39, 1, 2, 'EN stairs (4F)', 'STAIRS', 1360, 300),
   (40, 1, 2, 'EN elevator (4F)', 'ELEVATOR', 1365, 450),
   (41, 1, 2, 'EN 4F hallway', 'JUNCTION', 1360, 380),
-  (42, 1, 2, 'EN 420 (4F)', 'ROOM', 1360, 200);
+  (42, 1, 2, 'EN 420 (4F)', 'ROOM', 1360, 200),
+  (43, 1, 1, 'EN restroom (1F)', 'RESTROOM', 1330, 440),
+  (44, 1, 2, 'EN restroom (4F)', 'RESTROOM', 1330, 440);
 
 INSERT INTO edge (edge_id, from_node_id, to_node_id, distance_m, edge_type, is_accessible) VALUES
   (1, 1, 3, 13.7, 'WALK', TRUE),
@@ -120,4 +124,17 @@ INSERT INTO edge (edge_id, from_node_id, to_node_id, distance_m, edge_type, is_a
   (43, 40, 41, 18.9, 'WALK', TRUE),
   (44, 41, 42, 48.4, 'WALK', TRUE),
   (45, 37, 39, 25.0, 'STAIRS', FALSE),
-  (46, 38, 40, 30.0, 'ELEVATOR', TRUE);
+  (46, 38, 40, 30.0, 'ELEVATOR', TRUE),
+  (47, 36, 43, 17.0, 'WALK', TRUE),
+  (48, 41, 44, 18.0, 'WALK', TRUE);
+
+-- Office info card (D14). SAMPLE text: confirm with each office and correct it in the admin app.
+UPDATE node SET description = 'Enrollment records, transcripts of records (TOR), certifications and diplomas.'
+  WHERE node_id = 22;
+UPDATE node SET description = 'Tuition and fee payments, official receipts.' WHERE node_id = 20;
+UPDATE node SET description = 'Applications for new students, admission requirements and entrance test schedules.'
+  WHERE node_id = 19;
+UPDATE node SET description = 'Student account balances, assessments and payment arrangements.' WHERE node_id = 23;
+UPDATE node SET description = 'Campus safety, lost and found, visitor and gate passes.' WHERE node_id = 24;
+UPDATE node SET open_hours = 'Mon-Sat 8:00 AM - 5:00 PM (sample, please confirm)' WHERE node_id IN (19, 20, 22, 23);
+UPDATE node SET open_hours = 'Open 24 hours (sample, please confirm)' WHERE node_id = 24;

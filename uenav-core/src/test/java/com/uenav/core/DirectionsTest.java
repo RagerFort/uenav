@@ -79,6 +79,37 @@ class DirectionsTest {
     }
 
     @Test
+    void stepsKnowWhereTheyHappen() {
+        List<Directions.Step> steps = Directions.steps(route(1, 7), DATA);
+        assertEquals(1, steps.get(0).at().id());
+        Directions.Step stairs = steps.stream()
+                .filter(st -> st.kind() == Directions.StepKind.STAIRS).findFirst().orElseThrow();
+        assertEquals(5, stairs.at().id()); // the stairs on the floor where the climb starts
+        assertEquals(7, steps.get(steps.size() - 1).at().id());
+    }
+
+    @Test
+    void turnsNameALandmark() {
+        String json = """
+            {"version":"l","nodes":[
+              {"id":1,"buildingId":null,"floorId":null,"name":"Gate","nodeType":"GATE","x":0,"y":0},
+              {"id":2,"buildingId":null,"floorId":null,"name":"Gazebo","nodeType":"FACILITY","x":50,"y":0},
+              {"id":3,"buildingId":null,"floorId":null,"name":"j","nodeType":"JUNCTION","x":100,"y":0},
+              {"id":4,"buildingId":null,"floorId":null,"name":"Clinic","nodeType":"FACILITY","x":100,"y":100},
+              {"id":5,"buildingId":null,"floorId":null,"name":"Library","nodeType":"FACILITY","x":0,"y":100}],
+             "edges":[
+              {"id":1,"fromNodeId":1,"toNodeId":2,"distanceM":50,"edgeType":"WALK","accessible":true},
+              {"id":2,"fromNodeId":2,"toNodeId":3,"distanceM":50,"edgeType":"WALK","accessible":true},
+              {"id":3,"fromNodeId":3,"toNodeId":4,"distanceM":100,"edgeType":"WALK","accessible":true},
+              {"id":4,"fromNodeId":4,"toNodeId":5,"distanceM":100,"edgeType":"WALK","accessible":true}]}
+            """;
+        CampusData d = SnapshotReader.read(json);
+        Route r = PathFinder.findRoute(d.graph(), 1, 5, RoutePreference.ANY).orElseThrow();
+        assertEquals(List.of("Start walking", "Turn right after Gazebo", "Turn right at Clinic", "Arrive at Library"),
+                Directions.steps(r, d).stream().map(Directions.Step::title).toList());
+    }
+
+    @Test
     void minutesAreAtLeastOne() {
         assertEquals(1, Directions.minutes(5));
         assertEquals(4, Directions.minutes(310));

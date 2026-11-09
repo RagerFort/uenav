@@ -22,13 +22,22 @@ import javafx.scene.text.TextAlignment;
  */
 final class CampusArt {
 
-    /** Map units to screen: MapView's transform. */
+    /** Map units to screen: MapView's transform, and whether the map is drawn in dark colours. */
     interface View {
         double x(double mapX);
 
         double y(double mapY);
 
         double scale();
+
+        default boolean dark() {
+            return false;
+        }
+    }
+
+    /** A shape colour for the current look: in dark mode the same hue, darker and a little less bright. */
+    static Color tint(Color c, View v, double brightness) {
+        return v.dark() ? c.deriveColor(0, 0.8, brightness, 1) : c;
     }
 
     record Shape(String kind, String label, Color color, double height, Integer buildingId, double[] xs, double[] ys) {
@@ -153,8 +162,9 @@ final class CampusArt {
     /** One floor of a building: its outline as a thin 3D slab, in a light version of the building colour. */
     void drawFloor(GraphicsContext g, View v, int buildingId) {
         for (Shape sh : footprint(buildingId)) {
-            Color light = sh.color().interpolate(Color.WHITE, 0.78);
-            block(g, v, new Shape("building", null, light, 7, buildingId, sh.xs(), sh.ys()));
+            Color slab = v.dark() ? sh.color().interpolate(Color.web("#1A1E27"), 0.78)
+                    : sh.color().interpolate(Color.WHITE, 0.78);
+            block(g, v, new Shape("building", null, slab, 7, buildingId, sh.xs(), sh.ys()), false);
         }
     }
 
@@ -163,7 +173,7 @@ final class CampusArt {
         double h = size / 2;
         block(g, v, new Shape("building", null, color, height, null,
                 new double[] {mapX - h, mapX + h, mapX + h, mapX - h},
-                new double[] {mapY - h, mapY - h, mapY + h, mapY + h}));
+                new double[] {mapY - h, mapY - h, mapY + h, mapY + h}), false);
     }
 
     /** Roads, campus ground, field and other flat areas. */
@@ -175,7 +185,7 @@ final class CampusArt {
                 px[i] = v.x(s.xs()[i]);
                 py[i] = v.y(s.ys()[i]);
             }
-            g.setFill(s.color());
+            g.setFill(tint(s.color(), v, 0.38));
             g.fillPolygon(px, py, px.length);
             if ("ground".equals(s.kind())) {
                 g.setStroke(Color.web("#C8102E", 0.75));
@@ -189,9 +199,10 @@ final class CampusArt {
                 g.strokePolygon(px, py, px.length);
             }
             if ("road".equals(s.kind()) && s.label() != null) {
-                roadLabel(g, s, px, py, v.scale());
+                roadLabel(g, s, px, py, v);
             } else if ("area".equals(s.kind()) && s.label() != null && v.scale() > 0.35) {
-                text(g, s.label().toUpperCase(), v.x(s.cx()), v.y(s.cy()), Color.web("#FFFFFF", 0.9), null,
+                text(g, s.label().toUpperCase(), v.x(s.cx()), v.y(s.cy()),
+                        Color.web("#FFFFFF", v.dark() ? 0.55 : 0.9), null,
                         Math.max(10, Math.min(22, 26 * v.scale())), true);
             }
         }
@@ -203,20 +214,25 @@ final class CampusArt {
             if ("tree".equals(s.kind())) {
                 tree(g, v, s);
             } else {
-                block(g, v, s);
+                block(g, v, s, true);
             }
         }
         // names last, so no roof covers them
+        Color ink = v.dark() ? Color.web("#E7E9EF") : Color.web("#1F2330");
+        Color halo = v.dark() ? Color.web("#0E1117", 0.8) : Color.web("#FFFFFF", 0.85);
         for (Shape s : raised) {
             if ("building".equals(s.kind()) && s.label() != null && v.scale() > 0.3) {
                 double lift = s.height() * v.scale();
-                text(g, s.label(), v.x(s.cx()), v.y(s.cy()) - lift, Color.web("#1F2330"), Color.web("#FFFFFF", 0.85),
-                        11, true);
+                text(g, s.label(), v.x(s.cx()), v.y(s.cy()) - lift, ink, halo, 11, true);
             }
         }
     }
 
-    private static void block(GraphicsContext g, View v, Shape s) {
+    /** @param themed true for campus blocks (darkened in dark mode); false for colours already chosen for the look */
+    private static void block(GraphicsContext g, View v, Shape s, boolean themed) {
+        if (themed && v.dark()) {
+            s = new Shape(s.kind(), s.label(), tint(s.color(), v, 0.62), s.height(), s.buildingId(), s.xs(), s.ys());
+        }
         int n = s.xs().length;
         double lift = s.height() * v.scale();
         double[] bx = new double[n];
@@ -284,18 +300,19 @@ final class CampusArt {
         double trunk = s.height() * sc;
         g.setFill(Color.web("#000000", 0.12));
         g.fillOval(x - r * 0.9 + 2, y - r * 0.35, r * 1.8, r * 0.7);
-        g.setStroke(Color.web("#6B4F2A"));
+        g.setStroke(tint(Color.web("#6B4F2A"), v, 0.7));
         g.setLineWidth(Math.max(1.5, 2.5 * sc));
         g.setLineCap(StrokeLineCap.ROUND);
         g.strokeLine(x, y, x, y - trunk);
-        g.setFill(s.color());
+        Color leaves = tint(s.color(), v, 0.55);
+        g.setFill(leaves);
         g.fillOval(x - r, y - trunk - r * 1.6, r * 2, r * 2);
-        g.setFill(s.color().deriveColor(0, 1, 1.35, 1));
+        g.setFill(leaves.deriveColor(0, 1, 1.35, 1));
         g.fillOval(x - r * 0.55, y - trunk - r * 1.4, r * 0.9, r * 0.8);
     }
 
-    private static void roadLabel(GraphicsContext g, Shape s, double[] px, double[] py, double scale) {
-        if (scale < 0.3 || px.length < 4) {
+    private static void roadLabel(GraphicsContext g, Shape s, double[] px, double[] py, View v) {
+        if (v.scale() < 0.3 || px.length < 4) {
             return;
         }
         // middle of the band, turned along its long side
@@ -312,7 +329,7 @@ final class CampusArt {
         g.save();
         g.translate((ax + bx) / 2, (ay + by) / 2);
         g.rotate(angle);
-        text(g, s.label().toUpperCase(), 0, 0, Color.web("#6B7280"), null, 10, true);
+        text(g, s.label().toUpperCase(), 0, 0, v.dark() ? Color.web("#9CA4B4") : Color.web("#6B7280"), null, 10, true);
         g.restore();
     }
 
