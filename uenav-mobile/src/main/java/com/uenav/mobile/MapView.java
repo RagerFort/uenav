@@ -17,17 +17,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import javafx.animation.PauseTransition;
 import javafx.geometry.VPos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.shape.StrokeLineJoin;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
+import javafx.util.Duration;
 
 /**
  * Draws one level of the campus (the outdoor campus, or one building floor) with the route on top (D6).
@@ -38,6 +42,11 @@ import javafx.scene.text.TextAlignment;
  * Moving around works like Google Maps: drag to move, pinch (or mouse wheel) to zoom around the fingers or pointer,
  * double-tap to zoom in, and the + / - buttons. The view only changes when the user does one of these: touch drags
  * and the glide after a flick are not treated as zoom, and resizing the screen keeps the same zoom.
+ *
+ * Speed on a phone: drawing the whole map (every building, tree and name) for each finger move gave about 20
+ * frames a second on a Galaxy A35. So the map is drawn a little larger than what shows (MARGIN on every side), and
+ * while a finger drags or pinches, that finished picture is only slid and stretched, which costs almost nothing.
+ * It is drawn again properly when the finger pauses (SETTLE_MS) or the picture no longer covers the screen.
  */
 public class MapView extends Region {
 
@@ -50,8 +59,46 @@ public class MapView extends Region {
     private static boolean artLoaded;
     /** Zoom per pixel of mouse-wheel movement (one wheel notch is about 40). */
     private static final double WHEEL_ZOOM = 1.004;
+    /** Extra map drawn around the part that shows, so a drag can slide the finished picture (screen units). */
+    static final double MARGIN = 120;
+    /** The map is drawn again this long after the last finger move (ms). */
+    static final double SETTLE_MS = 90;
+    /** While pinching, a picture stretched more than this is drawn again at once (it would look too blurry). */
+    private static final double MAX_STRETCH = 2.2;
+    private static final Font LABEL_FONT = Font.font(null, FontWeight.NORMAL, 11);
+    private static final Font LABEL_BOLD_FONT = Font.font(null, FontWeight.BOLD, 11);
+    private static final Font TAG_FONT = Font.font(null, FontWeight.BOLD, 10);
+    private static final Font SMALL_FONT = Font.font(null, FontWeight.BOLD, 9.5);
+    private static final Color HALO_LIGHT = Color.web("#FFFFFF", 0.9);
+    private static final Color HALO_DARK = Color.web("#0E1117", 0.85);
+    private static final Color INK_DARK = Color.web("#E7E9EF");
+    private static final Color SHADOW = Color.web("#000000", 0.10);
+    private static final Color DOT_RING_DARK = Color.web("#1A1E27");
+    private static final Color DOT_DARK = Color.web("#9CA4B4");
+    private static final Color DOT_LIGHT = Color.web("#6B7280");
+    private static final Pattern BRACKETS = Pattern.compile("\\s*\\(.*\\)");
+    private static final Pattern LEADING_WORDS = Pattern.compile("^(College of|University)\\s+");
+    private static final Pattern TRAILING_WORDS = Pattern.compile("\\s+(Building|Office)$");
+    private static final Map<String, String> SHORT_NAMES = new HashMap<>();
 
     private final Canvas canvas = new Canvas();
+    private final Rectangle clip = new Rectangle();
+    private final PauseTransition settle = new PauseTransition(Duration.millis(SETTLE_MS));
+    /** Size of the part that shows (the canvas is MARGIN larger on every side). */
+    private double viewW;
+    private double viewH;
+    // the view the canvas picture was last drawn for (painted is false until the map has been drawn once)
+    private boolean painted;
+    private double paintedX;
+    private double paintedY;
+    private double paintedScale = 1;
+    private double paintedW;
+    private double paintedH;
+    private double paintedCentreY;
+    // what is on the level shown now; worked out once per map and level, not for every drawing
+    private Set<Integer> levelIds;
+    private List<Node> levelNodes;
+    private List<Edge> allEdges;
     private CampusData data;
     private Route route;
     private Integer level;
@@ -83,15 +130,23 @@ public class MapView extends Region {
 
     public MapView() {
         getStyleClass().add("nv-map-bg");
+        canvas.setManaged(false);
         getChildren().add(canvas);
+        setClip(clip);
         setMinSize(0, 0);
-        canvas.setOnMousePressed(e -> {
+        settle.setOnFinished(e -> {
+            if (movedSincePaint()) {
+                draw();
+            }
+        });
+        // Listeners are on this view, not on the canvas: the canvas slides under the finger during a drag.
+        setOnMousePressed(e -> {
             dragX = e.getX();
             dragY = e.getY();
             dragged = false;
             restartDrag = false;
         });
-        canvas.setOnMouseDragged(e -> {
+        setOnMouseDragged(e -> {
             if (pinching) {
                 return;
             }
@@ -107,9 +162,9 @@ public class MapView extends Region {
             dragX = e.getX();
             dragY = e.getY();
             dragged |= Math.abs(dx) + Math.abs(dy) > 1;
-            panBy(dx, dy);
+            panBy(dx, dy, true);
         });
-        canvas.setOnMouseClicked(e -> {
+        setOnMouseClicked(e -> {
             if (dragged || !e.isStillSincePress()) {
                 return;
             }
@@ -122,7 +177,7 @@ public class MapView extends Region {
                 }
             }
         });
-        canvas.setOnScroll(e -> {
+        setOnScroll(e -> {
             e.consume();
             // On a touch screen every finger drag also sends scroll events, and a flick keeps sending them after
             // the finger is lifted. Those are moves, not zoom (the drag handler already moves the map).
@@ -133,16 +188,16 @@ public class MapView extends Region {
                 zoomAt(Math.pow(WHEEL_ZOOM, e.getDeltaY()), e.getX(), e.getY());
             }
         });
-        canvas.setOnZoomStarted(e -> {
+        setOnZoomStarted(e -> {
             pinching = true;
             dragged = true;
         });
-        canvas.setOnZoom(e -> {
+        setOnZoom(e -> {
             if (e.getZoomFactor() > 0 && !Double.isNaN(e.getZoomFactor())) {
-                zoomAt(e.getZoomFactor(), e.getX(), e.getY());
+                zoomAt(e.getZoomFactor(), e.getX(), e.getY(), true);
             }
         });
-        canvas.setOnZoomFinished(e -> {
+        setOnZoomFinished(e -> {
             pinching = false;
             restartDrag = true;
         });
@@ -150,6 +205,8 @@ public class MapView extends Region {
 
     public void setData(CampusData data) {
         this.data = data;
+        levelIds = null;
+        allEdges = null;
         resetView();
     }
 
@@ -162,6 +219,7 @@ public class MapView extends Region {
     public void setLevel(Integer floorId) {
         this.level = floorId;
         this.focused = null;
+        levelIds = null;
         resetView();
     }
 
@@ -229,7 +287,7 @@ public class MapView extends Region {
     /** Moves the view to a node of the current level and zooms in, as when a direction step is tapped. */
     public void focusOn(Node node) {
         focused = node;
-        if (node == null || data == null || canvas.getWidth() < 10) {
+        if (node == null || data == null || viewW < 10) {
             draw();
             return;
         }
@@ -246,11 +304,11 @@ public class MapView extends Region {
     }
 
     public void zoomIn() {
-        zoomAt(1.5, canvas.getWidth() / 2, areaCentreY());
+        zoomAt(1.5, viewW / 2, areaCentreY());
     }
 
     public void zoomOut() {
-        zoomAt(1 / 1.5, canvas.getWidth() / 2, areaCentreY());
+        zoomAt(1 / 1.5, viewW / 2, areaCentreY());
     }
 
     /** Back to the starting view: the route on this level, or the whole level. */
@@ -266,6 +324,11 @@ public class MapView extends Region {
     }
 
     void panBy(double dx, double dy) {
+        panBy(dx, dy, false);
+    }
+
+    /** @param byFinger true during a drag: the finished picture slides, and is drawn again when the finger pauses */
+    private void panBy(double dx, double dy, boolean byFinger) {
         if (scale <= 0) {
             return;
         }
@@ -273,17 +336,26 @@ public class MapView extends Region {
         viewY -= dy / scale;
         userMoved = true;
         clampView();
-        draw();
+        if (byFinger) {
+            slide();
+        } else {
+            draw();
+        }
     }
 
     /** Zooms by a factor, keeping the map point under (fx, fy) in the same place on screen. */
     void zoomAt(double factor, double fx, double fy) {
-        if (data == null || canvas.getWidth() < 10) {
+        zoomAt(factor, fx, fy, false);
+    }
+
+    /** @param byFinger true during a pinch: the finished picture stretches, and is drawn again when it pauses */
+    private void zoomAt(double factor, double fx, double fy, boolean byFinger) {
+        if (data == null || viewW < 10) {
             return;
         }
         double[] limits = scaleLimits();
         double newScale = Math.max(limits[0], Math.min(limits[1], scale * factor));
-        double cx = canvas.getWidth() / 2;
+        double cx = viewW / 2;
         double cy = areaCentreY();
         double mapX = viewX + (fx - cx) / scale;
         double mapY = viewY + (fy - cy) / scale;
@@ -292,7 +364,46 @@ public class MapView extends Region {
         viewY = mapY - (fy - cy) / scale;
         userMoved = true;
         clampView();
-        draw();
+        if (byFinger) {
+            slide();
+        } else {
+            draw();
+        }
+    }
+
+    private boolean movedSincePaint() {
+        return viewX != paintedX || viewY != paintedY || scale != paintedScale || viewW != paintedW
+                || viewH != paintedH;
+    }
+
+    /**
+     * Shows the view as it is now (after a drag, a pinch, or a change of size) by moving and stretching the picture
+     * already drawn, without drawing the map again. Draws again at once only when that picture no longer covers
+     * the view or is stretched too far; otherwise shortly after the last change.
+     */
+    private void slide() {
+        if (!painted || viewW < 10 || viewH < 10) {
+            draw();
+            return;
+        }
+        double k = scale / paintedScale;
+        // the map point drawn at the middle of the canvas, and where that point belongs on this view now
+        double midX = paintedX;
+        double midY = paintedY + (paintedH / 2 - paintedCentreY) / paintedScale;
+        double cx = vx(midX);
+        double cy = vy(midY);
+        double halfW = k * (paintedW / 2 + MARGIN);
+        double halfH = k * (paintedH / 2 + MARGIN);
+        boolean covers = cx - halfW <= 0 && cx + halfW >= viewW && cy - halfH <= 0 && cy + halfH >= viewH;
+        if (!covers || k > MAX_STRETCH || k < 1 / MAX_STRETCH) {
+            draw();
+            return;
+        }
+        canvas.setScaleX(k);
+        canvas.setScaleY(k);
+        canvas.setTranslateX(cx - paintedW / 2);
+        canvas.setTranslateY(cy - paintedH / 2);
+        settle.playFromStart();
     }
 
     /** Levels a route passes through, in walking order: null for the campus, then floor ids. */
@@ -328,22 +439,65 @@ public class MapView extends Region {
     protected void layoutChildren() {
         double w = getWidth();
         double h = getHeight();
-        if (canvas.getWidth() != w || canvas.getHeight() != h) {
+        if (viewW != w || viewH != h) {
             // Until the user moves or zooms the map, fit it again to the new size: a map that slides open starts
             // almost 0 high, and keeping that first zoom left the campus as a tiny speck. After the user has
             // moved it, a size change keeps their zoom and middle point (no automatic re-zoom).
-            canvas.setWidth(w);
-            canvas.setHeight(h);
+            viewW = w;
+            viewH = h;
+            clip.setWidth(w);
+            clip.setHeight(h);
             if (!userMoved) {
                 needsFit = true;
             }
-            draw();
+            if (painted && data != null && w >= 10 && h >= 10) {
+                // a panel sliding open, or the directions sheet being dragged: stretch the picture for now
+                if (needsFit) {
+                    fit();
+                }
+                slide();
+            } else {
+                draw();
+            }
         }
+    }
+
+    // The canvas is larger than this view and not part of its layout: report the size this view was given, as
+    // before, when the canvas was exactly that size.
+    @Override
+    protected double computePrefWidth(double height) {
+        return viewW;
+    }
+
+    @Override
+    protected double computePrefHeight(double width) {
+        return viewH;
     }
 
     // ---------------------------------------------------------------- drawing
 
+    /** Every walkway, listed once per map (asking the graph builds the list anew each time). */
+    private List<Edge> edges() {
+        if (allEdges == null) {
+            allEdges = data == null ? List.of() : data.graph().edges();
+        }
+        return allEdges;
+    }
+
     private Set<Integer> visibleIds() {
+        if (levelIds == null) {
+            levelIds = findVisibleIds();
+            levelNodes = new ArrayList<>();
+            if (data != null) {
+                for (int id : levelIds) {
+                    data.graph().node(id).ifPresent(levelNodes::add);
+                }
+            }
+        }
+        return levelIds;
+    }
+
+    private Set<Integer> findVisibleIds() {
         Set<Integer> ids = new HashSet<>();
         if (data == null) {
             return ids;
@@ -355,7 +509,7 @@ public class MapView extends Region {
         }
         if (level == null) {
             // building entrances: inside nodes linked by a walkway to the outside
-            for (Edge e : data.graph().edges()) {
+            for (Edge e : edges()) {
                 Node a = data.graph().node(e.fromNodeId()).orElse(null);
                 Node b = data.graph().node(e.toNodeId()).orElse(null);
                 if (a != null && b != null && (a.floorId() == null) != (b.floorId() == null)) {
@@ -390,15 +544,25 @@ public class MapView extends Region {
     }
 
     private double areaCentreY() {
-        return padTop + (canvas.getHeight() - padTop - padBottom) / 2;
+        return padTop + (viewH - padTop - padBottom) / 2;
     }
 
+    /** Map point to a place on this view: (0, 0) is the top left corner of what shows. For taps and gestures. */
+    private double vx(double x) {
+        return viewW / 2 + (x - viewX) * scale;
+    }
+
+    private double vy(double y) {
+        return areaCentreY() + (y - viewY) * scale;
+    }
+
+    /** Map point to a place on the canvas, which starts MARGIN up and left of what shows. For drawing. */
     private double sx(double x) {
-        return canvas.getWidth() / 2 + (x - viewX) * scale;
+        return MARGIN + vx(x);
     }
 
     private double sy(double y) {
-        return areaCentreY() + (y - viewY) * scale;
+        return MARGIN + vy(y);
     }
 
     /** minX, minY, maxX, maxY of the level: the picture, or the places on it. */
@@ -435,8 +599,8 @@ public class MapView extends Region {
 
     /** Scale that shows the box b in the free area, with a margin. */
     private double fitScale(double[] b, double margin) {
-        double areaW = Math.max(20, canvas.getWidth() - 2 * margin);
-        double areaH = Math.max(20, canvas.getHeight() - padTop - padBottom - 2 * margin);
+        double areaW = Math.max(20, viewW - 2 * margin);
+        double areaH = Math.max(20, viewH - padTop - padBottom - 2 * margin);
         return Math.min(areaW / Math.max(1, b[2] - b[0]), areaH / Math.max(1, b[3] - b[1]));
     }
 
@@ -483,8 +647,8 @@ public class MapView extends Region {
         if (target == level && (art() != null || image().isPresent() || floorBuilding3d() != null)) {
             // Whole campus on a tall phone screen: halfway (geometric mean) between showing all of it as a thin
             // strip and filling the screen, so most of the campus shows at a readable size; drag to see the rest.
-            double areaW = Math.max(20, canvas.getWidth());
-            double areaH = Math.max(20, canvas.getHeight() - padTop - padBottom);
+            double areaW = Math.max(20, viewW);
+            double areaH = Math.max(20, viewH - padTop - padBottom);
             double cover = Math.max(areaW / (level[2] - level[0]), areaH / (level[3] - level[1]));
             wanted = Math.sqrt(wanted * cover);
         }
@@ -502,23 +666,38 @@ public class MapView extends Region {
     }
 
     private void draw() {
-        double w = canvas.getWidth();
-        double h = canvas.getHeight();
+        // the picture is drawn fresh for the view as it is now: put the canvas back where it belongs
+        settle.stop();
+        canvas.setScaleX(1);
+        canvas.setScaleY(1);
+        canvas.setTranslateX(0);
+        canvas.setTranslateY(0);
+        canvas.setLayoutX(-MARGIN);
+        canvas.setLayoutY(-MARGIN);
+        if (canvas.getWidth() != viewW + 2 * MARGIN || canvas.getHeight() != viewH + 2 * MARGIN) {
+            canvas.setWidth(viewW + 2 * MARGIN);
+            canvas.setHeight(viewH + 2 * MARGIN);
+        }
+        painted = false;
         GraphicsContext g = canvas.getGraphicsContext2D();
         g.setFill(dark ? Color.web("#0E1117") : Color.web("#E9ECEF"));
-        g.fillRect(0, 0, w, h);
-        if (data == null || w < 10 || h < 10) {
+        g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        if (data == null || viewW < 10 || viewH < 10) {
             return;
         }
         Set<Integer> ids = visibleIds();
-        List<Node> nodes = new ArrayList<>();
-        for (int id : ids) {
-            data.graph().node(id).ifPresent(nodes::add);
-        }
+        List<Node> nodes = levelNodes;
         Optional<Image> img = image();
         if (needsFit) {
             fit();
         }
+        painted = scale > 0;
+        paintedX = viewX;
+        paintedY = viewY;
+        paintedScale = scale;
+        paintedW = viewW;
+        paintedH = viewH;
+        paintedCentreY = areaCentreY();
         double[] lb = levelBounds();
         double minX = lb[0];
         double minY = lb[1];
@@ -605,7 +784,7 @@ public class MapView extends Region {
         Color edgeColor = dark ? Color.web("#7BA5FF", 0.9) : Color.web("#1D4ED8", 0.85);
         g.setLineDashes((double[]) null);
         g.setLineCap(StrokeLineCap.ROUND);
-        for (Edge e : data.graph().edges()) {
+        for (Edge e : edges()) {
             boolean inA = ids.contains(e.fromNodeId());
             boolean inB = ids.contains(e.toNodeId());
             if (!inA || !inB) {
@@ -645,14 +824,10 @@ public class MapView extends Region {
     }
 
     private void smallText(GraphicsContext g, String text, double x, double y, Color color) {
-        g.setFont(Font.font(null, FontWeight.BOLD, 9.5));
+        g.setFont(SMALL_FONT);
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.CENTER);
-        g.setStroke(dark ? Color.web("#0E1117", 0.9) : Color.web("#FFFFFF", 0.9));
-        g.setLineWidth(3);
-        g.strokeText(text, x, y);
-        g.setFill(color);
-        g.fillText(text, x, y);
+        CampusArt.haloText(g, text, x, y, dark ? HALO_DARK : HALO_LIGHT, color);
     }
 
     private static void youAreHere(GraphicsContext g, double x, double y) {
@@ -669,7 +844,7 @@ public class MapView extends Region {
         g.setLineJoin(StrokeLineJoin.ROUND);
         g.setStroke(color);
         g.setLineWidth(width);
-        for (Edge e : data.graph().edges()) {
+        for (Edge e : edges()) {
             if (ids.contains(e.fromNodeId()) && ids.contains(e.toNodeId())) {
                 Node a = data.graph().node(e.fromNodeId()).orElseThrow();
                 Node b = data.graph().node(e.toNodeId()).orElseThrow();
@@ -853,6 +1028,7 @@ public class MapView extends Region {
     private void drawPlaces(GraphicsContext g, List<Node> nodes, boolean onPicture) {
         Node first = route == null ? null : route.nodes().get(0);
         Node last = route == null ? null : route.nodes().get(route.nodes().size() - 1);
+        boolean floor3d = floorBuilding3d() != null;
         List<double[]> taken = new ArrayList<>();
         Set<Integer> pinned = new HashSet<>();
         highlights.forEach(h -> pinned.add(h.id()));
@@ -873,7 +1049,7 @@ public class MapView extends Region {
                 continue;
             }
             if ("ELEVATOR".equals(type) && !onPicture) {
-                if (floorBuilding3d() == null) {
+                if (!floor3d) {
                     g.setFill(GREEN);
                     g.fillRoundRect(x - 7, y - 7, 14, 14, 4, 4);
                 }
@@ -899,9 +1075,9 @@ public class MapView extends Region {
                 continue;
             }
             if (!isEnd) {
-                g.setFill(dark ? Color.web("#1A1E27") : Color.WHITE);
+                g.setFill(dark ? DOT_RING_DARK : Color.WHITE);
                 g.fillOval(x - 6, y - 6, 12, 12);
-                g.setFill(dark ? Color.web("#9CA4B4") : Color.web("#6B7280"));
+                g.setFill(dark ? DOT_DARK : DOT_LIGHT);
                 g.fillOval(x - 4, y - 4, 8, 8);
             }
             // names that would overlap one already drawn are left out (zoom in to see them)
@@ -958,20 +1134,16 @@ public class MapView extends Region {
     }
 
     private void label(GraphicsContext g, String text, double x, double y, boolean bold) {
-        g.setFont(Font.font(null, bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        g.setFont(bold ? LABEL_BOLD_FONT : LABEL_FONT);
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.CENTER);
-        g.setStroke(dark ? Color.web("#0E1117", 0.85) : Color.web("#FFFFFF", 0.9));
-        g.setLineWidth(3);
-        g.strokeText(text, x, y);
-        g.setFill(dark ? Color.web("#E7E9EF") : INK);
-        g.fillText(text, x, y);
+        CampusArt.haloText(g, text, x, y, dark ? HALO_DARK : HALO_LIGHT, dark ? INK_DARK : INK);
     }
 
     private static void tag(GraphicsContext g, String text, double x, double y, Color bg, Color fg) {
-        g.setFont(Font.font(null, FontWeight.BOLD, 10));
+        g.setFont(TAG_FONT);
         double w = text.length() * 6.2 + 14;
-        g.setFill(Color.web("#000000", 0.10));
+        g.setFill(SHADOW);
         g.fillRoundRect(x - w / 2, y - 9 + 1.5, w, 18, 9, 9);
         g.setFill(bg);
         g.fillRoundRect(x - w / 2, y - 9, w, 18, 9, 9);
@@ -983,10 +1155,13 @@ public class MapView extends Region {
 
     /** Keeps map labels short: "College of Engineering Building" -> "Engineering". */
     static String shortName(String name) {
-        String s = name.replaceAll("\\s*\\(.*\\)", "");
-        s = s.replaceFirst("^(College of|University)\\s+", "");
-        s = s.replaceFirst("\\s+(Building|Office)$", "");
-        return s.length() > 22 ? s.substring(0, 21) + "…" : s;
+        // worked out once per name: this is asked for every place each time the map is drawn
+        return SHORT_NAMES.computeIfAbsent(name, n -> {
+            String s = BRACKETS.matcher(n).replaceAll("");
+            s = LEADING_WORDS.matcher(s).replaceFirst("");
+            s = TRAILING_WORDS.matcher(s).replaceFirst("");
+            return s.length() > 22 ? s.substring(0, 21) + "…" : s;
+        });
     }
 
     private Node placeAt(double x, double y) {
@@ -1000,8 +1175,8 @@ public class MapView extends Region {
             if (!pickAnyNode && !SnapshotReader.isSearchable(n.nodeType())) {
                 continue;
             }
-            double dx = sx(n.x()) - x;
-            double dy = sy(n.y()) - y;
+            double dx = vx(n.x()) - x;
+            double dy = vy(n.y()) - y;
             double d = dx * dx + dy * dy;
             if (d < bestD) {
                 bestD = d;

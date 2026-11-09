@@ -39,6 +39,21 @@ public record PlaceStyle(String label, String icon, String tone) {
         return sb.toString();
     }
 
+    /**
+     * The same facts in few words, for list rows: "Room · Engineering · 4F". The long form wrapped onto three lines
+     * beside the distance on a phone, so only six rows fitted on a screen.
+     */
+    public static String shortSubtitle(Node n, CampusData data) {
+        StringBuilder sb = new StringBuilder(of(n.nodeType()).label());
+        data.building(n.buildingId()).ifPresent(b -> {
+            if (!"BUILDING_ENTRANCE".equals(n.nodeType()) && !b.name().equalsIgnoreCase(n.name())) {
+                sb.append(" · ").append(MapView.shortName(b.name()));
+            }
+        });
+        data.floor(n.floorId()).ifPresent(f -> sb.append(" · ").append(f.shortLabel()));
+        return sb.toString();
+    }
+
     private static String capitalise(String upper) {
         String s = upper.replace('_', ' ').toLowerCase(Locale.ROOT);
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);

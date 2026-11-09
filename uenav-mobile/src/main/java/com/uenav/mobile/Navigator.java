@@ -496,7 +496,7 @@ public final class Navigator {
     private HBox destinationRow(Node n, Double meters) {
         PlaceStyle s = PlaceStyle.of(n.nodeType());
         HBox row = new HBox(12, Ui.bubble(s.icon(), s.tone(), 36),
-                Ui.twoLines(n.name(), PlaceStyle.subtitle(n, data), "nv-strong"));
+                Ui.twoLines(n.name(), PlaceStyle.shortSubtitle(n, data), "nv-strong"));
         if (meters != null) {
             row.getChildren().add(Ui.chip("~" + Math.round(meters) + " m", "grey"));
         }
@@ -695,6 +695,7 @@ public final class Navigator {
         routeContext = null;
         emergency = false;
         afterStart = null;
+        mapShare.set(MAP_SHARE); // a new route starts half map, half steps
         if (start != null) {
             findDirections(true);
         } else {
@@ -1048,7 +1049,6 @@ public final class Navigator {
             clip(mapStack, 16);
             HBox.setHgrow(mapStack, Priority.ALWAYS);
             ScrollPane side = Ui.scroll(sheet);
-            topOnShow(side);
             side.setMinWidth(380);
             side.setPrefWidth(400);
             side.setMaxWidth(420);
@@ -1063,15 +1063,15 @@ public final class Navigator {
             screen = v;
         } else {
             ScrollPane sc = Ui.scroll(sheet);
-            topOnShow(sc);
-            VBox sheetBox = new VBox(sc);
+            VBox sheetBox = new VBox(sheetHandle(), sc);
             sheetBox.getStyleClass().add("nv-sheet");
             VBox.setVgrow(sheetBox, Priority.ALWAYS);
             VBox.setMargin(sheetBox, new Insets(-26, 0, 0, 0));
             VBox v = new VBox(mapStack, sheetBox);
             v.getStyleClass().add("nv-canvas");
-            // Fixed height: the sheet below must never squeeze the map (that looked like random zooming).
-            mapStack.prefHeightProperty().bind(view.heightProperty().multiply(0.50));
+            // Fixed height: the sheet below must never squeeze the map (that looked like random zooming). The
+            // share only changes when the user drags or taps the sheet's handle.
+            mapStack.prefHeightProperty().bind(view.heightProperty().multiply(mapShare));
             mapStack.minHeightProperty().bind(mapStack.prefHeightProperty());
             mapStack.maxHeightProperty().bind(mapStack.prefHeightProperty());
             sheetBox.setMinHeight(0);
@@ -1080,20 +1080,52 @@ public final class Navigator {
         setScreen(screen, Tab.MAP, "directions", this::showDirections);
     }
 
-    /** Keeps a scroll area at the top when it first appears (it would otherwise jump to a focused button). */
-    private static void topOnShow(ScrollPane sc) {
-        sc.vvalueProperty().addListener(new javafx.beans.value.ChangeListener<Number>() {
-            private int left = 3;
+    /** Part of the directions screen's height the map gets: half and half, or a big map (sheet pulled down). */
+    static final double MAP_SHARE = 0.50;
+    static final double MAP_SHARE_BIG = 0.76;
+    private final javafx.beans.property.DoubleProperty mapShare =
+            new javafx.beans.property.SimpleDoubleProperty(MAP_SHARE);
+    private javafx.animation.Timeline sheetGlide;
 
-            @Override
-            public void changed(javafx.beans.value.ObservableValue<? extends Number> o, Number a, Number b) {
-                if (left-- > 0 && b.doubleValue() != 0) {
-                    sc.setVvalue(0);
-                } else if (left <= 0) {
-                    sc.vvalueProperty().removeListener(this);
-                }
+    /**
+     * The bar at the top of the directions sheet. Drag it down for a bigger map and back up for the steps (it comes
+     * to rest at the nearer of the two heights); a tap switches between them.
+     */
+    private Region sheetHandle() {
+        Region bar = new Region();
+        bar.getStyleClass().add("nv-handle");
+        bar.setMinSize(40, 5);
+        bar.setMaxSize(40, 5);
+        HBox grab = new HBox(bar);
+        grab.setAlignment(Pos.CENTER);
+        grab.setPadding(new Insets(10, 0, 10, 0));
+        grab.getStyleClass().add("nv-grab");
+        double[] from = new double[2];
+        boolean[] moved = {false};
+        grab.setOnMousePressed(e -> {
+            from[0] = e.getSceneY();
+            from[1] = mapShare.get();
+            moved[0] = false;
+            if (sheetGlide != null) {
+                sheetGlide.stop();
             }
         });
+        grab.setOnMouseDragged(e -> {
+            double dy = e.getSceneY() - from[0];
+            moved[0] |= Math.abs(dy) > 6;
+            if (moved[0] && view.getHeight() > 0) {
+                double share = from[1] + dy / view.getHeight();
+                mapShare.set(Math.max(MAP_SHARE, Math.min(MAP_SHARE_BIG, share)));
+            }
+        });
+        grab.setOnMouseReleased(e -> {
+            boolean big = mapShare.get() > (MAP_SHARE + MAP_SHARE_BIG) / 2;
+            double target = (moved[0] ? big : !big) ? MAP_SHARE_BIG : MAP_SHARE; // a tap goes to the other height
+            sheetGlide = new javafx.animation.Timeline(new javafx.animation.KeyFrame(Duration.millis(170),
+                    new javafx.animation.KeyValue(mapShare, target, javafx.animation.Interpolator.EASE_OUT)));
+            sheetGlide.play();
+        });
+        return grab;
     }
 
     private static void clip(Region r, double radius) {
@@ -1267,16 +1299,7 @@ public final class Navigator {
     /** The bottom sheet: destination, info card, time and distance, stairs/elevator choice, steps and feedback. */
     private VBox sheet(Directions.Summary s, MapView map, List<Integer> levels) {
         VBox sheet = new VBox(14);
-        sheet.setPadding(new Insets(wide ? 18 : 10, 18, 18, 18));
-        if (!wide) {
-            Region handle = new Region();
-            handle.getStyleClass().add("nv-handle");
-            handle.setMinSize(40, 5);
-            handle.setMaxSize(40, 5);
-            HBox h = new HBox(handle);
-            h.setAlignment(Pos.CENTER);
-            sheet.getChildren().add(h);
-        }
+        sheet.setPadding(new Insets(wide ? 18 : 2, 18, 18, 18)); // on a phone the handle sits above (sheetHandle)
         if (emergency) {
             HBox banner = new HBox(10, Icons.icon("warning", 20),
                     new VBox(2, Ui.label("Emergency route", "nv-strong"),

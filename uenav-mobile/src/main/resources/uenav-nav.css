@@ -97,9 +97,11 @@
 .nv-primary:hover { -fx-background-color: -nv-primary-hover; }
 .nv-primary:disabled { -fx-opacity: 0.45; }
 .nv-primary .nv-icon { -fx-background-color: white; }
+/* outlined, so it still reads as a button on the grey page ("Show 15 more", "Set where I am") */
 .nv-secondary {
-    -fx-background-color: -nv-field; -fx-text-fill: -nv-ink; -fx-font-weight: bold; -fx-font-size: 14px;
-    -fx-background-radius: 12; -fx-padding: 13 18 13 18; -fx-cursor: hand;
+    -fx-background-color: -nv-surface; -fx-text-fill: -nv-ink; -fx-font-weight: bold; -fx-font-size: 14px;
+    -fx-background-radius: 12; -fx-border-color: -nv-handle; -fx-border-radius: 12; -fx-padding: 13 18 13 18;
+    -fx-cursor: hand;
 }
 .nv-secondary:hover { -fx-background-color: -nv-hover-strong; }
 .nv-secondary:disabled { -fx-opacity: 0.5; }
@@ -170,6 +172,7 @@
 }
 .nv-sheet-wide { -fx-background-radius: 16; }
 .nv-handle { -fx-background-color: -nv-handle; -fx-background-radius: 3; }
+.nv-grab { -fx-cursor: v-resize; }
 
 /* stairs / elevator option */
 .nv-option {

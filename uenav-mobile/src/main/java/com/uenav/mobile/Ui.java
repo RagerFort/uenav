@@ -40,6 +40,20 @@ public final class Ui {
         return url == null ? null : url.toExternalForm();
     }
 
+    /**
+     * An invisible spot where the keyboard focus rests; put it first in the window. JavaFX always gives the focus to
+     * some control: when a new screen appeared it picked that screen's first button, and a list scrolls to show its
+     * focused button, so the Classrooms list opened at its bottom, on "Show 15 more" (seen on a Galaxy A35). With
+     * this first in line, the focus rests here instead and every screen opens at its top.
+     */
+    public static Region focusRest() {
+        Region r = new Region();
+        r.setFocusTraversable(true);
+        r.setManaged(false);
+        r.setMouseTransparent(true);
+        return r;
+    }
+
     /** An on/off switch drawn like a phone setting. */
     public static StackPane toggleSwitch(boolean on) {
         Region track = new Region();

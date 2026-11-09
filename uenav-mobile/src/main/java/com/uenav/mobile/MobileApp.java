@@ -54,7 +54,7 @@ public class MobileApp extends Application {
         // The loading screen shows at once; the map and screens are built behind it, then it fades away.
         StackPane shell = new StackPane();
         SplashScreen splash = new SplashScreen();
-        shell.getChildren().add(splash.view());
+        shell.getChildren().addAll(Ui.focusRest(), splash.view());
         show(stage, shell);
         long shownAt = System.nanoTime();
         javafx.animation.PauseTransition firstFrame = new javafx.animation.PauseTransition(
@@ -67,7 +67,7 @@ public class MobileApp extends Application {
                 splash.showError("Could not load the campus map.\n" + ex.getMessage());
                 return;
             }
-            shell.getChildren().add(0, buildApp(dir, data));
+            shell.getChildren().add(1, buildApp(dir, data)); // above the focus rest, under the loading screen
             double waited = (System.nanoTime() - shownAt) / 1e6;
             javafx.animation.PauseTransition hold = new javafx.animation.PauseTransition(
                     javafx.util.Duration.millis(Math.max(0, SplashScreen.MIN_MILLIS - waited)));
