@@ -335,13 +335,39 @@ final class CampusArt {
 
     private static void text(GraphicsContext g, String t, double x, double y, Color fill, Color halo, double size,
                              boolean bold) {
-        g.setFont(Font.font(null, bold ? FontWeight.BOLD : FontWeight.NORMAL, size));
+        g.setFont(font(size, bold));
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.CENTER);
         if (halo != null) {
-            g.setStroke(halo);
-            g.setLineWidth(3);
-            g.strokeText(t, x, y);
+            haloText(g, t, x, y, halo, fill);
+        } else {
+            g.setFill(fill);
+            g.fillText(t, x, y);
+        }
+    }
+
+    /** Fonts by size (to half a point), so drawing does not look one up for every name. */
+    private static final Map<Integer, Font> FONTS = new java.util.HashMap<>();
+
+    private static Font font(double size, boolean bold) {
+        int key = (int) Math.round(size * 2) * (bold ? 1 : -1);
+        return FONTS.computeIfAbsent(key, k -> Font.font(null, bold ? FontWeight.BOLD : FontWeight.NORMAL,
+                Math.abs(k) / 2.0));
+    }
+
+    private static final double[][] HALO = {
+        {-1.3, 0}, {1.3, 0}, {0, -1.3}, {0, 1.3}, {-0.9, -0.9}, {0.9, -0.9}, {-0.9, 0.9}, {0.9, 0.9}};
+
+    /**
+     * Text with a soft outline behind it, so a name reads on any background. The outline is the same text drawn
+     * eight times a little off-centre. A real outline (strokeText) is traced as a shape again for every name each
+     * time the map is drawn, which was the slowest part of drawing a floor on a phone; plain text is not.
+     * Set the font and alignment first.
+     */
+    static void haloText(GraphicsContext g, String t, double x, double y, Color halo, Color fill) {
+        g.setFill(halo);
+        for (double[] o : HALO) {
+            g.fillText(t, x + o[0], y + o[1]);
         }
         g.setFill(fill);
         g.fillText(t, x, y);

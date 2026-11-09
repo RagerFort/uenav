@@ -28,6 +28,13 @@ class PlaceStyleTest {
     }
 
     @Test
+    void listRowsUseTheShortSubtitle() throws IOException {
+        CampusData d = CampusStore.bundled();
+        assertEquals("Room \u00B7 Engineering \u00B7 4F", PlaceStyle.shortSubtitle(d.graph().node(42).orElseThrow(), d));
+        assertEquals("Office \u00B7 Administration", PlaceStyle.shortSubtitle(d.graph().node(22).orElseThrow(), d));
+    }
+
+    @Test
     void mapLevelsFollowTheRoute() throws IOException {
         CampusData d = CampusStore.bundled();
         Route r = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 42, com.uenav.core.RoutePreference.ANY)
