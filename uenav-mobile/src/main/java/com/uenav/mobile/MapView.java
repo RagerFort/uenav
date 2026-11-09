@@ -457,8 +457,9 @@ public class MapView extends Region {
             double cx = (b[0] + b[2]) / 2;
             double cy = (b[1] + b[3]) / 2;
             target = new double[] {cx - size / 2, cy - size / 2.4, cx + size / 2, cy + size / 2.4};
-        } else if (route != null && this.level == null) {
-            // outdoors: start on the route; on a floor the whole floor is small enough to show at once
+        } else if (route != null) {
+            // start on the part of the route on this level (outdoors and on every floor: a whole long building
+            // floor is too small to read on a phone)
             Set<Integer> ids = visibleIds();
             List<Node> onLevel = new ArrayList<>();
             for (Node n : route.nodes()) {

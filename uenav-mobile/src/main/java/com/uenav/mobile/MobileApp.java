@@ -49,17 +49,37 @@ public class MobileApp extends Application {
         sync = new SyncService(queue, new HttpSyncClient());
         store = new CampusStore(new FileTextStore(new File(dir, "campus-snapshot.json")));
 
-        CampusData data;
-        try {
-            data = store.load();
-        } catch (Exception e) {
-            Label err = Ui.wrap("Could not load the campus map.\n" + e.getMessage(), "nv-error");
-            VBox box = new VBox(err);
-            box.setPadding(new Insets(16));
-            show(stage, box);
-            return;
-        }
+        // The loading screen shows at once; the map and screens are built behind it, then it fades away.
+        StackPane shell = new StackPane();
+        SplashScreen splash = new SplashScreen();
+        shell.getChildren().add(splash.view());
+        show(stage, shell);
+        long shownAt = System.nanoTime();
+        javafx.animation.PauseTransition firstFrame = new javafx.animation.PauseTransition(
+                javafx.util.Duration.millis(80));
+        firstFrame.setOnFinished(e -> {
+            CampusData data;
+            try {
+                data = store.load();
+            } catch (Exception ex) {
+                splash.showError("Could not load the campus map.\n" + ex.getMessage());
+                return;
+            }
+            shell.getChildren().add(0, buildApp(dir, data));
+            double waited = (System.nanoTime() - shownAt) / 1e6;
+            javafx.animation.PauseTransition hold = new javafx.animation.PauseTransition(
+                    javafx.util.Duration.millis(Math.max(0, SplashScreen.MIN_MILLIS - waited)));
+            hold.setOnFinished(x -> splash.fadeOut(() -> shell.getChildren().remove(splash.view())));
+            hold.play();
+            checkForMapUpdate();
+            syncAsync();
+            startAutoConnect();
+        });
+        firstFrame.play();
+    }
 
+    /** Builds the tabs and screens (Explore, Map, Settings) once the campus map is loaded. */
+    private Parent buildApp(File dir, CampusData data) {
         PlacesMemory memory = new PlacesMemory(new FileTextStore(new File(dir, "places.json")));
         navigator = new Navigator(data, UsageLog.of(queue, this::syncAsync), false, settings, memory);
         navigator.setDark(dark());
@@ -142,12 +162,25 @@ public class MobileApp extends Application {
         BorderPane root = new BorderPane(content);
         root.setBottom(navBar);
         root.getStyleClass().add("nv-surface");
+        root.setPadding(phoneInsets());
         select(Tab.EXPLORE);
-        show(stage, root);
+        return root;
+    }
 
-        checkForMapUpdate();
-        syncAsync();
-        startAutoConnect();
+    /**
+     * The phone's back button (Android sends it as ESCAPE): goes back one screen, or from the staff screens back to
+     * Settings. Returns false when there is nowhere to go back to.
+     */
+    private boolean goBack() {
+        if (tab == Tab.SETTINGS && inAdmin) {
+            select(Tab.SETTINGS);
+            return true;
+        }
+        if (tab == Tab.SETTINGS) {
+            select(Tab.EXPLORE);
+            return true;
+        }
+        return navigator != null && navigator.goBack();
     }
 
     /**
@@ -190,19 +223,35 @@ public class MobileApp extends Application {
         javafx.geometry.Rectangle2D visual = Screen.getPrimary().getVisualBounds();
         double w = desktop ? 390 : visual.getWidth();
         double h = desktop ? 820 : visual.getHeight();
-        if (!desktop && root instanceof javafx.scene.layout.Region r) {
-            // The app is drawn under the phone's status bar and gesture bar: keep the screens clear of them
-            // (unless the system already left that space out of the window).
-            double top = visual.getMinY() > 0 ? 0 : STATUS_BAR;
-            double bottom = all.getMaxY() > visual.getMaxY() ? 0 : GESTURE_BAR;
-            r.setPadding(new Insets(top, 0, bottom, 0));
-        }
         scene = new Scene(root, w, h);
         applyTheme();
         TapGuard.install(scene);
+        scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            boolean back = e.getCode() == javafx.scene.input.KeyCode.ESCAPE
+                    || e.getCode() == javafx.scene.input.KeyCode.BACK_SPACE && !(e.getTarget()
+                    instanceof javafx.scene.control.TextInputControl);
+            if (back && goBack()) {
+                e.consume();
+            }
+        });
         stage.setScene(scene);
         stage.setTitle("UENav");
         stage.show();
+    }
+
+    /**
+     * The app is drawn under the phone's status bar and gesture bar: keep the screens clear of them (unless the
+     * system already left that space out of the window). Nothing on a PC.
+     */
+    private static Insets phoneInsets() {
+        if (!isAndroidOrIos()) {
+            return Insets.EMPTY;
+        }
+        javafx.geometry.Rectangle2D all = Screen.getPrimary().getBounds();
+        javafx.geometry.Rectangle2D visual = Screen.getPrimary().getVisualBounds();
+        double top = visual.getMinY() > 0 ? 0 : STATUS_BAR;
+        double bottom = all.getMaxY() > visual.getMaxY() ? 0 : GESTURE_BAR;
+        return new Insets(top, 0, bottom, 0);
     }
 
     /** Room left for the phone's status bar (clock, battery) and its gesture bar, in screen units (dp). */
