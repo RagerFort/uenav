@@ -23,7 +23,16 @@ public final class Directions {
 
     public enum StepKind { START, STRAIGHT, LEFT, RIGHT, BACK, STAIRS, ELEVATOR, ARRIVE }
 
-    public record Step(StepKind kind, String title, String detail) { }
+    /**
+     * One line of the directions. at is the place where the step starts (the turn, the stairs, or the destination
+     * for ARRIVE), so the map can switch to its floor and show it; it is null for steps made without a route.
+     */
+    public record Step(StepKind kind, String title, String detail, Node at) {
+
+        public Step(StepKind kind, String title, String detail) {
+            this(kind, title, detail, null);
+        }
+    }
 
     /** Everything the directions screen needs about one route. */
     public record Summary(int minutes, long meters, boolean indoor, boolean outdoor, int flights,
@@ -98,7 +107,7 @@ public final class Directions {
                         ? way + " " + floors + (floors == 1 ? " floor" : " floors") + " · ~" + meters(leg.meters())
                         : "~" + meters(leg.meters());
                 steps.add(new Step(isStairs ? StepKind.STAIRS : StepKind.ELEVATOR,
-                        (isStairs ? "Take the stairs to " : "Take the elevator to ") + target, detail));
+                        (isStairs ? "Take the stairs to " : "Take the elevator to ") + target, detail, start));
             } else {
                 StringBuilder detail = new StringBuilder("Walk ~").append(meters(leg.meters()));
                 if (end != last && SnapshotReader.isSearchable(end.nodeType())) {
@@ -124,16 +133,37 @@ public final class Directions {
                         case BACK -> "Turn around";
                         default -> "Continue straight";
                     };
+                    if (kind != StepKind.STRAIGHT) {
+                        title += landmark(nodes, previous, leg);
+                    }
                 }
-                steps.add(new Step(kind, title, detail.toString()));
+                steps.add(new Step(kind, title, detail.toString(), nodes.get(leg.from())));
             }
             previous = leg;
         }
 
         String where = place(last, data);
         steps.add(new Step(StepKind.ARRIVE, "Arrive at " + last.name(),
-                where.isEmpty() ? "You've reached your destination" : where));
+                where.isEmpty() ? "You've reached your destination" : where, last));
         return steps;
+    }
+
+    /**
+     * " at Registrar's Office" when the turn is at a named place, " after the Gazebo" when a named place was passed
+     * just before it, or "" when there is no landmark (junction names are waypoints, not landmarks).
+     */
+    private static String landmark(List<Node> nodes, Leg previous, Leg leg) {
+        Node turnAt = nodes.get(leg.from());
+        if (SnapshotReader.isSearchable(turnAt.nodeType())) {
+            return " at " + turnAt.name();
+        }
+        for (int i = previous.to() - 1; i > previous.from(); i--) {
+            Node n = nodes.get(i);
+            if (SnapshotReader.isSearchable(n.nodeType())) {
+                return " after " + n.name();
+            }
+        }
+        return "";
     }
 
     /** "Engineering Building · 4th floor", or "" for an outdoor place. */

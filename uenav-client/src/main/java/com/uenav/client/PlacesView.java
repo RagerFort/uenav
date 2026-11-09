@@ -35,8 +35,10 @@ import javafx.scene.layout.VBox;
 /** The Places page: list, search, add, edit and delete (Figma: Dashboard "Places" panel, as a full page). */
 public class PlacesView extends VBox {
 
-    private static final List<String> TYPES = List.of(
-            "ROOM", "OFFICE", "GATE", "BUILDING_ENTRANCE", "FACILITY", "JUNCTION", "STAIRS", "ELEVATOR");
+    /** Place types. RESTROOM, CANTEEN, CLINIC, LIBRARY and EXIT feed the phone's quick buttons (D15). */
+    static final List<String> TYPES = List.of(
+            "ROOM", "OFFICE", "GATE", "BUILDING_ENTRANCE", "FACILITY", "RESTROOM", "CANTEEN", "CLINIC", "LIBRARY",
+            "EXIT", "JUNCTION", "STAIRS", "ELEVATOR");
 
     private record Option<T>(T value, String label) {
         @Override
@@ -283,10 +285,7 @@ public class PlacesView extends VBox {
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle(existing == null ? "Add place" : "Edit place");
         DialogPane pane = dlg.getDialogPane();
-        String css = Theme.css();
-        if (css != null) {
-            pane.getStylesheets().add(css);
-        }
+        Theme.style(pane);
         ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         pane.getButtonTypes().addAll(saveType, ButtonType.CANCEL);
 
@@ -340,12 +339,20 @@ public class PlacesView extends VBox {
 
         TextField xField = new TextField(existing == null ? "0" : String.valueOf(existing.x()));
         TextField yField = new TextField(existing == null ? "0" : String.valueOf(existing.y()));
+        TextField hours = new TextField(existing == null || existing.openHours() == null ? "" : existing.openHours());
+        hours.setPromptText("e.g. Mon-Fri 8:00 AM - 5:00 PM");
+        javafx.scene.control.TextArea about = new javafx.scene.control.TextArea(
+                existing == null || existing.description() == null ? "" : existing.description());
+        about.setPromptText("What visitors can do here, e.g. transcripts, enrollment records");
+        about.setWrapText(true);
+        about.setPrefRowCount(3);
 
-        for (Region r : new Region[] {name, type, building, floor, xField, yField}) {
+        for (Region r : new Region[] {name, type, building, floor, xField, yField, hours, about}) {
             r.setPrefWidth(300);
         }
 
-        Label note = new Label("JUNCTION, STAIRS and ELEVATOR are waypoints. They are not offered in the visitor search list.");
+        Label note = new Label("JUNCTION, STAIRS and ELEVATOR are waypoints. They are not offered in the visitor search "
+                + "list. Office hours and \"What it handles\" show on the place's info card in the phone app.");
         note.getStyleClass().add("muted");
         note.setWrapText(true);
         note.setMaxWidth(420);
@@ -357,8 +364,8 @@ public class PlacesView extends VBox {
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(10);
-        String[] labels = {"Name *", "Type *", "Building", "Floor", "X *", "Y *"};
-        Region[] fields = {name, type, building, floor, xField, yField};
+        String[] labels = {"Name *", "Type *", "Building", "Floor", "X *", "Y *", "Office hours", "What it handles"};
+        Region[] fields = {name, type, building, floor, xField, yField, hours, about};
         for (int i = 0; i < labels.length; i++) {
             grid.add(new Label(labels[i]), 0, i);
             grid.add(fields[i], 1, i);
@@ -389,7 +396,10 @@ public class PlacesView extends VBox {
             Option<AdminModels.Floor> fSel = floor.getValue();
             Integer buildingId = bSel == null || bSel.value() == null ? null : bSel.value().id();
             Integer floorId = fSel == null || fSel.value() == null ? null : fSel.value().id();
-            AdminModels.NodeForm form = new AdminModels.NodeForm(buildingId, floorId, n, t, xv, yv);
+            String h = hours.getText().trim();
+            String d = about.getText().trim();
+            // "" clears the text on the server; leaving a field out would keep the saved text
+            AdminModels.NodeForm form = new AdminModels.NodeForm(buildingId, floorId, n, t, xv, yv, d, h);
 
             ok.setDisable(true);
             error.setText("");
@@ -450,9 +460,6 @@ public class PlacesView extends VBox {
     }
 
     private static void styleAlert(Alert a) {
-        String css = Theme.css();
-        if (css != null) {
-            a.getDialogPane().getStylesheets().add(css);
-        }
+        Theme.style(a.getDialogPane());
     }
 }

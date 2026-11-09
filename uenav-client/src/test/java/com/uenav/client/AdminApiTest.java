@@ -114,6 +114,34 @@ class AdminApiTest {
     }
 
     @Test
+    void officeInfoTravelsBothWays() throws Exception {
+        routes.put("POST /api/admin/login", new Reply(200, LOGIN_OK));
+        routes.put("GET /api/admin/nodes", new Reply(200,
+                "[{\"id\":22,\"buildingId\":null,\"floorId\":null,\"name\":\"Registrar\",\"nodeType\":\"OFFICE\","
+                + "\"x\":0,\"y\":0,\"description\":\"Transcripts\",\"openHours\":\"Mon-Fri 8-5\"}]"));
+        routes.put("PUT /api/admin/nodes/22", new Reply(200, "{\"status\":\"updated\"}"));
+        AdminApi api = start();
+        api.login("admin", "pw");
+        AdminModels.Place p = api.nodes().get(0);
+        assertEquals("Transcripts", p.description());
+        assertEquals("Mon-Fri 8-5", p.openHours());
+        api.updateNode(22, new AdminModels.NodeForm(null, null, "Registrar", "OFFICE", 0, 0, "Records", "8-5"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sent = (Map<String, Object>) MiniJson.parse(lastBody);
+        assertEquals("Records", sent.get("description"));
+        assertEquals("8-5", sent.get("openHours"));
+    }
+
+    @Test
+    void snapshotIsReadWithoutSigningIn() throws Exception {
+        routes.put("GET /api/snapshot", new Reply(200,
+                "{\"version\":\"v\",\"nodes\":[{\"id\":1,\"buildingId\":null,\"floorId\":null,\"name\":\"Gate\","
+                + "\"nodeType\":\"GATE\",\"x\":0,\"y\":0}],\"edges\":[]}"));
+        AdminApi api = start();
+        assertEquals(1, api.snapshot().graph().nodeCount());
+    }
+
+    @Test
     void validationProblemsAreListedOneByOne() throws Exception {
         routes.put("POST /api/admin/login", new Reply(200, LOGIN_OK));
         routes.put("PUT /api/admin/nodes/3", new Reply(400, "{\"errors\":[\"name is required\",\"x is required\"]}"));

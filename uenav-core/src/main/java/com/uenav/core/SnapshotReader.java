@@ -24,7 +24,8 @@ public final class SnapshotReader {
             Map<String, Object> n = asObject(o, "node");
             Node node = new Node(getInt(n, "id"), getNullableInt(n, "buildingId"),
                     getNullableInt(n, "floorId"), getString(n, "name"),
-                    getInt(n, "x"), getInt(n, "y"), getString(n, "nodeType"));
+                    getInt(n, "x"), getInt(n, "y"), getString(n, "nodeType"),
+                    getNullableString(n, "description"), getNullableString(n, "openHours"));
             graph.addNode(node);
             if (isSearchable(node.nodeType())) {
                 places.add(node);

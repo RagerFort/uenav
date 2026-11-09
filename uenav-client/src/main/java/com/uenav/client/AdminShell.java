@@ -63,7 +63,10 @@ public class AdminShell extends BorderPane {
                 navItem("walkways", "Walkways", "navigation"),
                 navItem("buildings", "Buildings", "building"),
                 navItem("floors", "Floors", "stairs"),
-                navItem("reports", "Route reports", "flag"));
+                navItem("reports", "Route reports", "flag"),
+                section("TOOLS"),
+                navItem("health", "Map health", "health"),
+                navItem("qr", "QR codes", "qr"));
         reportsBadge.getStyleClass().add("nav-badge");
         Button reports = navButtons.get("reports");
         Region grow = new Region();
@@ -146,7 +149,20 @@ public class AdminShell extends BorderPane {
         Label where = new Label("UE Caloocan");
         where.getStyleClass().add("muted");
         where.setStyle("-fx-font-size: 11px;");
-        HBox bar = new HBox(12, crumb, spacer, new VBox(0, who, where), avatar);
+        Button theme = new Button();
+        theme.getStyleClass().add("icon-button");
+        Runnable showTheme = () -> {
+            theme.setGraphic(Icons.icon(Theme.isDark() ? "sun" : "moon", 16));
+            String tip = Theme.isDark() ? "Switch to light mode" : "Switch to dark mode";
+            theme.setTooltip(new javafx.scene.control.Tooltip(tip));
+            theme.setAccessibleText(tip);
+        };
+        showTheme.run();
+        theme.setOnAction(e -> {
+            Theme.setDark(!Theme.isDark());
+            showTheme.run();
+        });
+        HBox bar = new HBox(12, crumb, spacer, theme, new VBox(0, who, where), avatar);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("topbar");
         bar.setPadding(new Insets(14, 28, 14, 28));
@@ -180,8 +196,10 @@ public class AdminShell extends BorderPane {
             case "buildings" -> setPage(key, new BuildingsView(api, e -> expired()), "Admin", "Buildings");
             case "floors" -> setPage(key, new FloorsView(api, e -> expired()), "Admin", "Floors");
             case "reports" -> setPage(key, new ReportsView(api, e -> expired()), "Admin", "Route reports");
+            case "health" -> setPage(key, new MapHealthView(api), "Tools", "Map health");
+            case "qr" -> setPage(key, new QrCodesView(api, e -> expired()), "Tools", "QR codes");
             default -> setPage("dashboard", new DashboardView(api, e -> expired(), () -> show("reports"),
-                    this::onDashboardPlace), "Admin", "Dashboard");
+                    this::onDashboardPlace, () -> show("health")), "Admin", "Dashboard");
         }
         refreshBadge();
     }

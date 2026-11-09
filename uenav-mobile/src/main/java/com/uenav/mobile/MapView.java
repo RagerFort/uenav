@@ -58,6 +58,12 @@ public class MapView extends Region {
     private double padTop = 24;
     private double padBottom = 24;
     private Consumer<Node> onPlaceClicked;
+    private boolean pickAnyNode;
+    private boolean dark;
+    private boolean graphView;
+    private List<Integer> visited = List.of();
+    private Node here;
+    private Node focused;
 
     // what the user sees: the map point at the middle of the free area, and screen pixels per map unit
     private double viewX;
@@ -153,6 +159,7 @@ public class MapView extends Region {
     /** null shows the outdoor campus; otherwise a floor id. */
     public void setLevel(Integer floorId) {
         this.level = floorId;
+        this.focused = null;
         resetView();
     }
 
@@ -172,6 +179,56 @@ public class MapView extends Region {
 
     public void setOnPlaceClicked(Consumer<Node> handler) {
         this.onPlaceClicked = handler;
+    }
+
+    /** true while choosing a starting point: hallway corners, stairs and other waypoints can be tapped too. */
+    public void setPickAnyNode(boolean any) {
+        this.pickAnyNode = any;
+    }
+
+    /** Dark map colours (dark mode). */
+    public void setDark(boolean dark) {
+        this.dark = dark;
+        draw();
+    }
+
+    /**
+     * Graph view for explaining Dijkstra: every walkway with its length and every node with its id, and the nodes
+     * the algorithm checked (visited, in order) shaded.
+     */
+    public void setGraphView(boolean on, List<Integer> visitedInOrder) {
+        this.graphView = on;
+        this.visited = visitedInOrder == null ? List.of() : List.copyOf(visitedInOrder);
+        draw();
+    }
+
+    public boolean graphView() {
+        return graphView;
+    }
+
+    /** The "You are here" dot when no route is shown (or null). */
+    public void setHere(Node node) {
+        this.here = node;
+        draw();
+    }
+
+    /** Moves the view to a node of the current level and zooms in, as when a direction step is tapped. */
+    public void focusOn(Node node) {
+        focused = node;
+        if (node == null || data == null || canvas.getWidth() < 10) {
+            draw();
+            return;
+        }
+        if (needsFit) {
+            fit();
+        }
+        double[] limits = scaleLimits();
+        scale = Math.max(limits[0], Math.min(limits[1], Math.max(scale, fitScale(levelBounds(), 8) * 2.2)));
+        viewX = node.x();
+        viewY = node.y();
+        userMoved = true;
+        clampView();
+        draw();
     }
 
     public void zoomIn() {
@@ -412,7 +469,7 @@ public class MapView extends Region {
         double w = canvas.getWidth();
         double h = canvas.getHeight();
         GraphicsContext g = canvas.getGraphicsContext2D();
-        g.setFill(Color.web("#E9ECEF"));
+        g.setFill(dark ? Color.web("#0E1117") : Color.web("#E9ECEF"));
         g.fillRect(0, 0, w, h);
         if (data == null || w < 10 || h < 10) {
             return;
@@ -437,10 +494,9 @@ public class MapView extends Region {
             // 3D campus: ground and field, walkways on the ground, then buildings and trees, then the route on top
             CampusArt.View view = view();
             art3d.drawGround(g, view);
-            drawWalkways(g, ids, Color.web("#FFFFFF", 0.85), 5);
+            drawWalkways(g, ids, dark ? Color.web("#4A5263", 0.9) : Color.web("#FFFFFF", 0.85), 5);
             art3d.drawRaised(g, view);
-            drawRoute(g, ids);
-            drawPlaces(g, nodes, true);
+            drawOverlays(g, ids, nodes, true);
             return;
         }
         Integer floorOf = floorBuilding3d();
@@ -448,14 +504,13 @@ public class MapView extends Region {
             // 3D floor: the building outline as a slab, hallways on it, stairs and elevators as blocks
             CampusArt.View view = view();
             allArt().drawFloor(g, view, floorOf);
-            drawWalkways(g, ids, Color.web("#D9DCE1"), 9);
+            drawWalkways(g, ids, dark ? Color.web("#3A4152") : Color.web("#D9DCE1"), 9);
             for (Node n : nodes) {
                 if ("STAIRS".equals(n.nodeType()) || "ELEVATOR".equals(n.nodeType())) {
                     CampusArt.cube(g, view, n.x(), n.y(), 16, 14, GREEN);
                 }
             }
-            drawRoute(g, ids);
-            drawPlaces(g, nodes, false);
+            drawOverlays(g, ids, nodes, false);
             return;
         }
         if (img.isPresent()) {
@@ -463,13 +518,99 @@ public class MapView extends Region {
         } else {
             drawGround(g, minX, minY, maxX, maxY);
             // walkways on this level (a map picture already shows them)
-            drawWalkways(g, ids, level == null ? Color.web("#FFFFFF") : Color.web("#EEF0F3"), level == null ? 7 : 12);
+            Color walk = dark ? Color.web("#3A4152") : level == null ? Color.web("#FFFFFF") : Color.web("#EEF0F3");
+            drawWalkways(g, ids, walk, level == null ? 7 : 12);
         }
         if (level == null && !img.isPresent()) {
             drawBuildings(g, ids);
         }
+        drawOverlays(g, ids, nodes, img.isPresent());
+    }
+
+    /** Route, graph view, place names, the "You are here" dot and the focused step, in that order. */
+    private void drawOverlays(GraphicsContext g, Set<Integer> ids, List<Node> nodes, boolean onPicture) {
         drawRoute(g, ids);
-        drawPlaces(g, nodes, img.isPresent());
+        if (graphView) {
+            drawGraph(g, ids);
+        }
+        drawPlaces(g, nodes, onPicture);
+        if (route == null && here != null && ids.contains(here.id())) {
+            youAreHere(g, sx(here.x()), sy(here.y()));
+        }
+        if (focused != null && ids.contains(focused.id())) {
+            double x = sx(focused.x());
+            double y = sy(focused.y());
+            g.setStroke(BRAND);
+            g.setLineWidth(3);
+            g.strokeOval(x - 18, y - 18, 36, 36);
+            g.setStroke(BRAND.deriveColor(0, 1, 1, 0.35));
+            g.setLineWidth(8);
+            g.strokeOval(x - 24, y - 24, 48, 48);
+        }
+    }
+
+    /** Graph view: walkways with their lengths, nodes with ids; nodes Dijkstra settled are shaded in order. */
+    private void drawGraph(GraphicsContext g, Set<Integer> ids) {
+        Color edgeColor = dark ? Color.web("#7BA5FF", 0.9) : Color.web("#1D4ED8", 0.85);
+        g.setLineDashes((double[]) null);
+        g.setLineCap(StrokeLineCap.ROUND);
+        for (Edge e : data.graph().edges()) {
+            boolean inA = ids.contains(e.fromNodeId());
+            boolean inB = ids.contains(e.toNodeId());
+            if (!inA || !inB) {
+                continue;
+            }
+            Node a = data.graph().node(e.fromNodeId()).orElseThrow();
+            Node b = data.graph().node(e.toNodeId()).orElseThrow();
+            g.setStroke(e.edgeType() == com.uenav.core.EdgeType.WALK ? edgeColor : GREEN);
+            g.setLineWidth(1.6);
+            g.strokeLine(sx(a.x()), sy(a.y()), sx(b.x()), sy(b.y()));
+            if (scale > 0.45) {
+                double mx = (sx(a.x()) + sx(b.x())) / 2;
+                double my = (sy(a.y()) + sy(b.y())) / 2;
+                smallText(g, Math.round(e.distanceM()) + " m", mx, my, edgeColor);
+            }
+        }
+        java.util.Map<Integer, Integer> order = new HashMap<>();
+        for (int i = 0; i < visited.size(); i++) {
+            order.put(visited.get(i), i + 1);
+        }
+        for (int id : ids) {
+            Node n = data.graph().node(id).orElseThrow();
+            double x = sx(n.x());
+            double y = sy(n.y());
+            Integer step = order.get(id);
+            double r = step != null ? 7 : 4.5;
+            g.setFill(step != null ? Color.web("#F59E0B") : (dark ? Color.web("#9CA4B4") : Color.web("#374151")));
+            g.fillOval(x - r, y - r, 2 * r, 2 * r);
+            g.setStroke(dark ? Color.web("#0E1117") : Color.WHITE);
+            g.setLineWidth(1.5);
+            g.strokeOval(x - r, y - r, 2 * r, 2 * r);
+            if (scale > 0.45) {
+                smallText(g, "#" + id + (step != null ? " (" + step + ")" : ""), x, y - 13, dark
+                        ? Color.web("#FDE68A") : Color.web("#92400E"));
+            }
+        }
+    }
+
+    private void smallText(GraphicsContext g, String text, double x, double y, Color color) {
+        g.setFont(Font.font(null, FontWeight.BOLD, 9.5));
+        g.setTextAlign(TextAlignment.CENTER);
+        g.setTextBaseline(VPos.CENTER);
+        g.setStroke(dark ? Color.web("#0E1117", 0.9) : Color.web("#FFFFFF", 0.9));
+        g.setLineWidth(3);
+        g.strokeText(text, x, y);
+        g.setFill(color);
+        g.fillText(text, x, y);
+    }
+
+    private static void youAreHere(GraphicsContext g, double x, double y) {
+        g.setFill(BLUE.deriveColor(0, 1, 1, 0.20));
+        g.fillOval(x - 20, y - 20, 40, 40);
+        g.setFill(Color.WHITE);
+        g.fillOval(x - 10, y - 10, 20, 20);
+        g.setFill(BLUE);
+        g.fillOval(x - 7, y - 7, 14, 14);
     }
 
     private void drawWalkways(GraphicsContext g, Set<Integer> ids, Color color, double width) {
@@ -524,6 +665,11 @@ public class MapView extends Region {
             public double scale() {
                 return scale;
             }
+
+            @Override
+            public boolean dark() {
+                return dark;
+            }
         };
     }
 
@@ -534,7 +680,7 @@ public class MapView extends Region {
         double rw = (maxX - minX) * scale + 2 * pad;
         double rh = (maxY - minY) * scale + 2 * pad;
         if (level == null) {
-            g.setFill(Color.web("#F6F1E7"));
+            g.setFill(dark ? Color.web("#1C1F26") : Color.web("#F6F1E7"));
             g.fillRoundRect(x, y, rw, rh, 18, 18);
             g.setStroke(BRAND.deriveColor(0, 1, 1, 0.7));
             g.setLineWidth(1.5);
@@ -542,9 +688,9 @@ public class MapView extends Region {
             g.strokeRoundRect(x, y, rw, rh, 18, 18);
             g.setLineDashes((double[]) null);
         } else {
-            g.setFill(Color.WHITE);
+            g.setFill(dark ? Color.web("#1A1E27") : Color.WHITE);
             g.fillRoundRect(x, y, rw, rh, 14, 14);
-            g.setStroke(Color.web("#D1D5DB"));
+            g.setStroke(dark ? Color.web("#2D3340") : Color.web("#D1D5DB"));
             g.setLineWidth(1.5);
             g.strokeRoundRect(x, y, rw, rh, 14, 14);
         }
@@ -580,7 +726,7 @@ public class MapView extends Region {
             g.fillRoundRect(cx - bw / 2, cy - bh / 2, bw, bh, 8, 8);
             g.setFill(Color.web("#E39A1B"));
             g.fillRoundRect(cx - bw / 2, cy + bh / 2 - 8, bw, 8, 6, 6);
-            label(g, shortName(b.name()), cx, cy + bh / 2 + 12, INK, false);
+            label(g, shortName(b.name()), cx, cy + bh / 2 + 12, false);
         }
     }
 
@@ -612,7 +758,7 @@ public class MapView extends Region {
                 g.setLineWidth(11);
                 g.setLineDashes((double[]) null);
             } else if (pass == 1) {
-                g.setStroke(BRAND);
+                g.setStroke(dark ? Color.web("#FF4D6A") : BRAND);
                 g.setLineWidth(7);
             } else {
                 g.setStroke(Color.WHITE);
@@ -668,7 +814,8 @@ public class MapView extends Region {
                     g.fillRoundRect(x - 7, y - 7, 14, 14, 4, 4);
                 }
                 if (level != null) {
-                    tag(g, "STAIRS".equals(type) ? "Stairs" : "Elevator", x, y + 18, Color.WHITE, INK);
+                    tag(g, "STAIRS".equals(type) ? "Stairs" : "Elevator", x, y + 18,
+                            dark ? Color.web("#242a36") : Color.WHITE, dark ? Color.web("#E7E9EF") : INK);
                 }
                 continue;
             }
@@ -688,12 +835,12 @@ public class MapView extends Region {
                 continue;
             }
             if (!isEnd) {
-                g.setFill(Color.WHITE);
+                g.setFill(dark ? Color.web("#1A1E27") : Color.WHITE);
                 g.fillOval(x - 6, y - 6, 12, 12);
-                g.setFill(Color.web("#6B7280"));
+                g.setFill(dark ? Color.web("#9CA4B4") : Color.web("#6B7280"));
                 g.fillOval(x - 4, y - 4, 8, 8);
             }
-            label(g, shortName(n.name()), x, y + (isEnd ? 16 : 14), INK, isEnd);
+            label(g, shortName(n.name()), x, y + (isEnd ? 16 : 14), isEnd);
         }
     }
 
@@ -712,14 +859,14 @@ public class MapView extends Region {
         g.fillOval(x - 4.5, y - 26.5, 9, 9);
     }
 
-    private static void label(GraphicsContext g, String text, double x, double y, Color color, boolean bold) {
+    private void label(GraphicsContext g, String text, double x, double y, boolean bold) {
         g.setFont(Font.font(null, bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.CENTER);
-        g.setStroke(Color.web("#FFFFFF", 0.9));
+        g.setStroke(dark ? Color.web("#0E1117", 0.85) : Color.web("#FFFFFF", 0.9));
         g.setLineWidth(3);
         g.strokeText(text, x, y);
-        g.setFill(color);
+        g.setFill(dark ? Color.web("#E7E9EF") : INK);
         g.fillText(text, x, y);
     }
 
@@ -752,7 +899,7 @@ public class MapView extends Region {
         double bestD = 22 * 22;
         for (int id : visibleIds()) {
             Node n = data.graph().node(id).orElseThrow();
-            if (!SnapshotReader.isSearchable(n.nodeType())) {
+            if (!pickAnyNode && !SnapshotReader.isSearchable(n.nodeType())) {
                 continue;
             }
             double dx = sx(n.x()) - x;
