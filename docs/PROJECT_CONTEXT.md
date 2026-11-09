@@ -180,7 +180,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | `mvn clean verify` on the owner's Windows PC (160 tests: core 46, server 33, admin 27, phone 54) | **Ran here** 2026-11-09 |
 | Owner's MySQL upgraded with `03_place_details.sql` (backup first in `~/UENav/backup`); new server build on port 8081 served office info and the EN restrooms; phone's `campus-snapshot.json` copied from it (version `9944eeeaf8d7cf92`) | **Ran here** 2026-11-09 |
 | Phone: kiosk home, categories (nearest first), You are here (typed QR code, tap on map), nearest restroom/exit, emergency route, avoid stairs, office info card, favorites/recent, tappable steps, graph view, dark mode | **Ran here** as off-screen 390x820 screenshots (ScreenTour), light and dark; never on a phone |
-| Phone: camera QR scanning (Attach barcode-scan) | Compiled; **not run** (no camera on the PC, APK not built yet) |
+| Phone: camera QR scanning (Attach barcode-scan) | APK **built on GitHub** 2026-11-09 (run 42577220171, Google code scanner inside); **not run** on a phone yet |
 | PC admin: dark mode, Map health page and dashboard card, QR codes page, Places form office fields | **Ran here** as off-screen screenshots against a stand-in server; Save signs and the Places dialog not clicked through |
 | QR code content | **Ran here**: a generated sign's QR decodes back to `UENAV:42` (ZXing reader in QrSignsTest) |
 
@@ -214,6 +214,9 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 20. **No hard-coded colours** in CSS or Java styles any more: use the colour variables (`-nv-surface`, `-surface`,
     ...) so dark mode keeps working. Canvas drawing (MapView, CampusArt) picks dark colours itself.
 21. Attach 4.0.25 `BarcodeScanService` has `asyncScan(...)` and `resultProperty()` (not "resultsProperty").
+    On Android it uses Google's code scanner (ML Kit, through Google Play services): the APK asks for no camera
+    permission, and the scanner may download itself the first time it is used, which needs internet. "Scan QR sign"
+    therefore opens the type-the-code screen behind the camera, so a failed or cancelled scan falls back to typing.
 22. Printed QR signs depend on node ids. Edit a place instead of deleting and re-adding it.
 23. Editing a place from an older app sends no office info: the server keeps the saved text (D14). The PC form sends
     an empty text to clear it.
