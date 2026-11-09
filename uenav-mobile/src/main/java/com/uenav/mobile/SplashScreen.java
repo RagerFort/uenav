@@ -28,7 +28,8 @@ final class SplashScreen {
     private final StackPane root = new StackPane();
     private final Label status = new Label("Loading the campus map…");
     private final ProgressIndicator spinner = new ProgressIndicator();
-    private final TranslateTransition bounce;
+    private final javafx.animation.Animation bounce;
+    private final Logo mark;
 
     SplashScreen() {
         root.getStyleClass().add("nv-splash");
@@ -44,11 +45,9 @@ final class SplashScreen {
         big.setMouseTransparent(true);
         small.setMouseTransparent(true);
 
-        Region pin = Icons.icon("pin", 46, "nv-icon-brand");
-        StackPane logo = new StackPane(pin);
-        logo.getStyleClass().add("nv-hero-logo");
-        logo.setMinSize(88, 88);
-        logo.setMaxSize(88, 88);
+        Logo mark = new Logo(108);
+        StackPane logo = mark.view();
+        this.mark = mark;
 
         Label name = new Label("UENav");
         name.getStyleClass().add("nv-splash-title");
@@ -70,13 +69,8 @@ final class SplashScreen {
 
         root.getChildren().addAll(big, small, centre, bottom);
 
-        // the pin hops gently while the app loads
-        bounce = new TranslateTransition(Duration.millis(520), pin);
-        bounce.setFromY(0);
-        bounce.setToY(-9);
-        bounce.setAutoReverse(true);
-        bounce.setCycleCount(TranslateTransition.INDEFINITE);
-        bounce.setInterpolator(Interpolator.EASE_BOTH);
+        // the route draws itself, the pin drops onto it, then hops gently while the app loads
+        bounce = mark.intro();
         bounce.play();
         ScaleTransition in = new ScaleTransition(Duration.millis(450), logo);
         in.setFromX(0.6);
@@ -89,6 +83,12 @@ final class SplashScreen {
 
     Parent view() {
         return root;
+    }
+
+    /** Jumps to the end of the logo animation (for still pictures). */
+    void skipIntro() {
+        bounce.stop();
+        mark.finish();
     }
 
     /** The map could not be loaded: stop the spinner and say why. */

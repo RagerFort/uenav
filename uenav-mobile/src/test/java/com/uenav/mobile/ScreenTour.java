@@ -141,7 +141,9 @@ public final class ScreenTour {
             boolean b3 = nav.goBack();
             System.out.println("BACK CHECK: " + a + " -> " + b + " (" + b1 + ") -> " + c + " (" + b2 + ") -> at home "
                     + !b3);
-            Scene splash = new Scene(new SplashScreen().view(), 390, 820);
+            SplashScreen sp = new SplashScreen();
+            sp.skipIntro();
+            Scene splash = new Scene(sp.view(), 390, 820);
             splash.getStylesheets().add(Ui.css());
             save(splash, "00-loading-screen");
         }
