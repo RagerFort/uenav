@@ -20,7 +20,7 @@ import javax.imageio.ImageIO;
 
 /**
  * Draws the UENav launcher icons from the same shapes as the logo on the loading screen (Logo.java):
- * legacy ic_launcher.png (white rounded tile), adaptive foreground (mark only) and monochrome (one colour, for
+ * legacy ic_launcher.png (red rounded tile), adaptive foreground (mark only) and monochrome (one colour, for
  * Android 13 themed icons). Every shape is built at the final pixel size, so curves stay smooth.
  * Developer tool, not a test. Run after mvn test-compile (like ScreenTour):
  *   java -cp "target/test-classes;<test classpath>" com.uenav.mobile.IconMaker src/android/res <preview folder>
@@ -29,8 +29,11 @@ public final class IconMaker {
 
     private IconMaker() { }
 
-    static final Color RED = Color.web("#C8102E");
-    static final Color INK = Color.web("#1F2330");
+    /** Icon colours: UE red tile, white route and pin, dark start dot. The dots are holes showing the tile. */
+    static final Color BACKGROUND = Color.web("#C8102E");
+    static final Color ROUTE = Color.WHITE;
+    static final Color START = Color.web("#1F2330");
+    static final Color PIN = Color.WHITE;
     static final String[] DENSITIES = {"ldpi", "mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"};
     static final double[] FACTOR = {0.75, 1, 1.5, 2, 3, 4};
     /** Mark height in an adaptive layer, as a share of the logo's 100-unit frame per 108-unit layer. */
@@ -79,13 +82,13 @@ public final class IconMaker {
         line.setStrokeWidth(10 * k);
         line.setStrokeLineCap(StrokeLineCap.ROUND);
         line.setStrokeLineJoin(StrokeLineJoin.ROUND);
-        line.setStroke(mono ? Color.BLACK : RED);
+        line.setStroke(mono ? Color.BLACK : ROUTE);
         Circle start = circle(30, 30, 9, k, ox, oy); // on top of the route's first end
-        start.setFill(mono ? Color.BLACK : INK);
+        start.setFill(mono ? Color.BLACK : START);
         SVGPath pin = new SVGPath();
         pin.setContent(path("M%s %s C%s %s %s %s %s %s A%s %s 0 0 1 %s %s C%s %s %s %s %s %s Z", k, ox, oy,
                 70, 48, 70, 48, 56, 34, 56, 25, -14, -14, 84, 25, 84, 34, 70, 48, 70, 48));
-        pin.setFill(mono ? Color.BLACK : RED);
+        pin.setFill(mono ? Color.BLACK : PIN);
         Group g = new Group(line, start, pin);
         // The white dots are holes: a mask (everything minus the dots), so the curves above are drawn untouched.
         Shape mask = new Rectangle(cx - 60 * k, cy - 60 * k, 120 * k, 120 * k);
@@ -115,13 +118,13 @@ public final class IconMaker {
         return new Circle(ox + x * k, oy + y * k, r * k);
     }
 
-    /** Older Androids: the whole icon, a white rounded tile with the mark, transparent corners. */
+    /** Older Androids: the whole icon, a red rounded tile with the mark, transparent corners. */
     static Group legacy(double px) {
         double u = px / 100;
         Rectangle tile = new Rectangle(4 * u, 4 * u, 92 * u, 92 * u);
         tile.setArcWidth(40 * u);
         tile.setArcHeight(40 * u);
-        tile.setFill(Color.WHITE);
+        tile.setFill(BACKGROUND);
         return new Group(frame(px), tile, mark(u * TILE_MARK, px / 2, px / 2, false));
     }
 
@@ -134,11 +137,11 @@ public final class IconMaker {
         return new Group(frame(px), mark(u * LAYER_MARK, px / 2, px / 2 + 0.5 * u, mono));
     }
 
-    /** What a launcher shows: white background and the foreground, cut to a circle or a squircle. For checking. */
+    /** What a launcher shows: the background colour and the foreground, cut to a circle or a squircle. For checking. */
     static Group preview(double px, boolean squircle) {
         double u = px / 108;
         Rectangle bg = new Rectangle(0, 0, px, px);
-        bg.setFill(Color.WHITE);
+        bg.setFill(BACKGROUND);
         Group both = new Group(bg, layer(px, false));
         if (squircle) {
             Rectangle r = new Rectangle(18 * u, 18 * u, 72 * u, 72 * u);
