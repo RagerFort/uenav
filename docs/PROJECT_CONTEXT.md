@@ -179,6 +179,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | UE Caloocan outdoor map in 3D shapes (16 blocks, field, roads, trees), 9 buildings, 2 gates, offices, facilities, 46 walkways | **Ran here** (tests, MySQL, phone screenshots). Positions traced from the campus map; distances are **estimates** (0.269 m per picture pixel, from the 4.86 ha campus area). Not checked on site |
 | Indoor data: College of Engineering 1F-4F (rooms, labs, offices, library, CRs, 4 stairwells, no elevator) | Generated from the posted floor plans (D19), loaded into the owner's MySQL 2026-11-09 (backup in `~/UENav/backup`); positions are estimates, not checked on site |
 | Phone map: no zooming while dragging (touch scroll / flick events ignored), pinch and double-tap zoom | **Ran here** with simulated touch events; not tried on a phone |
+| Phone on a real Android phone (Galaxy A35, Android 16), APK build 28 (GitHub run 42724200217) | **Ran here** 2026-11-10 over USB (adb): back key (Classrooms > Explore, press twice to close), lists open at the top and scroll with no slow frames, flick glides, map drags at mostly 8-16 ms a frame (was 33-94 ms), directions sheet handle drags and taps, step tap highlights, typing in search. Pinch not tested (adb cannot send two fingers on this phone) |
 | `mvn clean verify` on the owner's Windows PC (160 tests: core 46, server 33, admin 27, phone 54) | **Ran here** 2026-11-09 |
 | Owner's MySQL upgraded with `03_place_details.sql` (backup first in `~/UENav/backup`); new server build on port 8081 served office info and the EN restrooms; phone's `campus-snapshot.json` copied from it (version `9944eeeaf8d7cf92`) | **Ran here** 2026-11-09 |
 | Phone: kiosk home, categories (nearest first), You are here (typed QR code, tap on map), nearest restroom/exit, emergency route, avoid stairs, office info card, favorites/recent, tappable steps, graph view, dark mode | **Ran here** as off-screen 390x820 screenshots (ScreenTour), light and dark; never on a phone |
@@ -222,6 +223,14 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 22. Printed QR signs depend on node ids. Edit a place instead of deleting and re-adding it.
 24. Phone performance: no drop shadows on phones (`uenav-nav-phone.css`), and `TapGuard` stops a scroll that starts
     on a button from pressing it. The window keeps 34 units free for the status bar and 14 for the gesture bar.
+25. Every GitHub Android build signs the APK with a new throwaway key, so Android refuses to install it over the
+    previous build (INSTALL_FAILED_UPDATE_INCOMPATIBLE). Uninstall first, which clears the app's saved favorites,
+    recents and settings. Fix: one fixed keystore in GitHub secrets, passed to the `provided.keystore.*` properties.
+26. Phone map speed: MapView draws the map MARGIN larger than the view, and a drag or pinch only slides/stretches
+    that canvas; it redraws when the finger pauses. Taps use view coordinates (`vx`/`vy`), drawing uses canvas ones
+    (`sx`/`sy`). JavaFX gives keyboard focus to the first control of a new screen and the list scrolls to it:
+    `Ui.focusRest()` sits first in the window to take that focus. `adb shell input text` doubles each letter in
+    the JavaFX app; the on-screen keyboard types correctly.
 23. Editing a place from an older app sends no office info: the server keeps the saved text (D14). The PC form sends
     an empty text to clear it.
 
