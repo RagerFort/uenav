@@ -223,9 +223,12 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 22. Printed QR signs depend on node ids. Edit a place instead of deleting and re-adding it.
 24. Phone performance: no drop shadows on phones (`uenav-nav-phone.css`), and `TapGuard` stops a scroll that starts
     on a button from pressing it. The window keeps 34 units free for the status bar and 14 for the gesture bar.
-25. Every GitHub Android build signs the APK with a new throwaway key, so Android refuses to install it over the
-    previous build (INSTALL_FAILED_UPDATE_INCOMPATIBLE). Uninstall first, which clears the app's saved favorites,
-    recents and settings. Fix: one fixed keystore in GitHub secrets, passed to the `provided.keystore.*` properties.
+25. APK signing (fixed 2026-11-10): the Android build signs with UENav's own key from the GitHub secrets
+    `UENAV_KEYSTORE_BASE64` / `UENAV_KEYSTORE_PASSWORD` (alias `uenav`, SHA-256 66:EF:42:45...). The key and its
+    password live in `~/UENav/signing` on the owner's PC (`save-to-github.ps1` re-saves the secrets); keep a backup.
+    New builds install over old ones and keep favorites, recents and settings (tried: build 30 -> 31 on the A35).
+    Gluon only uses a key file named `*.jks` or `*.keystore`; any other name silently gives a debug-signed APK.
+    Builds made before this used throwaway keys: a phone with one of those must uninstall UENav once.
 26. Phone map speed: MapView draws the map MARGIN larger than the view, and a drag or pinch only slides/stretches
     that canvas; it redraws when the finger pauses. Taps use view coordinates (`vx`/`vy`), drawing uses canvas ones
     (`sx`/`sy`). JavaFX gives keyboard focus to the first control of a new screen and the list scrolls to it:
