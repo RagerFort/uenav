@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UENav launcher icon on Android 8 and newer: the logo mark on white, shaped by the phone (circle, squircle...).
+<!-- UENav launcher icon on Android 8 and newer: the logo mark in white on UE red, shaped by the phone (circle, squircle...).
      The monochrome layer is used by Android 13+ "themed icons". Pictures are drawn by IconMaker (src/test). -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background"/>
