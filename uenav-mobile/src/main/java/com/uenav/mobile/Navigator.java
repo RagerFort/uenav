@@ -42,7 +42,6 @@ import javafx.util.Duration;
  * wall, tap the map, or pick from a list), big category buttons, one-tap "nearest" buttons and an emergency exit
  * button. Then the Figma screens: Plan a route, Directions (map + steps), Route unavailable and the Map tab.
  * Routes are found on the device with uenav-core (Dijkstra), so all of this works offline (D5).
- * The phone shows it full screen; wide = true gives the side-by-side PC layout.
  */
 public final class Navigator {
 
@@ -56,13 +55,11 @@ public final class Navigator {
             PlaceCategory.FOOD, PlaceCategory.CLINIC);
 
     private final UsageLog log;
-    private final boolean wide;
     private final Settings settings;
     private final PlacesMemory memory;
     private final StackPane view = new StackPane();
     private CampusData data;
     private Consumer<Tab> onTab = t -> { };
-    private Runnable onThemeToggle;
     private boolean dark;
     private Tab tab = Tab.EXPLORE;
     private Runnable redraw = () -> { };
@@ -84,19 +81,13 @@ public final class Navigator {
     private Runnable afterStart;
     private Consumer<Integer> directionsLevel = lv -> { };
 
-    /** @param wide true for the PC window (map and steps side by side, flat headers) */
-    public Navigator(CampusData data, UsageLog log, boolean wide) {
-        this(data, log, wide, null, null);
-    }
-
     /**
      * @param settings for "Avoid stairs" (may be null: then routes may use stairs)
      * @param memory   recent and favourite destinations (may be null: then none are kept)
      */
-    public Navigator(CampusData data, UsageLog log, boolean wide, Settings settings, PlacesMemory memory) {
+    public Navigator(CampusData data, UsageLog log, Settings settings, PlacesMemory memory) {
         this.data = data;
         this.log = log;
-        this.wide = wide;
         this.settings = settings;
         this.memory = memory;
         view.getStyleClass().add("nv-canvas");
@@ -113,11 +104,6 @@ public final class Navigator {
 
     public void setOnTabChanged(Consumer<Tab> handler) {
         this.onTab = handler == null ? t -> { } : handler;
-    }
-
-    /** Shows a light/dark button on the home screen; the app switches the stylesheets and calls setDark. */
-    public void setOnThemeToggle(Runnable handler) {
-        this.onThemeToggle = handler;
     }
 
     /** Dark colours for the map; the screen is drawn again. */
@@ -206,24 +192,13 @@ public final class Navigator {
     }
 
     private VBox page(Region header) {
-        if (wide) {
-            header.getStyleClass().add("nv-header-flat");
-            header.setPadding(new Insets(24, 28, 4, 28));
-        }
         VBox v = new VBox(header);
         v.getStyleClass().add("nv-canvas");
         return v;
     }
 
-    private Insets bodyPad() {
-        return wide ? new Insets(12, 28, 28, 28) : new Insets(14, 18, 18, 18);
-    }
-
-    private VBox limitWidth(VBox body) {
-        if (wide) {
-            body.setMaxWidth(760);
-        }
-        return body;
+    private static Insets bodyPad() {
+        return new Insets(14, 18, 18, 18);
     }
 
     /** A short message at the bottom of the visitor screens (for the app around them). */
@@ -251,12 +226,7 @@ public final class Navigator {
     // ---------------------------------------------------------------- Explore (home)
 
     private void showExplore() {
-        Button theme = null;
-        if (onThemeToggle != null) {
-            theme = Ui.round(dark ? "sun" : "moon", dark ? "Light mode" : "Dark mode");
-            theme.setOnAction(e -> onThemeToggle.run());
-        }
-        VBox screen = page(Ui.header("UENav · VISITOR", "Explore", null, theme));
+        VBox screen = page(Ui.header("UENav · VISITOR", "Explore", null, null));
 
         TextField search = new TextField(exploreQuery);
         search.setPromptText("Search a room, office or place");
@@ -280,7 +250,7 @@ public final class Navigator {
         search.textProperty().addListener((o, a, b) -> fill.run());
         fill.run();
 
-        VBox body = limitWidth(new VBox(14, searchBox, dynamic));
+        VBox body = new VBox(14, searchBox, dynamic);
         body.setPadding(bodyPad());
         screen.getChildren().add(Ui.scroll(body));
         setScreen(screen, Tab.EXPLORE, "explore", this::showExplore);
@@ -547,7 +517,7 @@ public final class Navigator {
         };
         more.setOnAction(e -> addPage.run());
         addPage.run();
-        VBox body = limitWidth(new VBox(14));
+        VBox body = new VBox(14);
         if (places.isEmpty()) {
             body.getChildren().add(Ui.card(Ui.bubble(cat.icon(), toneOf(cat), 48),
                     Ui.label("No " + cat.label().toLowerCase(Locale.ROOT) + " on the map yet", "nv-h3"),
@@ -572,7 +542,7 @@ public final class Navigator {
     /** Asks for the starting point, then runs next (or goes on to directions / home). */
     private void chooseStartThen(Runnable next) {
         afterStart = next;
-        showPlan(false, true);
+        showPlan(true);
     }
 
     /** Sets "You are here" and carries on with whatever was waiting for it. */
@@ -646,7 +616,7 @@ public final class Navigator {
                 Ui.wrap(help, "nv-muted"), box, error, use);
         card.setSpacing(10);
         card.setPadding(new Insets(20, 18, 20, 18));
-        VBox body = limitWidth(new VBox(14, card));
+        VBox body = new VBox(14, card);
         if (camera) {
             Button again = Ui.secondary("Scan with the camera again");
             again.setOnAction(e -> QrScanner.scan(this::handleCode));
@@ -657,30 +627,6 @@ public final class Navigator {
         body.setPadding(bodyPad());
         screen.getChildren().add(Ui.scroll(body));
         setScreen(screen, Tab.EXPLORE, "code", this::showCodeEntry);
-    }
-
-    /** Tap the map where you are (any point, including hallway corners and stairs). */
-    private void showPickOnMap(boolean startOnly) {
-        VBox screen = page(Ui.header("UENav · VISITOR", "Tap where you are", this::goBack,
-                null));
-        MapView map = new MapView();
-        map.setDark(dark);
-        map.setData(data);
-        map.setPickAnyNode(true);
-        map.setOnPlaceClicked(this::setStartAndContinue);
-        StackPane stack = levelBrowser(map);
-        HBox hint = new HBox(10, Icons.icon("touch", 18, "nv-icon-blue"),
-                Ui.wrap("Tap the place, door or hallway corner nearest to you. Use the floor tabs inside buildings.",
-                        "nv-muted"));
-        hint.setAlignment(Pos.CENTER_LEFT);
-        hint.getStyleClass().add("nv-floating");
-        hint.setPadding(new Insets(12, 14, 12, 14));
-        hint.setMaxHeight(Region.USE_PREF_SIZE);
-        StackPane.setAlignment(hint, Pos.BOTTOM_CENTER);
-        StackPane.setMargin(hint, new Insets(0, 14, 14, 14));
-        stack.getChildren().add(hint);
-        screen.getChildren().add(stack);
-        setScreen(screen, Tab.MAP, "pick", () -> showPickOnMap(startOnly));
     }
 
     // ---------------------------------------------------------------- Plan a route
@@ -699,7 +645,7 @@ public final class Navigator {
         if (start != null) {
             findDirections(true);
         } else {
-            showPlan(false, false);
+            showPlan(false);
         }
     }
 
@@ -709,10 +655,9 @@ public final class Navigator {
     /**
      * "Where are you?" / "Plan a route": the top half is the campus map, which slides open, with both gates as big
      * labelled pins and every place tappable; the bottom half lists the gates, then other places with a search box.
-     * @param showAll   kept for older callers (the search box replaced "Start from another place")
      * @param startOnly true when only the starting point is asked for (no destination yet)
      */
-    private void showPlan(boolean showAll, boolean startOnly) {
+    private void showPlan(boolean startOnly) {
         showPlanScreen(startOnly, true);
     }
 
@@ -776,7 +721,7 @@ public final class Navigator {
         scan.setOnAction(e -> scanQr());
         VBox gateRows = new VBox(10);
         for (Node g : gates) {
-            gateRows.getChildren().add(choice(g, false, startOnly));
+            gateRows.getChildren().add(choice(g, startOnly));
         }
         TextField search = new TextField(startQuery);
         search.setPromptText("Search another place (room, office, building)");
@@ -791,7 +736,7 @@ public final class Navigator {
             others.getChildren().clear();
             int max = startQuery.isBlank() ? 12 : 40;
             for (int i = 0; i < Math.min(max, found.size()); i++) {
-                others.getChildren().add(choice(found.get(i), false, startOnly));
+                others.getChildren().add(choice(found.get(i), startOnly));
             }
             if (found.size() > max) {
                 others.getChildren().add(Ui.infoLine((found.size() - max) + " more. Type a name to find yours."));
@@ -922,7 +867,7 @@ public final class Navigator {
         return card;
     }
 
-    private HBox choice(Node n, boolean showAll, boolean startOnly) {
+    private HBox choice(Node n, boolean startOnly) {
         PlaceStyle s = PlaceStyle.of(n.nodeType());
         boolean on = start != null && start.id() == n.id();
         Region radio = new Region();
@@ -1041,42 +986,19 @@ public final class Navigator {
         map.setGraphView(graphOn, visited);
         StackPane mapStack = mapWithOverlays(map, levels);
 
-        VBox sheet = sheet(summary, map, levels);
-        Parent screen;
-        if (wide) {
-            Region head = Ui.header("UENav · VISITOR", "Directions", this::goBack, null);
-            mapStack.getStyleClass().add("nv-card");
-            clip(mapStack, 16);
-            HBox.setHgrow(mapStack, Priority.ALWAYS);
-            ScrollPane side = Ui.scroll(sheet);
-            side.setMinWidth(380);
-            side.setPrefWidth(400);
-            side.setMaxWidth(420);
-            VBox sideBox = new VBox(side);
-            sideBox.getStyleClass().addAll("nv-sheet", "nv-sheet-wide");
-            sideBox.setPadding(new Insets(6, 0, 6, 0));
-            HBox content = new HBox(16, mapStack, sideBox);
-            content.setPadding(new Insets(12, 28, 24, 28));
-            VBox.setVgrow(content, Priority.ALWAYS);
-            VBox v = page(head);
-            v.getChildren().add(content);
-            screen = v;
-        } else {
-            ScrollPane sc = Ui.scroll(sheet);
-            VBox sheetBox = new VBox(sheetHandle(), sc);
-            sheetBox.getStyleClass().add("nv-sheet");
-            VBox.setVgrow(sheetBox, Priority.ALWAYS);
-            VBox.setMargin(sheetBox, new Insets(-26, 0, 0, 0));
-            VBox v = new VBox(mapStack, sheetBox);
-            v.getStyleClass().add("nv-canvas");
-            // Fixed height: the sheet below must never squeeze the map (that looked like random zooming). The
-            // share only changes when the user drags or taps the sheet's handle.
-            mapStack.prefHeightProperty().bind(view.heightProperty().multiply(mapShare));
-            mapStack.minHeightProperty().bind(mapStack.prefHeightProperty());
-            mapStack.maxHeightProperty().bind(mapStack.prefHeightProperty());
-            sheetBox.setMinHeight(0);
-            screen = v;
-        }
+        ScrollPane sc = Ui.scroll(sheet(summary, map, levels));
+        VBox sheetBox = new VBox(sheetHandle(), sc);
+        sheetBox.getStyleClass().add("nv-sheet");
+        VBox.setVgrow(sheetBox, Priority.ALWAYS);
+        VBox.setMargin(sheetBox, new Insets(-26, 0, 0, 0));
+        sheetBox.setMinHeight(0);
+        VBox screen = new VBox(mapStack, sheetBox);
+        screen.getStyleClass().add("nv-canvas");
+        // Fixed height: the sheet below must never squeeze the map (that looked like random zooming). The share
+        // only changes when the user drags or taps the sheet's handle.
+        mapStack.prefHeightProperty().bind(view.heightProperty().multiply(mapShare));
+        mapStack.minHeightProperty().bind(mapStack.prefHeightProperty());
+        mapStack.maxHeightProperty().bind(mapStack.prefHeightProperty());
         setScreen(screen, Tab.MAP, "directions", this::showDirections);
     }
 
@@ -1143,7 +1065,7 @@ public final class Navigator {
                 new VBox(0, Ui.label("FROM", "nv-label-caps"), Ui.label(start.name(), "nv-strong")));
         fromRow.setAlignment(Pos.CENTER_LEFT);
         fromRow.getStyleClass().add("nv-row");
-        fromRow.setOnMouseClicked(e -> showPlan(false, false));
+        fromRow.setOnMouseClicked(e -> showPlan(false));
         HBox toRow = new HBox(10, Icons.icon("pin", 14, "nv-icon-brand"),
                 new VBox(0, Ui.label("TO", "nv-label-caps"), Ui.label(destination.name(), "nv-strong")));
         toRow.setAlignment(Pos.CENTER_LEFT);
@@ -1167,14 +1089,10 @@ public final class Navigator {
         card.setMaxHeight(Region.USE_PREF_SIZE);
 
         VBox top = new VBox(10, card);
-        top.setPadding(new Insets(wide ? 14 : 12, 14, 0, 14));
+        top.setPadding(new Insets(12, 14, 0, 14));
         top.setPickOnBounds(false);
         top.setMaxHeight(Region.USE_PREF_SIZE);
         StackPane.setAlignment(top, Pos.TOP_CENTER);
-        if (wide) {
-            card.setMaxWidth(440);
-            top.setAlignment(Pos.TOP_LEFT);
-        }
 
         double padTop = 140;
         directionsLevel = map::setLevel;
@@ -1208,14 +1126,11 @@ public final class Navigator {
             HBox bar = new HBox(8, tabs, Ui.grow(), chipBox);
             bar.setAlignment(Pos.CENTER_LEFT);
             bar.setPickOnBounds(false);
-            if (wide) {
-                bar.setMaxWidth(440);
-            }
             top.getChildren().add(bar);
             padTop = 190;
             directionsLevel = select;
         }
-        map.setPadding(padTop, wide ? 20 : 40);
+        map.setPadding(padTop, 40);
 
         Label graphText = Ui.label(String.format(Locale.ROOT, "Dijkstra checked %d of %d places in %.1f ms",
                 visited.size(), data.graph().nodeCount(), searchMillis));
@@ -1225,15 +1140,15 @@ public final class Navigator {
         graphChip.setMouseTransparent(true);
         graphChip.setVisible(graphOn);
         StackPane.setAlignment(graphChip, Pos.BOTTOM_LEFT);
-        StackPane.setMargin(graphChip, new Insets(0, 0, wide ? 14 : 40, 14));
+        StackPane.setMargin(graphChip, new Insets(0, 0, 40, 14));
 
         VBox zoom = zoomColumn(map, () -> {
             graphOn = !graphOn;
             map.setGraphView(graphOn, visited);
             graphChip.setVisible(graphOn);
         });
-        StackPane.setAlignment(zoom, wide ? Pos.BOTTOM_RIGHT : Pos.CENTER_RIGHT);
-        StackPane.setMargin(zoom, wide ? new Insets(0, 14, 14, 0) : new Insets(padTop - 30, 14, 0, 0));
+        StackPane.setAlignment(zoom, Pos.CENTER_RIGHT);
+        StackPane.setMargin(zoom, new Insets(padTop - 30, 14, 0, 0));
 
         StackPane stack = new StackPane(map, top, zoom, graphChip);
         stack.getStyleClass().add("nv-map-bg");
@@ -1299,7 +1214,7 @@ public final class Navigator {
     /** The bottom sheet: destination, info card, time and distance, stairs/elevator choice, steps and feedback. */
     private VBox sheet(Directions.Summary s, MapView map, List<Integer> levels) {
         VBox sheet = new VBox(14);
-        sheet.setPadding(new Insets(wide ? 18 : 2, 18, 18, 18)); // on a phone the handle sits above (sheetHandle)
+        sheet.setPadding(new Insets(2, 18, 18, 18)); // the handle sits above it (sheetHandle)
         if (emergency) {
             HBox banner = new HBox(10, Icons.icon("warning", 20),
                     new VBox(2, Ui.label("Emergency route", "nv-strong"),
@@ -1524,21 +1439,21 @@ public final class Navigator {
         message.setSpacing(10);
         message.setPadding(new Insets(24, 20, 24, 20));
 
-        VBox body = limitWidth(new VBox(14, routeCard(), message));
+        VBox body = new VBox(14, routeCard(), message);
         body.setPadding(bodyPad());
 
-        VBox footer = limitWidth(new VBox(10));
+        VBox footer = new VBox(10);
         if (stepFree) {
             Button stairs = Ui.primary("Allow stairs for this trip");
             stairs.setOnAction(e -> runRoute(RoutePreference.ANY, false));
             footer.getChildren().add(stairs);
         }
         Button change = stepFree ? Ui.secondary("Change starting point") : Ui.primary("Change starting point");
-        change.setOnAction(e -> showPlan(false, false));
+        change.setOnAction(e -> showPlan(false));
         Button browse = Ui.secondary("Browse destinations");
         browse.setOnAction(e -> showExplore());
         footer.getChildren().addAll(change, browse);
-        footer.setPadding(wide ? new Insets(0, 28, 24, 28) : new Insets(8, 18, 14, 18));
+        footer.setPadding(new Insets(8, 18, 14, 18));
         screen.getChildren().addAll(Ui.scroll(body), footer);
         setScreen(screen, Tab.MAP, "unavailable", this::showUnavailable);
     }
@@ -1568,22 +1483,14 @@ public final class Navigator {
         hint.getStyleClass().add("nv-floating");
         hint.setPadding(new Insets(12, 14, 12, 14));
         hint.setMaxHeight(Region.USE_PREF_SIZE);
-        if (wide) {
-            hint.setMaxWidth(440);
-        }
         StackPane.setAlignment(hint, Pos.BOTTOM_CENTER);
         StackPane.setMargin(hint, new Insets(0, 14, 14, 14));
         stack.getChildren().add(hint);
-        if (wide) {
-            stack.getStyleClass().add("nv-card");
-            clip(stack, 16);
-            VBox.setMargin(stack, new Insets(12, 28, 24, 28));
-        }
         screen.getChildren().add(stack);
         setScreen(screen, Tab.MAP, "map", this::showMapHome);
     }
 
-    /** A map with floor tabs for every level and the zoom / graph buttons (Map tab and "Tap where you are"). */
+    /** A map with floor tabs for every level and the zoom / graph buttons (the Map tab). */
     private StackPane levelBrowser(MapView map) {
         List<Integer> levels = new ArrayList<>();
         levels.add(null);

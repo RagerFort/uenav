@@ -13,10 +13,6 @@ public record Node(int id, Integer buildingId, Integer floorId, String name,
         this(id, buildingId, floorId, name, x, y, nodeType, null, null);
     }
 
-    public boolean isOutdoor() {
-        return buildingId == null;
-    }
-
     /** True when there is a description or opening hours to show. */
     public boolean hasInfo() {
         return (description != null && !description.isBlank()) || (openHours != null && !openHours.isBlank());

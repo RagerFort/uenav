@@ -83,7 +83,7 @@ public class MobileApp extends Application {
     /** Builds the tabs and screens (Explore, Map, Settings) once the campus map is loaded. */
     private Parent buildApp(File dir, CampusData data) {
         PlacesMemory memory = new PlacesMemory(new FileTextStore(new File(dir, "places.json")));
-        navigator = new Navigator(data, UsageLog.of(queue, this::syncAsync), false, settings, memory);
+        navigator = new Navigator(data, UsageLog.of(queue, this::syncAsync), settings, memory);
         navigator.setDark(dark());
         navigator.setOnTabChanged(t -> {
             if (tab != Tab.SETTINGS) {
@@ -231,7 +231,6 @@ public class MobileApp extends Application {
     private void show(Stage stage, Parent root) {
         // On a phone the window is the whole screen; on a PC it is a phone-sized window.
         boolean desktop = !isAndroidOrIos();
-        javafx.geometry.Rectangle2D all = Screen.getPrimary().getBounds();
         javafx.geometry.Rectangle2D visual = Screen.getPrimary().getVisualBounds();
         double w = desktop ? 390 : visual.getWidth();
         double h = desktop ? 820 : visual.getHeight();

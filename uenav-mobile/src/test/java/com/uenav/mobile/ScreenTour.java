@@ -69,8 +69,7 @@ public final class ScreenTour {
             @Override
             public void feedback(int fromNodeId, int toNodeId, RoutePreference pref, String feedbackType) { }
         };
-        nav = new Navigator(data, log, false, settings, memory);
-        nav.setOnThemeToggle(() -> { });
+        nav = new Navigator(data, log, settings, memory);
         nav.setDark(dark);
         nav.openExplore();
         shot(p + "01-home");
@@ -171,9 +170,6 @@ public final class ScreenTour {
 
         call("showCodeEntry");
         shot(p + "12-type-qr-code");
-
-        call("showPickOnMap", true);
-        shot(p + "13-tap-where-you-are");
 
         nav.openExplore();
         set("exploreQuery", "cr");

@@ -90,9 +90,9 @@ uenav-core/                      Node (+ description, openHours), Edge, EdgeType
                                  landmarks: "Turn left at Registrar's Office", "Turn right after Gazebo"; each step knows
                                  its node), PlaceSearch (ranked search: room codes "en420", synonyms "cr", "pay"),
                                  PlaceCategory (home buttons), QrCodes (UENAV:<id>), GraphCheck (map health),
-                                 MiniJson (reader+writer), SnapshotReader, Version
+                                 MiniJson (reader+writer), SnapshotReader
   src/test/...                   PathFinderTest, NearestAndTraceTest, SnapshotReaderTest, DirectionsTest, PlaceSearchTest,
-                                 QrCodesTest, GraphCheckTest, VersionTest
+                                 QrCodesTest, GraphCheckTest
 uenav-server/                    Spring Boot: UenavServerApplication, HealthController
   .../snapshot/                  GET /api/snapshot and /api/snapshot/version (reads MySQL)
   .../admin/                     BCrypt login, 8-hour token, lockout, /api/admin/login|logout|me, interceptor
@@ -180,7 +180,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | Indoor data: College of Engineering 1F-4F (rooms, labs, offices, library, CRs, 4 stairwells, no elevator) | Generated from the posted floor plans (D19), loaded into the owner's MySQL 2026-11-09 (backup in `~/UENav/backup`); positions are estimates, not checked on site |
 | Phone map: no zooming while dragging (touch scroll / flick events ignored), pinch and double-tap zoom | **Ran here** with simulated touch events; not tried on a phone |
 | Phone on a real Android phone (Galaxy A35, Android 16), APK build 28 (GitHub run 42724200217) | **Ran here** 2026-11-10 over USB (adb): back key (Classrooms > Explore, press twice to close), lists open at the top and scroll with no slow frames, flick glides, map drags at mostly 8-16 ms a frame (was 33-94 ms), directions sheet handle drags and taps, step tap highlights, typing in search. Pinch not tested (adb cannot send two fingers on this phone) |
-| `mvn clean verify` on the owner's Windows PC (160 tests: core 46, server 33, admin 27, phone 54) | **Ran here** 2026-11-09 |
+| `mvn clean verify` on the owner's Windows PC (162 tests: core 46, server 33, admin 27, phone 56) | **Ran here** 2026-11-11, after removing unused code |
 | Owner's MySQL upgraded with `03_place_details.sql` (backup first in `~/UENav/backup`); new server build on port 8081 served office info and the EN restrooms; phone's `campus-snapshot.json` copied from it (version `9944eeeaf8d7cf92`) | **Ran here** 2026-11-09 |
 | Phone: kiosk home, categories (nearest first), You are here (typed QR code, tap on map), nearest restroom/exit, emergency route, avoid stairs, office info card, favorites/recent, tappable steps, graph view, dark mode | **Ran here** as off-screen 390x820 screenshots (ScreenTour), light and dark; never on a phone |
 | Phone: camera QR scanning (Attach barcode-scan) | APK **built on GitHub** 2026-11-09 (run 42577220171, Google code scanner inside); **not run** on a phone yet |
