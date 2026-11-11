@@ -76,10 +76,9 @@ class PlaceSearchTest {
     }
 
     @Test
-    void emptyQueryListsEverythingAToZAndSuggestLimits() {
+    void emptyQueryListsEverythingAToZ() {
         List<String> all = names("  ");
         assertEquals(8, all.size());
         assertEquals("Cashier's Office", all.get(0));
-        assertEquals(2, PlaceSearch.suggest(DATA, "en", 2).size());
     }
 }

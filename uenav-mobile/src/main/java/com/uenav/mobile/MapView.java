@@ -262,10 +262,6 @@ public class MapView extends Region {
         draw();
     }
 
-    public boolean graphView() {
-        return graphView;
-    }
-
     /** Places drawn as big labelled pins, such as the two gates on the "Where are you?" screen. */
     public void setHighlights(List<Node> nodes) {
         this.highlights = nodes == null ? List.of() : List.copyOf(nodes);
@@ -801,7 +797,7 @@ public class MapView extends Region {
                 smallText(g, Math.round(e.distanceM()) + " m", mx, my, edgeColor);
             }
         }
-        java.util.Map<Integer, Integer> order = new HashMap<>();
+        Map<Integer, Integer> order = new HashMap<>();
         for (int i = 0; i < visited.size(); i++) {
             order.put(visited.get(i), i + 1);
         }

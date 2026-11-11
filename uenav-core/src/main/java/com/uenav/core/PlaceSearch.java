@@ -71,12 +71,6 @@ public final class PlaceSearch {
         return out;
     }
 
-    /** At most limit suggestions, for the autocomplete list under the search box. */
-    public static List<Node> suggest(CampusData data, String query, int limit) {
-        List<Node> all = search(data, query);
-        return all.subList(0, Math.min(limit, all.size()));
-    }
-
     /** 0 = no match; higher is better. */
     static int score(Node n, CampusData data, String q) {
         String name = normalize(n.name());

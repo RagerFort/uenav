@@ -170,7 +170,6 @@
     -fx-background-color: -nv-surface; -fx-background-radius: 22 22 0 0;
     -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.10), 16, 0, 0, -2);
 }
-.nv-sheet-wide { -fx-background-radius: 16; }
 .nv-handle { -fx-background-color: -nv-handle; -fx-background-radius: 3; }
 .nv-grab { -fx-cursor: v-resize; }
 
@@ -206,8 +205,7 @@
 .nv-badge { -fx-background-color: -nv-field; -fx-background-radius: 6; -fx-padding: 2 8 2 8; -fx-font-size: 11px; -fx-text-fill: -nv-muted; }
 .nv-soft-card { -fx-background-color: -nv-hover; -fx-effect: null; }
 
-/* PC pages: headers sit on the grey page instead of a white bar */
-.nv-header-flat { -fx-background-color: transparent; -fx-border-width: 0; }
+/* the floor tabs on the Map tab scroll sideways without a frame */
 .nv-tabs-scroll, .nv-tabs-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
 
 /* home screen like a mall kiosk: You are here, category tiles, nearest buttons, emergency */

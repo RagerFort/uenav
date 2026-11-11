@@ -2,7 +2,6 @@ package com.uenav.client;
 
 import com.uenav.core.GraphCheck;
 import java.util.List;
-import java.util.function.Consumer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;

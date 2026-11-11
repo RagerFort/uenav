@@ -62,11 +62,6 @@ public final class PlacesMemory {
         return now;
     }
 
-    public synchronized void clearRecent() {
-        recent.clear();
-        save();
-    }
-
     private void save() {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("recent", new ArrayList<>(recent));
