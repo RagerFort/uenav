@@ -99,6 +99,23 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D21: campus layout checked by a student (implemented 2026-11-15, owner asked)
+
+The outdoor map was traced from the campus map picture. It is now placed from a satellite photo (Esri World
+Imagery) and OpenStreetMap building outlines, turned into the app's existing map frame with a four-corner fit, so
+node X/Y and the Engineering floor data keep working. The owner, a UE Caloocan student, named the buildings and
+confirmed the paths:
+- Only two gates: University Hills Gate (the arch at the Samson Road / U.E. Tech Road corner, "263 UE Tech" on
+  Street View) and Samson Road Gate (the pedestrian arch next to STI). Students mainly use the Samson Road Gate.
+- From the Samson Road Gate an opening between the CFAD Building and the Administration Building leads to both of
+  them and onto the grass field; students cross the field to Lucio Tan and to the Engineering building.
+- The square on the east side of the field is an open court (not beach volleyball); the round driveway by the gym
+  is parking; the small building by the Samson Road Gate is the Security Office; the field is not a football field.
+- The CFAD Building is the red-roof building west of Tan Yan Kee (UE's pages say CFAD classes are inside TYK).
+Distances are measured on the photo. The Engineering building keeps its earlier shape (about 10 m off at the south
+end) so its floor plans still match. Not confirmed yet: where the Engineering "left side entrance" is, and the
+playground and gazebo positions.
+
 ## D20: Settings tab instead of Admin; theme follows the phone (implemented 2026-11-09, owner asked)
 
 The phone's bottom bar is Explore / Map / Settings. Admin screens moved under Settings > Staff sign in (visitors no

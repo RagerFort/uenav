@@ -10,6 +10,15 @@ Floors 1 to 4 of the College of Engineering building come from `sql/tools/engine
 lists at the top of the script, run it, then load the SQL file (`mysql -u root -p uenav < sql/04_engineering_building.sql`).
 It can be run again: it keeps the usage log and the ids it already uses. There is no elevator in this building.
 
+## The campus (outdoor) layout
+`sql/05_campus_layout.sql` puts the buildings, gates, offices and outdoor walkways where they really are. The
+positions come from a satellite photo and OpenStreetMap building outlines, turned into the app's map frame with a
+four-corner fit (the campus corners), and were checked by a UE Caloocan student on 2026-11-15. Distances are
+measured on the photo in metres. Load it after `04_engineering_building.sql`, and again whenever 04 is run again
+(04 rebuilds the two walkways into the Engineering building). The matching 3D shapes are in
+`uenav-mobile/src/main/resources/maps/campus-3d.json`. After loading either file, copy `GET /api/snapshot` into
+`uenav-mobile/src/main/resources/campus-snapshot.json` before building the APK.
+
 ## Order
 1. **Floors** page: add the missing floors of a building (for example Engineering 2F and 3F: floor number 2, name "2nd floor").
 2. **Places** page, for every floor:

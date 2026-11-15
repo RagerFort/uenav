@@ -38,7 +38,8 @@ class CampusMapTest {
         }
         CampusArt art = CampusArt.load("/maps/campus-3d.json");
         assertTrue(art != null, "campus-3d.json is missing or unreadable");
-        assertTrue(art.buildingCount() >= 15, "buildings in the 3D map: " + art.buildingCount());
+        // 9 buildings (Engineering is 3 blocks) plus the playground, security office and gazebo
+        assertTrue(art.buildingCount() >= 14, "buildings in the 3D map: " + art.buildingCount());
     }
 
     @Test
