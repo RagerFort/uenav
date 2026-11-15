@@ -10,7 +10,7 @@ import javafx.scene.layout.VBox;
 
 /**
  * The Settings tab (it replaced the Admin tab in the bottom bar): theme (Same as phone / Light / Dark), Avoid stairs,
- * which map the phone uses, and a small "Staff sign in" row that opens the admin screens.
+ * Animate directions, which map the phone uses, and a small "Staff sign in" row that opens the admin screens.
  */
 final class SettingsScreen {
 
@@ -59,6 +59,19 @@ final class SettingsScreen {
             refresh(screen);
         });
 
+        HBox animate = new HBox(12, Ui.bubble("navigation", "red", 36),
+                Ui.twoLines("Animate directions", settings.animateRoutes()
+                        ? "On: a new route plays on the map step by step"
+                        : "Off: directions open without the animation (Play still shows it)", "nv-strong"),
+                Ui.toggleSwitch(settings.animateRoutes()));
+        animate.setAlignment(Pos.CENTER_LEFT);
+        animate.getStyleClass().add("nv-row");
+        animate.setPadding(new Insets(6, 0, 6, 0));
+        animate.setOnMouseClicked(e -> {
+            settings.setAnimateRoutes(!settings.animateRoutes());
+            refresh(screen);
+        });
+
         HBox map = new HBox(12, Ui.bubble("map", "blue", 36),
                 Ui.twoLines("Campus map on this phone", host.mapInfo(), "nv-strong"));
         map.setAlignment(Pos.CENTER_LEFT);
@@ -73,7 +86,7 @@ final class SettingsScreen {
 
         VBox body = new VBox(14,
                 section("APPEARANCE", themes),
-                section("ROUTES", stairs),
+                section("ROUTES", stairs, Ui.sep(), animate),
                 section("MAP", map, Ui.infoLine("Search and directions work without internet.")),
                 section("STAFF", staff),
                 Ui.label("UENav · Campus Navigator · UE Caloocan", "nv-muted"));

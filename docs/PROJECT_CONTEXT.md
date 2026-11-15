@@ -76,6 +76,7 @@ D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library
 | D20 | Phone bottom bar Explore / Map / Settings; admin under Settings > Staff sign in; theme Same as phone / Light / Dark. |
 | D21 | Campus layout from a satellite photo + OpenStreetMap, checked by a student: 2 gates, Samson Road Gate path between CFAD and Admin, paths across the field. `sql/05_campus_layout.sql`. |
 | D22 | Tan Yan Kee GF-10F from the posted floor plans; CFAD is TYK's west wing; GF canteen; 4F bridge to EN 3F; 2 elevator banks (anyone); stairs count 15 m a floor. `sql/06_tan_yan_kee.sql`. |
+| D23 | Directions play the route step by step (RoutePlayer): walker, red trail with flowing arrows, steps light up, floors fade over; stops on touch; Play/Stop; Settings > Animate directions. |
 
 ## 6. Technology and versions
 - Java 17 release level (owner's PC runs JDK 21; CI uses Temurin 17 plus Gluon's GraalVM 22.1.0.1-Final java17).
@@ -104,7 +105,8 @@ uenav-server/                    Spring Boot: UenavServerApplication, HealthCont
 uenav-mobile/                    Gluon phone app (visitors and admins):
                                  MobileApp (bottom bar Explore / Map / Admin), Navigator (Figma screens Explore, Plan a route,
                                  Directions with map + steps + stairs/elevator choice + Helpful/Wrong route, Route unavailable,
-                                 Campus map), MapView (draws a level and the route; uses /maps/*.png if present), Icons, Ui,
+                                 Campus map), MapView (draws a level and the route; uses /maps/*.png if present), RoutePlayer
+                                 (the step-by-step route animation, D23), Icons, Ui,
                                  PlaceStyle, uenav-nav.css; CampusStore (bundled snapshot, downloads a newer one, D9);
                                  AdminScreens + MobileAdminApi (phone Admin tab: sign in, dashboard, add/edit/delete place,
                                  route reports, server address); usage log: UsageEntry, UsageQueue, Settings, SyncService,
@@ -241,6 +243,9 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
     (`sx`/`sy`). JavaFX gives keyboard focus to the first control of a new screen and the list scrolls to it:
     `Ui.focusRest()` sits first in the window to take that focus. `adb shell input text` doubles each letter in
     the JavaFX app; the on-screen keyboard types correctly.
+    The route animation (D23) draws only on MapView's `overlay` canvas (view coordinates) each frame; the map
+    canvas is drawn again only when the floor changes. ScreenTour draws its frames (`19-anim-*`) by calling
+    `Navigator.routeAnimationAt(seconds)`.
 23. Editing a place from an older app sends no office info: the server keeps the saved text (D14). The PC form sends
     an empty text to clear it.
 

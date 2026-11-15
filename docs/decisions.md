@@ -99,6 +99,22 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D23: directions play the route step by step (implemented 2026-11-15, owner asked)
+
+When directions open for a new route (Get directions, swap, stairs/elevator choice, nearest place, emergency), the
+route plays on the map after a short wait: a walker (white disc, red arrow turning smoothly) walks it, the walked
+part fills in red with arrows flowing along it while the rest stays grey, and the matching step lights up in the
+list (scrolled into view). It slows down and pauses at each step with a ring; at stairs, elevators, doors and the
+bridge a tag says where it goes ("Elevator up to 4F", "Bridge to Engineering 3F") and the map fades to that floor.
+At the destination it fades out and the full route is red again. Arrows along the route also show the way when
+nothing plays. Touching the map, a step, a floor tab or + / - stops it; Play / Stop beside STEPS replays it;
+Settings > Animate directions turns the automatic play off.
+
+For speed on a phone the view does not follow the walker: each floor is fitted to its part of the route, so a frame
+only redraws a see-through layer the size of the view (`MapView.drawPreview`) and the map is drawn once per floor,
+while faded. `RoutePlayer` holds the timing (walk speed 320 px/s, 0.6-2.2 s between steps); gate to EN 420 plays in
+about 15 s.
+
 ## D22: Tan Yan Kee floors from the posted plans (implemented 2026-11-15, owner gave the photos)
 
 The owner photographed the evacuation / emergency-exit plan on every floor (2F to 10F, the 6F library and the 6F

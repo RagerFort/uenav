@@ -85,6 +85,18 @@ class SettingsTest {
     }
 
     @Test
+    void animateDirectionsIsOnUntilTurnedOff() {
+        assertTrue(new Settings(store).animateRoutes());
+        store.text = "{\"serverUrl\":\"\",\"avoidStairs\":true}"; // saved before the setting existed
+        assertTrue(new Settings(store).animateRoutes());
+        Settings s = new Settings(store);
+        s.setAnimateRoutes(false);
+        Settings again = new Settings(store);
+        assertFalse(again.animateRoutes());
+        assertTrue(again.avoidStairs());
+    }
+
+    @Test
     void themeDefaultsToSameAsPhoneAndOldDarkModeFilesStillLoad() {
         assertEquals(Settings.Theme.SYSTEM, new Settings(store).theme());
         Settings s = new Settings(store);

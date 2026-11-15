@@ -80,6 +80,19 @@ public final class Navigator {
     /** What to do once a starting point is chosen (for example "find the nearest restroom"). */
     private Runnable afterStart;
     private Consumer<Integer> directionsLevel = lv -> { };
+    // the route animation on the directions screen (RoutePlayer)
+    /** Set when a new route was just worked out: its directions screen plays the route once it shows. */
+    private boolean playWhenShown;
+    private RoutePlayer player;
+    private MapView directionsMap;
+    private List<Integer> directionsLevels = List.of();
+    private List<Directions.Step> directionsSteps = List.of();
+    private final List<HBox> stepRows = new ArrayList<>();
+    private ScrollPane stepScroll;
+    private Button playButton;
+    private javafx.animation.Timeline stepScrollGlide;
+    /** Wait before the route starts playing, so the screen has settled (ms). */
+    static final double PLAY_DELAY_MS = 450;
 
     /**
      * @param settings for "Avoid stairs" (may be null: then routes may use stairs)
@@ -150,6 +163,7 @@ public final class Navigator {
      * back arrow and the phone's back button return to it (Explore starts the history again).
      */
     private void setScreen(Parent screen, Tab t, String key, Runnable again) {
+        stopRoute();
         if ("explore".equals(key)) {
             history.clear();
         } else if (!goingBack && !key.equals(screenKey) && !screenKey.isEmpty()) {
@@ -915,6 +929,7 @@ public final class Navigator {
         visited = trace.visited();
         routeChecked = true;
         selectedStep = -1;
+        playWhenShown = true;
         if (logIt) {
             log.route(start.id(), destination.id(), pref);
             if (memory != null && route != null && routeContext == null) {
@@ -964,6 +979,7 @@ public final class Navigator {
         visited = trace.visited();
         routeChecked = true;
         selectedStep = -1;
+        playWhenShown = true;
         log.route(start.id(), destination.id(), p);
         showDirections();
     }
@@ -971,6 +987,8 @@ public final class Navigator {
     // ---------------------------------------------------------------- Directions
 
     private void showDirections() {
+        boolean play = playWhenShown && settings != null && settings.animateRoutes();
+        playWhenShown = false;
         if (route == null) {
             showUnavailable();
             return;
@@ -984,9 +1002,11 @@ public final class Navigator {
         map.setRoute(route);
         map.setLevel(levels.isEmpty() ? null : levels.get(0));
         map.setGraphView(graphOn, visited);
+        map.setOnUserTouch(this::stopRoute);
         StackPane mapStack = mapWithOverlays(map, levels);
 
         ScrollPane sc = Ui.scroll(sheet(summary, map, levels));
+        stepScroll = sc;
         VBox sheetBox = new VBox(sheetHandle(), sc);
         sheetBox.getStyleClass().add("nv-sheet");
         VBox.setVgrow(sheetBox, Priority.ALWAYS);
@@ -1000,6 +1020,119 @@ public final class Navigator {
         mapStack.minHeightProperty().bind(mapStack.prefHeightProperty());
         mapStack.maxHeightProperty().bind(mapStack.prefHeightProperty());
         setScreen(screen, Tab.MAP, "directions", this::showDirections);
+        directionsMap = map;
+        directionsLevels = levels;
+        directionsSteps = summary.steps();
+        if (play) {
+            PauseTransition wait = new PauseTransition(Duration.millis(PLAY_DELAY_MS));
+            wait.setOnFinished(e -> {
+                if (directionsMap == map && view.getChildren().contains(screen) && player == null) {
+                    playRoute();
+                }
+            });
+            wait.play();
+        }
+    }
+
+    /** Plays the route on the map step by step, in step with the list (RoutePlayer). */
+    private void playRoute() {
+        stopRoute();
+        if (directionsMap == null || route == null || directionsSteps.isEmpty()) {
+            return;
+        }
+        player = new RoutePlayer(route, directionsSteps, data, directionsMap, directionsLevels,
+                new RoutePlayer.Host() {
+                    @Override
+                    public void level(Integer floorId) {
+                        directionsLevel.accept(floorId);
+                    }
+
+                    @Override
+                    public void step(int index) {
+                        markStep(index, true);
+                    }
+
+                    @Override
+                    public void finished() {
+                        player = null;
+                        showPlaying(false);
+                    }
+                });
+        showPlaying(true);
+        player.start();
+    }
+
+    /** Stops the route animation, if one is playing; the map shows the whole route again. */
+    private void stopRoute() {
+        RoutePlayer p = player;
+        player = null;
+        if (p != null) {
+            p.stop();
+        }
+    }
+
+    /**
+     * A still picture of the route animation, `seconds` after it began (for the screen tour).
+     * @return false when the animation was already over by then
+     */
+    boolean routeAnimationAt(double seconds) {
+        playRoute();
+        RoutePlayer p = player;
+        if (p == null) {
+            return false;
+        }
+        p.stopClock();
+        for (double s = 0; s < seconds && p.running(); s += 1 / 60.0) {
+            p.tick(1 / 60.0);
+        }
+        return p.running();
+    }
+
+    private void showPlaying(boolean on) {
+        if (playButton != null) {
+            playButton.setText(on ? "Stop" : "Play");
+            playButton.setGraphic(Icons.icon(on ? "stop" : "play", 14, "nv-icon-brand"));
+            playButton.setAccessibleText(on ? "Stop the route animation" : "Play the route step by step");
+        }
+    }
+
+    /** Lights up one step in the list; scroll: also brings it into view (smoothly) if it is out of sight. */
+    private void markStep(int index, boolean scroll) {
+        if (index < 0 || index >= stepRows.size()) {
+            return;
+        }
+        selectedStep = index;
+        stepRows.forEach(r -> r.getStyleClass().remove("nv-step-on"));
+        HBox row = stepRows.get(index);
+        row.getStyleClass().add("nv-step-on");
+        if (scroll) {
+            scrollToStep(row);
+        }
+    }
+
+    private void scrollToStep(HBox row) {
+        ScrollPane sc = stepScroll;
+        if (sc == null || sc.getContent() == null || row.getScene() == null) {
+            return;
+        }
+        javafx.scene.Node content = sc.getContent();
+        double contentH = content.getBoundsInLocal().getHeight();
+        double viewH = sc.getViewportBounds().getHeight();
+        if (viewH <= 0 || contentH <= viewH) {
+            return;
+        }
+        javafx.geometry.Bounds b = content.sceneToLocal(row.localToScene(row.getBoundsInLocal()));
+        double top = (contentH - viewH) * sc.getVvalue();
+        if (b.getMinY() >= top + 0.05 * viewH && b.getMaxY() <= top + 0.9 * viewH) {
+            return;
+        }
+        double v = Math.max(0, Math.min(1, (b.getMinY() - 0.3 * viewH) / (contentH - viewH)));
+        if (stepScrollGlide != null) {
+            stepScrollGlide.stop();
+        }
+        stepScrollGlide = new javafx.animation.Timeline(new javafx.animation.KeyFrame(Duration.millis(380),
+                new javafx.animation.KeyValue(sc.vvalueProperty(), v, javafx.animation.Interpolator.EASE_BOTH)));
+        stepScrollGlide.play();
     }
 
     /** Part of the directions screen's height the map gets: half and half, or a big map (sheet pulled down). */
@@ -1118,7 +1251,10 @@ public final class Navigator {
                 b.setMinWidth(Region.USE_PREF_SIZE); // the building name beside them gives way, not "1F"
                 buttons.put(lv == null ? -1 : lv, b);
                 all.add(b);
-                b.setOnAction(e -> select.accept(lv));
+                b.setOnAction(e -> {
+                    stopRoute();
+                    select.accept(lv);
+                });
                 tabs.getChildren().add(b);
             }
             all.get(0).getStyleClass().add("nv-tab-on");
@@ -1171,8 +1307,13 @@ public final class Navigator {
             }
         });
         graph.setAccessibleText("Graph view");
-        VBox zoom = new VBox(zoomButton("plus", map::zoomIn), Ui.sep(), zoomButton("minus", map::zoomOut), Ui.sep(),
-                graph);
+        VBox zoom = new VBox(zoomButton("plus", () -> {
+            stopRoute();
+            map.zoomIn();
+        }), Ui.sep(), zoomButton("minus", () -> {
+            stopRoute();
+            map.zoomOut();
+        }), Ui.sep(), graph);
         zoom.getStyleClass().add("nv-zoom");
         zoom.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         return zoom;
@@ -1260,16 +1401,15 @@ public final class Navigator {
         }
 
         VBox steps = new VBox(4);
-        List<HBox> rows = new ArrayList<>();
+        stepRows.clear();
         for (int i = 0; i < s.steps().size(); i++) {
             Directions.Step st = s.steps().get(i);
             HBox row = stepRow(st);
-            rows.add(row);
+            stepRows.add(row);
             int index = i;
             row.setOnMouseClicked(e -> {
-                selectedStep = index;
-                rows.forEach(r -> r.getStyleClass().remove("nv-step-on"));
-                row.getStyleClass().add("nv-step-on");
+                stopRoute();
+                markStep(index, false);
                 showStepOnMap(st, map, levels);
             });
             if (i == selectedStep) {
@@ -1277,8 +1417,23 @@ public final class Navigator {
             }
             steps.getChildren().add(row);
         }
-        sheet.getChildren().addAll(new HBox(Ui.label("STEPS", "nv-label-caps"), Ui.grow(),
-                Ui.label("Tap a step to see it on the map", "nv-muted")), steps);
+        playButton = new Button();
+        playButton.getStyleClass().add("nv-play");
+        playButton.setFocusTraversable(false);
+        playButton.setMinWidth(Region.USE_PREF_SIZE);
+        playButton.setOnAction(e -> {
+            if (player != null) {
+                stopRoute();
+            } else {
+                playRoute();
+            }
+        });
+        showPlaying(false);
+        Label hint = Ui.label("Tap a step to see it", "nv-muted");
+        hint.setMinWidth(0);
+        HBox stepsHead = new HBox(10, Ui.label("STEPS", "nv-label-caps"), Ui.grow(), hint, playButton);
+        stepsHead.setAlignment(Pos.CENTER_LEFT);
+        sheet.getChildren().addAll(stepsHead, steps);
         sheet.getChildren().add(feedbackBox());
         return sheet;
     }

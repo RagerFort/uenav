@@ -61,6 +61,7 @@ public final class ScreenTour {
         data = CampusStore.bundled();
         settings = new Settings(new MemoryStore());
         settings.setDarkMode(dark);
+        settings.setAnimateRoutes(false); // the route animation gets its own frames at the end
         PlacesMemory memory = new PlacesMemory(new MemoryStore());
         UsageLog log = new UsageLog() {
             @Override
@@ -205,6 +206,28 @@ public final class ScreenTour {
         set("routeChecked", false);
         nav.openMap();
         shot(p + "17-map-tab-here-dot");
+
+        // the route animation, frame by frame: gate -> TYK elevator -> bridge -> EN stairs -> EN 420
+        nav.handleCode("UENAV:1");
+        nav.openPlan(node(42));
+        Scene anim = scene();
+        anim.getRoot().applyCss();
+        anim.getRoot().layout();
+        double[] times = dark ? new double[] {2.0, 6.0} : new double[] {0.2, 1.0, 2.0, 3.2, 4.4, 5.6, 6.8, 8.0,
+            9.2, 10.4, 11.6, 12.8, 14.0, 15.2, 16.4, 17.6, 18.8, 20.0};
+        for (double sec : times) {
+            boolean playing = nav.routeAnimationAt(sec);
+            save(anim, p + String.format(java.util.Locale.ROOT, "19-anim-%04.1fs", sec));
+            if (!playing) {
+                break;
+            }
+        }
+        double total = 0;
+        while (nav.routeAnimationAt(total)) {
+            total += 0.5;
+        }
+        System.out.println("ROUTE ANIMATION: about " + total + " s");
+        tapStep(0); // stops it
     }
 
     /** The Settings tab, shown in place of the visitor screens for one screenshot. */

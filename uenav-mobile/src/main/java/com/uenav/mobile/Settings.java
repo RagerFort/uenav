@@ -22,6 +22,7 @@ public final class Settings {
     private String serverUrl = "";
     private Theme theme = Theme.SYSTEM;
     private boolean avoidStairs;
+    private boolean animateRoutes = true;
 
     public Settings(TextStore store) {
         this(store, "");
@@ -110,11 +111,22 @@ public final class Settings {
         saveQuietly();
     }
 
+    /** When directions open for a new route, the route plays on the map step by step (on unless turned off). */
+    public synchronized boolean animateRoutes() {
+        return animateRoutes;
+    }
+
+    public synchronized void setAnimateRoutes(boolean on) {
+        animateRoutes = on;
+        saveQuietly();
+    }
+
     private void save() {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("serverUrl", serverUrl);
         root.put("theme", theme.name());
         root.put("avoidStairs", avoidStairs);
+        root.put("animateRoutes", animateRoutes);
         store.save(MiniJson.write(root));
     }
 
@@ -151,6 +163,7 @@ public final class Settings {
                     theme = Theme.DARK; // saved by the first dark-mode version
                 }
                 avoidStairs = Boolean.TRUE.equals(m.get("avoidStairs"));
+                animateRoutes = !Boolean.FALSE.equals(m.get("animateRoutes")); // on for files saved before it existed
             }
         } catch (IllegalArgumentException damagedFile) {
             serverUrl = "";

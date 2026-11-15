@@ -47,10 +47,22 @@ import javafx.util.Duration;
  * frames a second on a Galaxy A35. So the map is drawn a little larger than what shows (MARGIN on every side), and
  * while a finger drags or pinches, that finished picture is only slid and stretched, which costs almost nothing.
  * It is drawn again properly when the finger pauses (SETTLE_MS) or the picture no longer covers the screen.
+ *
+ * Arrows along the route show which way to walk. The route animation (RoutePlayer) draws its walker on a second,
+ * see-through layer the size of the view: each frame redraws only that layer, never the map under it.
  */
 public class MapView extends Region {
 
     private static final Color BRAND = Color.web("#C8102E");
+    /** The route in dark mode: a lighter red that stands out on the dark map. */
+    private static final Color BRAND_DARK = Color.web("#FF4D6A");
+    private static final Color MUTED_LIGHT = Color.web("#B4BAC4");
+    private static final Color MUTED_DARK = Color.web("#566072");
+    /** Space between the arrows along the route, and how fast they flow along the walked part (screen units). */
+    private static final double ARROW_GAP = 24;
+    private static final double ARROW_SPEED = 30;
+    /** How long the ring that pops at each step grows and fades (seconds). */
+    static final double RING_S = 0.7;
     private static final Color INK = Color.web("#1F2330");
     private static final Color BLUE = Color.web("#2563EB");
     private static final Color GREEN = Color.web("#15803D");
@@ -84,6 +96,8 @@ public class MapView extends Region {
     private static final Map<String, String> SHORT_NAMES = new HashMap<>();
 
     private final Canvas canvas = new Canvas();
+    /** The route animation's layer: exactly the size of the view, over the map, never catches taps. */
+    private final Canvas overlay = new Canvas();
     private final Rectangle clip = new Rectangle();
     private final PauseTransition settle = new PauseTransition(Duration.millis(SETTLE_MS));
     /** Size of the part that shows (the canvas is MARGIN larger on every side). */
@@ -115,6 +129,9 @@ public class MapView extends Region {
     private Node focused;
     private List<Node> highlights = List.of();
     private List<Node> fitNodes;
+    private boolean previewing;
+    private Preview preview;
+    private Runnable onUserTouch;
 
     // what the user sees: the map point at the middle of the free area, and screen pixels per map unit
     private double viewX;
@@ -133,7 +150,10 @@ public class MapView extends Region {
     public MapView() {
         getStyleClass().add("nv-map-bg");
         canvas.setManaged(false);
-        getChildren().add(canvas);
+        overlay.setManaged(false);
+        overlay.setMouseTransparent(true);
+        overlay.setVisible(false);
+        getChildren().addAll(canvas, overlay);
         setClip(clip);
         setMinSize(0, 0);
         settle.setOnFinished(e -> {
@@ -143,6 +163,7 @@ public class MapView extends Region {
         });
         // Listeners are on this view, not on the canvas: the canvas slides under the finger during a drag.
         setOnMousePressed(e -> {
+            touched();
             dragX = e.getX();
             dragY = e.getY();
             dragged = false;
@@ -187,10 +208,12 @@ public class MapView extends Region {
                 return;
             }
             if (e.getDeltaY() != 0) {
+                touched();
                 zoomAt(Math.pow(WHEEL_ZOOM, e.getDeltaY()), e.getX(), e.getY());
             }
         });
         setOnZoomStarted(e -> {
+            touched();
             pinching = true;
             dragged = true;
         });
@@ -280,6 +303,50 @@ public class MapView extends Region {
     public void setHere(Node node) {
         this.here = node;
         draw();
+    }
+
+    /** Called when a finger (or the mouse) touches the map, so a playing route animation can stop. */
+    public void setOnUserTouch(Runnable r) {
+        this.onUserTouch = r;
+    }
+
+    private void touched() {
+        if (onUserTouch != null) {
+            onUserTouch.run();
+        }
+    }
+
+    /**
+     * One frame of the route animation (RoutePlayer). The walk has covered the route's segments before {@code done}
+     * and the fraction {@code t} of segment {@code done}; the walker stands at (x, y) in map units, pointing
+     * {@code angle} degrees clockwise from up, drawn {@code size} times its full size. {@code ringAge} is the age
+     * (seconds) of the ring popping at (ringX, ringY), negative for none; {@code tag} a short note over the walker.
+     */
+    record Preview(int done, double t, double x, double y, double angle, double size, double alpha, double clock,
+            double ringX, double ringY, double ringAge, String tag, double tagAlpha) { }
+
+    /** While the route animation plays, the route not walked yet is drawn grey, under the walk drawn in red. */
+    public void setPreviewing(boolean on) {
+        if (previewing != on) {
+            previewing = on;
+            draw();
+        }
+    }
+
+    /** Shows one frame of the route animation (redraws only the animation's layer). */
+    void showPreview(Preview p) {
+        preview = p;
+        drawPreview();
+    }
+
+    void clearPreview() {
+        preview = null;
+        drawPreview();
+    }
+
+    /** True when the node is drawn on the level shown now. */
+    public boolean shows(Node n) {
+        return data != null && n != null && visibleIds().contains(n.id());
     }
 
     /** Moves the view to a node of the current level and zooms in, as when a direction step is tapped. */
@@ -402,6 +469,7 @@ public class MapView extends Region {
         canvas.setTranslateX(cx - paintedW / 2);
         canvas.setTranslateY(cy - paintedH / 2);
         settle.playFromStart();
+        drawPreview();
     }
 
     /** Levels a route passes through, in walking order: null for the campus, then floor ids. */
@@ -445,6 +513,8 @@ public class MapView extends Region {
             viewH = h;
             clip.setWidth(w);
             clip.setHeight(h);
+            overlay.setWidth(Math.max(0, w));
+            overlay.setHeight(Math.max(0, h));
             if (!userMoved) {
                 needsFit = true;
             }
@@ -664,6 +734,11 @@ public class MapView extends Region {
     }
 
     private void draw() {
+        drawMap();
+        drawPreview();
+    }
+
+    private void drawMap() {
         // the picture is drawn fresh for the view as it is now: put the canvas back where it belongs
         settle.stop();
         canvas.setScaleX(1);
@@ -961,37 +1036,14 @@ public class MapView extends Region {
         List<Node> rn = route.nodes();
         g.setLineCap(StrokeLineCap.ROUND);
         g.setLineJoin(StrokeLineJoin.ROUND);
-        for (int pass = 0; pass < 3; pass++) {
-            g.beginPath();
-            boolean open = false;
-            for (int i = 0; i + 1 < rn.size(); i++) {
-                Node a = rn.get(i);
-                Node b = rn.get(i + 1);
-                if (ids.contains(a.id()) && ids.contains(b.id())) {
-                    if (!open) {
-                        g.moveTo(sx(a.x()), sy(a.y()));
-                        open = true;
-                    }
-                    g.lineTo(sx(b.x()), sy(b.y()));
-                } else {
-                    open = false;
-                }
-            }
-            if (pass == 0) {
-                g.setStroke(Color.WHITE);
-                g.setLineWidth(11);
-                g.setLineDashes((double[]) null);
-            } else if (pass == 1) {
-                g.setStroke(dark ? Color.web("#FF4D6A") : BRAND);
-                g.setLineWidth(7);
-            } else {
-                g.setStroke(Color.WHITE);
-                g.setLineWidth(2);
-                g.setLineDashes(5, 7);
-            }
-            g.stroke();
-        }
         g.setLineDashes((double[]) null);
+        // white edge, the line (grey while the animation walks it in red), and arrows showing the way
+        List<double[]> lines = routeLines(ids, rn.size(), 0, MARGIN);
+        strokeLines(g, lines, Color.WHITE, 11);
+        strokeLines(g, lines, previewing ? (dark ? MUTED_DARK : MUTED_LIGHT) : routeColor(), 7);
+        for (double[] line : lines) {
+            arrows(g, line, ARROW_GAP / 2, 10, Color.web("#FFFFFF", previewing ? 0.8 : 0.95));
+        }
 
         // hand-over points to another level
         for (int i = 0; i + 1 < rn.size(); i++) {
@@ -1020,6 +1072,158 @@ public class MapView extends Region {
         if (ids.contains(last.id())) {
             pin(g, sx(last.x()), sy(last.y()));
         }
+    }
+
+    private Color routeColor() {
+        return dark ? BRAND_DARK : BRAND;
+    }
+
+    /**
+     * The route on this level as lines of screen points {x0, y0, x1, y1, ...}: the segments before {@code done} and
+     * the fraction {@code t} of segment {@code done}. offset is MARGIN for the map canvas, 0 for the animation layer.
+     */
+    private List<double[]> routeLines(Set<Integer> ids, int done, double t, double offset) {
+        List<Node> rn = route.nodes();
+        List<double[]> lines = new ArrayList<>();
+        List<Double> points = new ArrayList<>();
+        for (int i = 0; i <= done && i + 1 < rn.size(); i++) {
+            Node a = rn.get(i);
+            Node b = rn.get(i + 1);
+            double f = i < done ? 1 : t;
+            if (!ids.contains(a.id()) || !ids.contains(b.id()) || f <= 0) {
+                addLine(lines, points);
+                continue;
+            }
+            if (points.isEmpty()) {
+                points.add(offset + vx(a.x()));
+                points.add(offset + vy(a.y()));
+            }
+            points.add(offset + vx(a.x() + (b.x() - a.x()) * f));
+            points.add(offset + vy(a.y() + (b.y() - a.y()) * f));
+        }
+        addLine(lines, points);
+        return lines;
+    }
+
+    private static void addLine(List<double[]> lines, List<Double> points) {
+        if (points.size() >= 4) {
+            double[] line = new double[points.size()];
+            for (int i = 0; i < line.length; i++) {
+                line[i] = points.get(i);
+            }
+            lines.add(line);
+        }
+        points.clear();
+    }
+
+    private static void strokeLines(GraphicsContext g, List<double[]> lines, Color color, double width) {
+        g.beginPath();
+        for (double[] l : lines) {
+            g.moveTo(l[0], l[1]);
+            for (int i = 2; i + 1 < l.length; i += 2) {
+                g.lineTo(l[i], l[i + 1]);
+            }
+        }
+        g.setStroke(color);
+        g.setLineWidth(width);
+        g.stroke();
+    }
+
+    /**
+     * Small white chevrons along a line, pointing the way to walk: every ARROW_GAP from {@code first} on, and none
+     * in the last {@code keepClear} (the destination pin, or the walker).
+     */
+    private static void arrows(GraphicsContext g, double[] l, double first, double keepClear, Color color) {
+        double total = 0;
+        for (int i = 0; i + 3 < l.length; i += 2) {
+            total += Math.hypot(l[i + 2] - l[i], l[i + 3] - l[i + 1]);
+        }
+        g.setStroke(color);
+        g.setLineWidth(2);
+        g.setLineCap(StrokeLineCap.ROUND);
+        g.setLineJoin(StrokeLineJoin.ROUND);
+        double next = first;
+        double walked = 0;
+        for (int i = 0; i + 3 < l.length; i += 2) {
+            double seg = Math.hypot(l[i + 2] - l[i], l[i + 3] - l[i + 1]);
+            if (seg < 1e-6) {
+                continue;
+            }
+            double ux = (l[i + 2] - l[i]) / seg;
+            double uy = (l[i + 3] - l[i + 1]) / seg;
+            while (next <= walked + seg) {
+                if (next > total - keepClear) {
+                    return;
+                }
+                double px = l[i] + ux * (next - walked);
+                double py = l[i + 1] + uy * (next - walked);
+                g.strokePolyline(
+                        new double[] {px - ux * 2.5 - uy * 3.5, px + ux * 2.5, px - ux * 2.5 + uy * 3.5},
+                        new double[] {py - uy * 2.5 + ux * 3.5, py + uy * 2.5, py - uy * 2.5 - ux * 3.5}, 3);
+                next += ARROW_GAP;
+            }
+            walked += seg;
+        }
+    }
+
+    /**
+     * The route animation's layer: the walked part of the route in red with arrows flowing along it, the ring that
+     * pops at each step, the walker (a white disc with a red arrow, its halo breathing) and its tag.
+     */
+    private void drawPreview() {
+        Preview p = preview;
+        overlay.setVisible(p != null);
+        GraphicsContext g = overlay.getGraphicsContext2D();
+        g.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
+        if (p == null || route == null || data == null || viewW < 10 || viewH < 10 || scale <= 0) {
+            return;
+        }
+        Set<Integer> ids = visibleIds();
+        g.save();
+        g.setGlobalAlpha(p.alpha());
+        g.setLineDashes((double[]) null);
+        g.setLineCap(StrokeLineCap.ROUND);
+        g.setLineJoin(StrokeLineJoin.ROUND);
+        List<double[]> trail = routeLines(ids, p.done(), p.t(), 0);
+        strokeLines(g, trail, Color.WHITE, 11);
+        strokeLines(g, trail, routeColor(), 7);
+        double flow = (p.clock() * ARROW_SPEED) % ARROW_GAP;
+        for (double[] line : trail) {
+            arrows(g, line, flow, 16, Color.WHITE);
+        }
+        if (p.ringAge() >= 0 && p.ringAge() < RING_S) {
+            double k = p.ringAge() / RING_S;
+            double r = 12 + 26 * (1 - Math.pow(1 - k, 3));
+            g.setStroke(routeColor().deriveColor(0, 1, 1, 0.6 * (1 - k)));
+            g.setLineWidth(3);
+            g.strokeOval(vx(p.ringX()) - r, vy(p.ringY()) - r, 2 * r, 2 * r);
+        }
+        double x = vx(p.x());
+        double y = vy(p.y());
+        double s = p.size();
+        if (s > 0.01) {
+            double halo = (19 + 3 * Math.sin(p.clock() * 4.2)) * s;
+            g.setFill(routeColor().deriveColor(0, 1, 1, 0.18));
+            g.fillOval(x - halo, y - halo, 2 * halo, 2 * halo);
+            g.setFill(Color.web("#000000", 0.22));
+            g.fillOval(x - 12 * s, y - 12 * s + 2, 24 * s, 24 * s);
+            g.setFill(Color.WHITE);
+            g.fillOval(x - 12 * s, y - 12 * s, 24 * s, 24 * s);
+            g.save();
+            g.translate(x, y);
+            g.rotate(p.angle());
+            g.scale(s, s);
+            g.setFill(routeColor());
+            g.fillPolygon(new double[] {0, 6.5, 0, -6.5}, new double[] {-8, 7.5, 3.5, 7.5}, 4);
+            g.restore();
+        }
+        if (p.tag() != null && p.tagAlpha() > 0.01) {
+            g.setGlobalAlpha(p.alpha() * Math.min(1, p.tagAlpha()));
+            double w = p.tag().length() * 6.2 + 14;
+            double tx = Math.max(w / 2 + 8, Math.min(viewW - w / 2 - 8, x));
+            tag(g, p.tag(), tx, y - 32 - 6 * (1 - Math.min(1, p.tagAlpha())), routeColor(), Color.WHITE);
+        }
+        g.restore();
     }
 
     /** With a map picture the picture has the names, so only small tap targets are drawn. */

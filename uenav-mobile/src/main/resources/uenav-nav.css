@@ -245,6 +245,12 @@
 .nv-step { -fx-background-color: transparent; -fx-background-radius: 10; -fx-cursor: hand; }
 .nv-step:hover { -fx-background-color: -nv-hover; }
 .nv-step-on { -fx-background-color: -nv-brand-soft; }
+/* Play / Stop for the route animation, beside STEPS */
+.nv-play {
+    -fx-background-color: -nv-brand-soft; -fx-text-fill: -nv-brand; -fx-font-weight: bold; -fx-font-size: 12px;
+    -fx-background-radius: 999; -fx-padding: 5 12 5 9; -fx-cursor: hand; -fx-graphic-text-gap: 5;
+}
+.nv-play:hover { -fx-opacity: 0.85; }
 .nv-toast { -fx-background-color: rgba(31,35,48,0.92); -fx-background-radius: 999; -fx-padding: 10 16 10 16; }
 .nv-toast .label { -fx-text-fill: white; -fx-font-size: 13px; }
 .nv-graph-chip { -fx-background-color: rgba(17,20,27,0.85); -fx-background-radius: 999; -fx-padding: 6 12 6 12; }
