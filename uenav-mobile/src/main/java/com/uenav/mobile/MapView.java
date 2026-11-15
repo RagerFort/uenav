@@ -79,6 +79,8 @@ public class MapView extends Region {
     private static final Pattern BRACKETS = Pattern.compile("\\s*\\(.*\\)");
     private static final Pattern LEADING_WORDS = Pattern.compile("^(College of|University)\\s+");
     private static final Pattern TRAILING_WORDS = Pattern.compile("\\s+(Building|Office)$");
+    /** "Tan Yan Kee Academic Building" -> "Tan Yan Kee"; a one-word name keeps it ("Old Academic"). */
+    private static final Pattern ACADEMIC = Pattern.compile("^(\\S+\\s+\\S+.*?)\\s+Academic Building$");
     private static final Map<String, String> SHORT_NAMES = new HashMap<>();
 
     private final Canvas canvas = new Canvas();
@@ -1155,6 +1157,7 @@ public class MapView extends Region {
         return SHORT_NAMES.computeIfAbsent(name, n -> {
             String s = BRACKETS.matcher(n).replaceAll("");
             s = LEADING_WORDS.matcher(s).replaceFirst("");
+            s = ACADEMIC.matcher(s).replaceFirst("$1");
             s = TRAILING_WORDS.matcher(s).replaceFirst("");
             return s.length() > 22 ? s.substring(0, 21) + "…" : s;
         });

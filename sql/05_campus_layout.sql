@@ -4,7 +4,7 @@
 -- moved to where they really are; Open Court (was "Beach Volleyball Court"); Parking added; the path from the
 -- Samson Road Gate goes between CFAD and the Administration Building, and paths cross the grass field to
 -- Lucio Tan and Engineering. The Engineering building and its rooms are unchanged.
--- Run after 04_engineering_building.sql (and again whenever 04 is run again).
+-- Run after 04_engineering_building.sql (and again whenever 04 is run again), then 06_tan_yan_kee.sql.
 -- Then copy GET /api/snapshot into uenav-mobile/src/main/resources/campus-snapshot.json before building the APK.
 
 USE uenav;
@@ -14,7 +14,6 @@ UPDATE building SET map_x = 875, map_y = 698, description = 'Position from a sat
 UPDATE building SET map_x = 1041, map_y = 198, description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 4;
 UPDATE building SET map_x = 689, map_y = 198, description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 5;
 UPDATE building SET map_x = 378, map_y = 304, description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 6;
-UPDATE building SET map_x = 647, map_y = 710, description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 7;
 UPDATE building SET map_x = 1182, map_y = 676, description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 8;
 UPDATE building SET map_x = 268, map_y = 564, description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 9;
 UPDATE building SET description = 'Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 1;
@@ -53,7 +52,7 @@ INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y) VALUES
   (31, NULL, NULL, 'Open Court', 'FACILITY', 1125, 465),
   (32, 8, NULL, 'HRM Mock Hotel', 'BUILDING_ENTRANCE', 1180, 636),
   (33, 3, NULL, 'Tan Yan Kee Academic Building', 'BUILDING_ENTRANCE', 850, 660),
-  (34, 7, NULL, 'CFAD Building', 'BUILDING_ENTRANCE', 598, 672),
+  (34, 3, NULL, 'CFAD Building (Tan Yan Kee west wing)', 'BUILDING_ENTRANCE', 598, 672),
   (400, NULL, NULL, 'Walkway between CFAD and Administration', 'JUNCTION', 570, 700),
   (401, NULL, NULL, 'Parking', 'FACILITY', 415, 643),
   (402, NULL, NULL, 'Old Fine Arts walkway', 'JUNCTION', 455, 415)

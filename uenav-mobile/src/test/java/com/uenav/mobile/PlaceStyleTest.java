@@ -50,6 +50,8 @@ class PlaceStyleTest {
         assertEquals("Engineering", MapView.shortName("College of Engineering Building"));
         assertEquals("EN 420", MapView.shortName("EN 420 (4F)"));
         assertEquals("Registrar's", MapView.shortName("Registrar's Office"));
+        assertEquals("Tan Yan Kee", MapView.shortName("Tan Yan Kee Academic Building"));
+        assertEquals("Old Academic", MapView.shortName("Old Academic Building"));
         assertEquals(List.of(), List.of());
     }
 }

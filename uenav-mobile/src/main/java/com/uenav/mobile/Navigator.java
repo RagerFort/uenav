@@ -1115,6 +1115,7 @@ public final class Navigator {
                 Button b = new Button(lv == null ? "Campus" : data.floor(lv).map(Floor::shortLabel).orElse("Floor"));
                 b.getStyleClass().add("nv-tab");
                 b.setFocusTraversable(false);
+                b.setMinWidth(Region.USE_PREF_SIZE); // the building name beside them gives way, not "1F"
                 buttons.put(lv == null ? -1 : lv, b);
                 all.add(b);
                 b.setOnAction(e -> select.accept(lv));
@@ -1183,9 +1184,12 @@ public final class Navigator {
             return new Pane();
         }
         String name = data.building(f.get().buildingId()).map(b -> MapView.shortName(b.name())).orElse("Building");
-        HBox chip = new HBox(6, Icons.icon("building", 14, "nv-icon-brand"), Ui.label(name, "nv-strong"));
+        Label label = Ui.label(name, "nv-strong");
+        label.setMinWidth(0); // a long name ends in "..." instead of squeezing the floor tabs
+        HBox chip = new HBox(6, Icons.icon("building", 14, "nv-icon-brand"), label);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.getStyleClass().add("nv-building-chip");
+        chip.setMinWidth(0);
         chip.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         return chip;
     }

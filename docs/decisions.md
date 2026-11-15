@@ -99,6 +99,19 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D22: Tan Yan Kee floors from the posted plans (implemented 2026-11-15, owner gave the photos)
+
+The owner photographed the evacuation / emergency-exit plan on every floor (2F to 10F, the 6F library and the 6F
+"WORKSHOP" plan) and the building directory. `sql/tools/tan-yan-kee.ps1` turns them into `sql/06_tan_yan_kee.sql`:
+ground floor to 10th floor, 184 rooms, offices and comfort rooms, four stairwells (1 by the central lobby, 2 at the
+east end, 3 at the west lobby, 4 at the wing tip) and two elevator banks (central, 3 cars; west, at the wing).
+Owner's answers: the "CFAD building" is TYK's angled west wing (rooms TYK x00-x05), so building 7 was removed and
+its door (node 34) belongs to TYK; ten floors; anyone may use the elevators; WORKSHOP is the 6th floor. On 5F both
+wings are roof decks, so stairs 2 and 4 only pass through. One floor of stairs counts 15 m (climbing time) and one
+floor by elevator 6 m, so routes take the elevator for long climbs. The main door (node 33) is under the 2F canopy
+on the field side. Not confirmed: the ground floor (no plan; its CBA offices are placed like the 3F and 5F college
+offices), TYK 706, the 9F and 10F room numbers (read from small print), and the 6F comfort rooms.
+
 ## D21: campus layout checked by a student (implemented 2026-11-15, owner asked)
 
 The outdoor map was traced from the campus map picture. It is now placed from a satellite photo (Esri World

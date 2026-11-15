@@ -10,6 +10,12 @@ Floors 1 to 4 of the College of Engineering building come from `sql/tools/engine
 lists at the top of the script, run it, then load the SQL file (`mysql -u root -p uenav < sql/04_engineering_building.sql`).
 It can be run again: it keeps the usage log and the ids it already uses. There is no elevator in this building.
 
+## The Tan Yan Kee building
+Ground floor to 10th floor come from `sql/tools/tan-yan-kee.ps1`, which writes `sql/06_tan_yan_kee.sql` from the
+posted floor plans. Rooms are listed per floor at the top of the script (name, type, side, position on the 2F
+plan photo). Edit a list, run the script, then load the SQL file after `05_campus_layout.sql`. The CFAD building
+is TYK's west wing. Both elevator banks connect every floor.
+
 ## The campus (outdoor) layout
 `sql/05_campus_layout.sql` puts the buildings, gates, offices and outdoor walkways where they really are. The
 positions come from a satellite photo and OpenStreetMap building outlines, turned into the app's map frame with a

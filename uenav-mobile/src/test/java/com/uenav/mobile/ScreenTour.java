@@ -125,6 +125,12 @@ public final class ScreenTour {
         java.util.function.Consumer<Integer> showLevel = (java.util.function.Consumer<Integer>) levelField.get(nav);
         showLevel.accept(2); // the 4F tab
         save(scene(), p + "06b-en420-4f-tab");
+        nav.openPlan(named("TYK 803"));
+        shot(p + "06c-directions-tyk803");
+        @SuppressWarnings("unchecked")
+        java.util.function.Consumer<Integer> showTykLevel = (java.util.function.Consumer<Integer>) levelField.get(nav);
+        showTykLevel.accept(named("TYK 803").floorId()); // the 8F tab
+        save(scene(), p + "06d-tyk803-8f-tab");
         if (!dark) {
             // back history: Explore -> Classrooms -> directions, then back twice
             var key = Navigator.class.getDeclaredField("screenKey");
@@ -222,6 +228,10 @@ public final class ScreenTour {
 
     private static Node node(int id) {
         return data.graph().node(id).orElseThrow();
+    }
+
+    private static Node named(String name) {
+        return data.graph().nodes().stream().filter(n -> n.name().equals(name)).findFirst().orElseThrow();
     }
 
     private static void call(String name, Object... args) throws Exception {
