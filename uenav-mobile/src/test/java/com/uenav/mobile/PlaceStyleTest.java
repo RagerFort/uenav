@@ -39,7 +39,9 @@ class PlaceStyleTest {
         CampusData d = CampusStore.bundled();
         Route r = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 42, com.uenav.core.RoutePreference.ANY)
                 .orElseThrow();
-        assertEquals(Arrays.asList(null, 1, 2), MapView.levelsOf(r, d));
+        // campus, TYK ground floor (5), up the elevator to TYK 4F (8), over the bridge to EN 3F (4), stairs to EN 4F (2);
+        // the TYK floors the elevator only passes get no tab
+        assertEquals(Arrays.asList(null, 5, 8, 4, 2), MapView.levelsOf(r, d));
         Route outdoor = com.uenav.core.PathFinder.findRoute(d.graph(), 1, 22, com.uenav.core.RoutePreference.ANY)
                 .orElseThrow();
         assertEquals(Arrays.asList((Integer) null), MapView.levelsOf(outdoor, d));

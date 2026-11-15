@@ -109,8 +109,12 @@ Owner's answers: the "CFAD building" is TYK's angled west wing (rooms TYK x00-x0
 its door (node 34) belongs to TYK; ten floors; anyone may use the elevators; WORKSHOP is the 6th floor. On 5F both
 wings are roof decks, so stairs 2 and 4 only pass through. One floor of stairs counts 15 m (climbing time) and one
 floor by elevator 6 m, so routes take the elevator for long climbs. The main door (node 33) is under the 2F canopy
-on the field side. Not confirmed: the ground floor (no plan; its CBA offices are placed like the 3F and 5F college
-offices), TYK 706, the 9F and 10F room numbers (read from small print), and the 6F comfort rooms.
+on the field side. The ground floor (owner) is a canteen in the middle of the building, entered from the grass field
+or through the CFAD wing; the floors above are reached by the stairs and elevators, and it has no offices. A bridge
+on TYK 4F leads to EN 3F (owner), traced on the photo from TYK's east end over HRM to EN's south wing (48 m), so
+EN 3F is reachable by the TYK elevators (step-free). Directions show it as "Cross the bridge to ..." and the map tag
+names the other building. Not confirmed: TYK 706, the 9F and 10F room numbers (read from small print), and the 6F
+comfort rooms.
 
 ## D21: campus layout checked by a student (implemented 2026-11-15, owner asked)
 

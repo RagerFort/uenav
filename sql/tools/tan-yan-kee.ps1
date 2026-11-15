@@ -9,7 +9,10 @@
 # - 10 floors: Ground floor, then 2F to 10F (rooms TYK 2xx to TYK 10xx).
 # - Anyone may use the elevators: the central bank (3 cars, beside stair 1) and the west bank at the wing.
 # - The plan titled WORKSHOP is the 6th floor (library, the CFA workshop wing and the Hall of Fame Gallery).
-# There is no ground floor plan yet: its offices come from the directory board and their places are estimates.
+# - The ground floor is a canteen in the middle of the building, entered from the grass field or through the CFAD
+#   wing; the floors above are reached by the stairs and elevators (no offices on the ground floor).
+# - A bridge on the 4th floor leads to the 3rd floor of the Engineering building, so EN 3F can be reached by the
+#   TYK elevators. It runs from TYK's east end over the HRM building to EN's south wing (seen on the photo).
 #
 # How positions work
 # - The main building is a long bar, drawn along the campus map's TYK outline (OpenStreetMap), slightly turned
@@ -33,7 +36,7 @@ $WbX = 0.573; $WbY = -0.820           # across the wing, towards its north-east 
 $MetresPerUnitX = 0.248; $MetresPerUnitY = 0.233
 $FlightM = 15.0
 $LiftM = 6.0
-$GroundNote = 'Position estimated: there is no ground floor plan yet.'
+$BridgeM = 48.0                       # length of the bridge to the Engineering building, measured on the photo
 
 # floors: database id, number, name, tag used in place names, the west wing (rooms / hall only / none) and the
 # east block (true / false). On 5F both wings are roof decks.
@@ -69,12 +72,8 @@ function ComfortRooms($floorNum, $tag) {
   Room $floorNum "Female CR ($tag)" 'RESTROOM' 'S' 1140; Room $floorNum "Male CR ($tag)" 'RESTROOM' 'S' 1330
 }
 
-# Ground floor (directory board; positions estimated)
-Room 1 'CBA Faculty Room' 'OFFICE' 'N' 895
-Room 1 "Department Chairs' Office (CBA)" 'OFFICE' 'N' 1000
-Room 1 "Associate Dean's Office (CBA)" 'OFFICE' 'N' 1120
-Room 1 "Dean's Office (College of Business Administration)" 'OFFICE' 'L' 1215
-ComfortRooms 1 'TYK GF'
+# Ground floor (owner): the canteen in the middle; stairs and elevators lead up
+Room 1 'TYK Canteen' 'CANTEEN' 'C' 1150
 
 # 2F (plan "2F TYK BUILDING, TYK 206")
 WingRooms 2 200
@@ -174,8 +173,8 @@ $edges = New-Object System.Collections.ArrayList
 $script:nextNode = 1000
 $script:nextEdge = 1000
 
-function Add-Node($floorId, $name, $type, $pt, $desc = $null) {
-  $n = [pscustomobject]@{ id = $script:nextNode; floor = $floorId; name = $name; type = $type; desc = $desc
+function Add-Node($floorId, $name, $type, $pt, $desc = $null, $building = 3) {
+  $n = [pscustomobject]@{ id = $script:nextNode; building = $building; floor = $floorId; name = $name; type = $type; desc = $desc
     fx = [double]$pt[0]; fy = [double]$pt[1]; x = [int][math]::Round($pt[0]); y = [int][math]::Round($pt[1]) }
   $script:nextNode++
   [void]$nodes.Add($n); return $n
@@ -199,7 +198,7 @@ function Nearest($list, $pt) {
 $vertical = @{}   # "key|floor" -> stairs or elevator node
 foreach ($f in $Floors) {
   $tag = $f.tag; $fid = $f.id
-  $desc = if ($f.num -eq 1) { $GroundNote } else { $null }
+  $desc = $null
   $list = if ($Rooms.ContainsKey($f.num)) { @($Rooms[$f.num]) } else { @() }
 
   # main hallway: one junction at every room, from the west lobby to the east end
@@ -275,7 +274,22 @@ foreach ($f in $Floors) {
     }
   }
   if ($f.num -eq 1) { $script:groundEntrance = $hallAt[1300.0] }
+  if ($f.num -eq 4) { $script:bridgeHall = $hallAt[1935.0] }
 }
+foreach ($n in $nodes) {
+  if ($n.name -eq 'TYK Canteen') { $n.desc = 'In the middle of the ground floor. Enter from the grass field or through the CFAD wing.' }
+}
+
+# the 4th floor bridge to the Engineering building's 3rd floor (EN 3F, floor id 4, ends at its south wing hallway)
+$enSql = Get-Content -Raw (Join-Path $PSScriptRoot '..\04_engineering_building.sql')
+$enMatch = [regex]::Match($enSql, "\((\d+), 1, 4, 'EN 3F south wing hallway -8', 'JUNCTION', (\d+), (\d+)")
+if (-not $enMatch.Success) { throw 'EN 3F south wing hallway -8 is missing from 04_engineering_building.sql' }
+$enHall = [pscustomobject]@{ id = [int]$enMatch.Groups[1].Value; fx = [double]$enMatch.Groups[2].Value; fy = [double]$enMatch.Groups[3].Value }
+$bridgeTyk = Add-Node 8 'Bridge to Engineering (TYK 4F)' 'JUNCTION' (BarPoint 1975 -4)
+$bridgeEn = Add-Node 4 'Bridge to Tan Yan Kee (EN 3F)' 'JUNCTION' @(1290.0, 560.0) $null 1
+Add-Edge $bridgeTyk $script:bridgeHall
+Add-Edge $bridgeTyk $bridgeEn 'WALK' $BridgeM
+Add-Edge $bridgeEn $enHall
 
 # stairs and elevators between floors (stairs: not step-free)
 foreach ($key in 'stair 1', 'stair 2', 'stair 3', 'stair 4') {
@@ -299,11 +313,12 @@ function Q($s) { if ($null -eq $s) { 'NULL' } else { "'" + ($s -replace "'", "''
 function Num($d) { ([double]$d).ToString([Globalization.CultureInfo]::InvariantCulture) }
 $sb = New-Object System.Text.StringBuilder
 function L($s) { [void]$sb.AppendLine($s) }
-L '-- Tan Yan Kee Academic Building (TYK): ground floor to 10th floor, rooms, offices, comfort rooms, the library,'
-L '-- four stairwells and two elevator banks. The "CFAD building" is its west wing.'
+L '-- Tan Yan Kee Academic Building (TYK): ground floor (canteen) to 10th floor, rooms, offices, comfort rooms, the'
+L '-- library, four stairwells, two elevator banks and the 4F bridge to Engineering 3F. "CFAD" is its west wing.'
 L '-- GENERATED by sql/tools/tan-yan-kee.ps1 from the posted floor plans and the building directory. Edit the script and'
-L '-- run it again rather than editing this file. Positions are estimates; the ground floor has no plan yet.'
-L '-- Safe to run more than once; keeps the usage log. Run after 05_campus_layout.sql (and again whenever 05 is run).'
+L '-- run it again rather than editing this file. Positions are estimates.'
+L '-- Safe to run more than once; keeps the usage log. Run after 05_campus_layout.sql (and again whenever 04 or 05 is'
+L '-- run: 04 removes the bridge end on Engineering 3F).'
 L '-- Then copy GET /api/snapshot into uenav-mobile/src/main/resources/campus-snapshot.json before building the APK.'
 L ''
 L 'USE uenav;'
@@ -312,7 +327,7 @@ L '-- the CFAD building is the west wing of Tan Yan Kee (owner, 2026-11-15): its
 L "UPDATE node SET building_id = 3, name = 'CFAD Building (Tan Yan Kee west wing)' WHERE node_id = 34;"
 L 'DELETE FROM building WHERE building_id = 7 AND NOT EXISTS (SELECT 1 FROM node WHERE node.building_id = 7)'
 L '  AND NOT EXISTS (SELECT 1 FROM floor WHERE floor.building_id = 7);'
-L "UPDATE building SET map_x = 850, map_y = 705, description = 'Ten floors. The CFAD wing is its angled west end. Position from a satellite photo and OpenStreetMap, checked by a student' WHERE building_id = 3;"
+L "UPDATE building SET map_x = 850, map_y = 705, description = 'Ten floors. The CFAD wing is its angled west end. Canteen on the ground floor; a bridge on the 4th floor leads to the Engineering building (3rd floor).' WHERE building_id = 3;"
 L '-- main door under the 2F canopy, on the field side'
 L "UPDATE node SET x = $([int]$MainDoor[0]), y = $([int]$MainDoor[1]) WHERE node_id = 33;"
 L "UPDATE edge SET distance_m = $(Num $walk15to33) WHERE (from_node_id = 15 AND to_node_id = 33) OR (from_node_id = 33 AND to_node_id = 15);"
@@ -329,8 +344,10 @@ L '-- rows from an older run of this script that are no longer made'
 L "DELETE FROM node WHERE building_id = 3 AND floor_id IS NOT NULL AND node_id NOT IN ($ids)"
 L '  AND node_id NOT IN (SELECT from_node_id FROM usage_log) AND node_id NOT IN (SELECT to_node_id FROM usage_log);'
 L ''
+L '-- an earlier run marked the ground floor as estimated; the owner described it since'
+L "UPDATE node SET description = NULL WHERE description = 'Position estimated: there is no ground floor plan yet.';"
 L 'INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y, description) VALUES'
-L ((($nodes | ForEach-Object { "  ($($_.id), 3, $($_.floor), $(Q $_.name), '$($_.type)', $($_.x), $($_.y), $(Q $_.desc))" }) -join ",`n"))
+L ((($nodes | ForEach-Object { "  ($($_.id), $($_.building), $($_.floor), $(Q $_.name), '$($_.type)', $($_.x), $($_.y), $(Q $_.desc))" }) -join ",`n"))
 L 'ON DUPLICATE KEY UPDATE building_id = VALUES(building_id), floor_id = VALUES(floor_id), name = VALUES(name),'
 L '  node_type = VALUES(node_type), x = VALUES(x), y = VALUES(y),'
 L '  description = IFNULL(node.description, VALUES(description));'

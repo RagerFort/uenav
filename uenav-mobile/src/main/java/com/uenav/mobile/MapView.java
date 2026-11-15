@@ -1000,7 +1000,7 @@ public class MapView extends Region {
             if (ids.contains(a.id()) != ids.contains(b.id())) {
                 Node here = ids.contains(a.id()) ? a : b;
                 Node there = here == a ? b : a;
-                String text = data.floor(there.floorId()).map(f -> "To " + f.shortLabel())
+                String text = data.floor(there.floorId()).map(f -> "To " + otherBuilding(f) + f.shortLabel())
                         .orElse(there.floorId() == null ? "To campus" : "Continue");
                 tag(g, text, sx(here.x()), sy(here.y()) - 22, BRAND, Color.WHITE);
             }
@@ -1149,6 +1149,15 @@ public class MapView extends Region {
         g.setTextAlign(TextAlignment.CENTER);
         g.setTextBaseline(VPos.CENTER);
         g.fillText(text, x, y);
+    }
+
+    /** "Engineering " when a floor of another building is meant (a bridge), "" for this building's floors. */
+    private String otherBuilding(Floor there) {
+        Integer here = level == null ? null : data.floor(level).map(Floor::buildingId).orElse(null);
+        if (here == null || here == there.buildingId()) {
+            return "";
+        }
+        return data.building(there.buildingId()).map(b -> shortName(b.name()) + " ").orElse("");
     }
 
     /** Keeps map labels short: "College of Engineering Building" -> "Engineering". */

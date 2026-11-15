@@ -14,7 +14,9 @@ It can be run again: it keeps the usage log and the ids it already uses. There i
 Ground floor to 10th floor come from `sql/tools/tan-yan-kee.ps1`, which writes `sql/06_tan_yan_kee.sql` from the
 posted floor plans. Rooms are listed per floor at the top of the script (name, type, side, position on the 2F
 plan photo). Edit a list, run the script, then load the SQL file after `05_campus_layout.sql`. The CFAD building
-is TYK's west wing. Both elevator banks connect every floor.
+is TYK's west wing. Both elevator banks connect every floor. The ground floor is the canteen. The 4F bridge to the
+Engineering building ends on EN 3F (the script finds that floor's south wing hallway in 04), so load 06 again
+after loading 04.
 
 ## The campus (outdoor) layout
 `sql/05_campus_layout.sql` puts the buildings, gates, offices and outdoor walkways where they really are. The

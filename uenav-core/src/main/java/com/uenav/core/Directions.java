@@ -48,9 +48,14 @@ public final class Directions {
     }
 
     /** turnFrom: first edge used to tell the direction of a leg (after any short kink folded into it). */
-    private record Leg(EdgeType type, int from, int to, double meters, int turnFrom) {
+    /** bridge: a walk from one building's floor straight into another building (a bridge between them). */
+    private record Leg(EdgeType type, int from, int to, double meters, int turnFrom, boolean bridge) {
         Leg(EdgeType type, int from, int to, double meters) {
-            this(type, from, to, meters, from);
+            this(type, from, to, meters, from, false);
+        }
+
+        Leg(EdgeType type, int from, int to, double meters, int turnFrom) {
+            this(type, from, to, meters, turnFrom, false);
         }
     }
 
@@ -97,7 +102,12 @@ public final class Directions {
         Leg previous = null;
         for (Leg leg : legs) {
             Node end = nodes.get(leg.to());
-            if (leg.type() != EdgeType.WALK) {
+            if (leg.bridge()) {
+                String building = data.building(end.buildingId()).map(Building::name).orElse(end.name());
+                String floor = data.floor(end.floorId()).map(f -> " · you arrive on the " + f.floorName()).orElse("");
+                steps.add(new Step(StepKind.STRAIGHT, "Cross the bridge to " + building,
+                        "Walk ~" + meters(leg.meters()) + floor, nodes.get(leg.from())));
+            } else if (leg.type() != EdgeType.WALK) {
                 boolean isStairs = leg.type() == EdgeType.STAIRS;
                 Node start = nodes.get(leg.from());
                 String target = data.floor(end.floorId()).map(Floor::floorName).orElse(end.name());
@@ -201,6 +211,16 @@ public final class Directions {
                 lastHeading = null;
                 continue;
             }
+            if (crossesBuildings(nodes.get(i), nodes.get(i + 1))) {
+                if (i > legStart) {
+                    legs.add(new Leg(EdgeType.WALK, legStart, i, legMeters));
+                }
+                legs.add(new Leg(EdgeType.WALK, i, i + 1, e.distanceM(), i, true));
+                legStart = i + 1;
+                legMeters = 0;
+                lastHeading = null;
+                continue;
+            }
             double[] h = vector(nodes.get(i), nodes.get(i + 1));
             if (h != null && lastHeading != null && turn(lastHeading, h) != StepKind.STRAIGHT && i > legStart) {
                 legs.add(new Leg(EdgeType.WALK, legStart, i, legMeters));
@@ -224,7 +244,7 @@ public final class Directions {
         for (int i = 0; i + 1 < out.size(); i++) {
             Leg a = out.get(i);
             Leg b = out.get(i + 1);
-            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK
+            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && !a.bridge() && !b.bridge()
                     && turn(heading(nodes, a, true), heading(nodes, b, false)) == StepKind.STRAIGHT) {
                 out.set(i, new Leg(EdgeType.WALK, a.from(), b.to(), a.meters() + b.meters(), a.turnFrom()));
                 out.remove(i + 1);
@@ -240,7 +260,8 @@ public final class Directions {
         for (int i = 0; i + 1 < out.size(); i++) {
             Leg a = out.get(i);
             Leg b = out.get(i + 1);
-            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && a.meters() < MIN_STEP_M) {
+            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && !a.bridge() && !b.bridge()
+                    && a.meters() < MIN_STEP_M) {
                 out.set(i, new Leg(EdgeType.WALK, a.from(), b.to(), a.meters() + b.meters(), b.turnFrom()));
                 out.remove(i + 1);
                 i--;
@@ -250,7 +271,8 @@ public final class Directions {
         if (last > 0) {
             Leg a = out.get(last - 1);
             Leg b = out.get(last);
-            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && b.meters() < MIN_STEP_M) {
+            if (a.type() == EdgeType.WALK && b.type() == EdgeType.WALK && !a.bridge() && !b.bridge()
+                    && b.meters() < MIN_STEP_M) {
                 out.set(last - 1, new Leg(EdgeType.WALK, a.from(), b.to(), a.meters() + b.meters(), a.turnFrom()));
                 out.remove(last);
             }
@@ -271,6 +293,12 @@ public final class Directions {
             }
         }
         return found;
+    }
+
+    /** A walk that goes from inside one building straight into another one (a bridge). */
+    private static boolean crossesBuildings(Node a, Node b) {
+        return a.floorId() != null && b.floorId() != null && a.buildingId() != null && b.buildingId() != null
+                && !a.buildingId().equals(b.buildingId());
     }
 
     private static double[] vector(Node a, Node b) {

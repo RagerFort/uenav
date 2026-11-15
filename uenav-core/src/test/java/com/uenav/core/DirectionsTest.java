@@ -138,6 +138,33 @@ class DirectionsTest {
     }
 
     @Test
+    void aBridgeBetweenBuildingsIsItsOwnStep() {
+        CampusData d = SnapshotReader.read("""
+            {"version":"b",
+             "buildings":[{"id":1,"name":"TYK","category":"Building","description":null,"mapX":null,"mapY":null,
+                           "imagePath":null},
+                          {"id":2,"name":"Engineering Building","category":"Building","description":null,"mapX":null,
+                           "mapY":null,"imagePath":null}],
+             "floors":[{"id":1,"buildingId":1,"floorNumber":4,"floorName":"4th floor","planImagePath":null},
+                       {"id":2,"buildingId":2,"floorNumber":3,"floorName":"3rd floor","planImagePath":null}],
+             "nodes":[
+               {"id":1,"buildingId":1,"floorId":1,"name":"TYK 409","nodeType":"ROOM","x":0,"y":0},
+               {"id":2,"buildingId":1,"floorId":1,"name":"t","nodeType":"JUNCTION","x":100,"y":0},
+               {"id":3,"buildingId":2,"floorId":2,"name":"e","nodeType":"JUNCTION","x":300,"y":0},
+               {"id":4,"buildingId":2,"floorId":2,"name":"EN 310","nodeType":"ROOM","x":300,"y":100}],
+             "edges":[
+               {"id":1,"fromNodeId":1,"toNodeId":2,"distanceM":30,"edgeType":"WALK","accessible":true},
+               {"id":2,"fromNodeId":2,"toNodeId":3,"distanceM":48,"edgeType":"WALK","accessible":true},
+               {"id":3,"fromNodeId":3,"toNodeId":4,"distanceM":25,"edgeType":"WALK","accessible":true}]}
+            """);
+        Route r = PathFinder.findRoute(d.graph(), 1, 4, RoutePreference.ANY).orElseThrow();
+        List<Directions.Step> steps = Directions.steps(r, d);
+        assertEquals(List.of("Start walking", "Cross the bridge to Engineering Building", "Turn right",
+                "Arrive at EN 310"), steps.stream().map(Directions.Step::title).toList());
+        assertEquals("Walk ~48 m · you arrive on the 3rd floor", steps.get(1).detail());
+    }
+
+    @Test
     void minutesAreAtLeastOne() {
         assertEquals(1, Directions.minutes(5));
         assertEquals(4, Directions.minutes(310));

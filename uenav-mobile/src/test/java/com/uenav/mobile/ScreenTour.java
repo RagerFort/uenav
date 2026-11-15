@@ -131,6 +131,14 @@ public final class ScreenTour {
         java.util.function.Consumer<Integer> showTykLevel = (java.util.function.Consumer<Integer>) levelField.get(nav);
         showTykLevel.accept(named("TYK 803").floorId()); // the 8F tab
         save(scene(), p + "06d-tyk803-8f-tab");
+        // over the 4F bridge into the Engineering building
+        nav.openPlan(named("EN 310"));
+        @SuppressWarnings("unchecked")
+        java.util.function.Consumer<Integer> showBridgeLevel = (java.util.function.Consumer<Integer>) levelField.get(nav);
+        showBridgeLevel.accept(named("Bridge to Engineering (TYK 4F)").floorId());
+        save(scene(), p + "06e-bridge-tyk-4f");
+        showBridgeLevel.accept(named("EN 310").floorId());
+        save(scene(), p + "06f-bridge-en-3f");
         if (!dark) {
             // back history: Explore -> Classrooms -> directions, then back twice
             var key = Navigator.class.getDeclaredField("screenKey");
