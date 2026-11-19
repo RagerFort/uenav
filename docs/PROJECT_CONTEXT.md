@@ -76,6 +76,7 @@ D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library
 | D20 | Phone bottom bar Explore / Map / Settings; admin under Settings > Staff sign in; theme Same as phone / Light / Dark. |
 | D21 | Campus layout from a satellite photo + OpenStreetMap, checked by a student: 2 gates, Samson Road Gate path between CFAD and Admin, paths across the field. `sql/05_campus_layout.sql`. |
 | D22 | Tan Yan Kee GF-10F from the posted floor plans; CFAD is TYK's west wing; GF canteen; 4F bridge to EN 3F; 2 elevator banks (anyone); stairs count 15 m a floor. `sql/06_tan_yan_kee.sql`. |
+| D25 | UENav Server starts ngrok itself when `UENAV_NGROK_URL` is in server.properties; stops it with the server. |
 | D24 | Database built into UENav Server: MariaDB (MySQL compatible) on 127.0.0.1:3307, data in `~/.uenav/database`, map loaded on first start; query with Workbench / mysql / UENav SQL.exe; UENAV_DB_URL = use your own MySQL. |
 | D23 | Directions play the route step by step (RoutePlayer): walker, red trail with flowing arrows, steps light up, floors fade over; stops on touch; Play/Stop; Settings > Animate directions. |
 
@@ -98,7 +99,8 @@ uenav-core/                      Node (+ description, openHours), Edge, EdgeType
   src/test/...                   PathFinderTest, NearestAndTraceTest, SnapshotReaderTest, DirectionsTest, PlaceSearchTest,
                                  QrCodesTest, GraphCheckTest
 uenav-server/                    Spring Boot: UenavServerApplication, HealthController; db/ = the built-in database
-                                 (EmbeddedMariaDb, EmbeddedDatabaseStarter, DbSettings, SqlConsole = UENav SQL, D24)
+                                 (EmbeddedMariaDb, EmbeddedDatabaseStarter, DbSettings, SqlConsole = UENav SQL, D24);
+                                 tunnel/NgrokTunnel = starts ngrok (D25); AfterExit = clean-up when the window closes
   .../snapshot/                  GET /api/snapshot and /api/snapshot/version (reads MySQL)
   .../admin/                     BCrypt login, 8-hour token, lockout, /api/admin/login|logout|me, interceptor
   .../mapadmin/                  admin CRUD for buildings, floors, nodes, edges under /api/admin/**
@@ -317,7 +319,9 @@ A PC address like `http://192.168.1.10:8080` works only for phones on the **same
 `http://` by default. A free ngrok address is HTTPS and works from any network:
 1. Sign up at ngrok.com, install ngrok for Windows, run `ngrok config add-authtoken <your token>` once.
 2. In the ngrok dashboard, open **Domains** and claim the free static domain (e.g. `uenav-xyz.ngrok-free.app`).
-3. Start the server, then the VS Code task "UENav: put server online (ngrok)" (or `ngrok http 8080 --url=https://uenav-xyz.ngrok-free.app`;
+3. Add `UENAV_NGROK_URL=https://uenav-xyz.ngrok-free.app` to `~/.uenav/server.properties`: UENav Server then starts
+   ngrok by itself and stops it when it closes (D25; its window says "Online at ..."). Without that line: start the
+   server, then the VS Code task "UENav: put server online (ngrok)" (or `ngrok http 8080 --url=https://uenav-xyz.ngrok-free.app`;
    older ngrok versions use `--domain=` instead of `--url=`). Check `https://uenav-xyz.ngrok-free.app/api/health` in a browser.
 4. Put that address in `uenav-server.json`, commit, push, install the new APK. Every phone then connects by itself.
 The PC with the server and ngrok must stay on. For the school pilot, move the server and MySQL to a school or cloud

@@ -2,6 +2,7 @@ package com.uenav.server;
 
 import com.uenav.server.db.EmbeddedDatabaseStarter;
 import com.uenav.server.db.SqlConsole;
+import com.uenav.server.tunnel.NgrokTunnel;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -9,7 +10,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class UenavServerApplication {
 
     /**
-     * Starts the server with its built-in database (D24). With the argument "sql" it opens the UENav SQL window
+     * Starts the server with its built-in database (D24), and puts it online through ngrok when UENAV_NGROK_URL is
+     * set (D25). With the argument "sql" it opens the UENav SQL window
      * instead (the mysql command line on that database).
      */
     public static void main(String[] args) throws Exception {
@@ -18,7 +20,7 @@ public class UenavServerApplication {
             return;
         }
         SpringApplication app = new SpringApplication(UenavServerApplication.class);
-        app.addListeners(new EmbeddedDatabaseStarter());
+        app.addListeners(new EmbeddedDatabaseStarter(), new NgrokTunnel());
         app.run(args);
     }
 }

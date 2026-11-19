@@ -4,6 +4,7 @@ import ch.vorburger.exec.ManagedProcessException;
 import ch.vorburger.mariadb4j.DB;
 import ch.vorburger.mariadb4j.DBConfiguration;
 import ch.vorburger.mariadb4j.DBConfigurationBuilder;
+import com.uenav.server.AfterExit;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -18,6 +19,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -223,31 +225,13 @@ public final class EmbeddedMariaDb {
     }
 
     /**
-     * Makes sure the database is shut down properly once this program has ended, however it ends. Closing a
-     * console window on Windows ends Java at once, before its own shutdown code can run, so a small hidden helper
-     * (PowerShell, part of Windows) waits for this program to end and then sends SHUTDOWN with the mysql program.
-     * Java starts it without a window and apart from this window, so closing the window does not end it.
+     * Makes sure the database is shut down properly once this program has ended, however it ends (closing the
+     * window ends Java before it can do it itself): a hidden helper then sends SHUTDOWN with the mysql program.
      */
     public void closeWhenThisProgramEnds() {
-        if (!isWindows()) {
-            return;
-        }
-        String script = "Wait-Process -Id " + ProcessHandle.current().pid() + " -ErrorAction SilentlyContinue; & '"
-                + clientProgram().toString().replace("'", "''") + "' --host=127.0.0.1 --port=" + settings.port()
-                + " --user=" + settings.user() + " --connect-timeout=5 -e SHUTDOWN";
-        String root = System.getenv("SystemRoot");
-        String powershell = root == null ? "powershell.exe"
-                : Path.of(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe").toString();
-        ProcessBuilder pb = new ProcessBuilder(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy",
-                "Bypass", "-Command", script);
-        pb.environment().put("MYSQL_PWD", settings.password()); // not on the command line
-        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
-        try {
-            pb.start();
-        } catch (IOException e) {
-            LOG.warn("The database may stay open after UENav closes: {}", e.getMessage());
-        }
+        AfterExit.run("& " + AfterExit.quoted(clientProgram().toString()) + " --host=127.0.0.1 --port="
+                + settings.port() + " --user=" + settings.user() + " --connect-timeout=5 -e SHUTDOWN",
+                Map.of("MYSQL_PWD", settings.password())); // the password is not put on the command line
     }
 
     private static boolean isWindows() {

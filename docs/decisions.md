@@ -99,6 +99,18 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D25: UENav Server puts itself online through ngrok (implemented 2026-11-19, owner asked)
+
+With `UENAV_NGROK_URL=https://<name>.ngrok-free.dev` in `~/.uenav/server.properties`, opening UENav Server also
+starts `ngrok http <port> --url=<that address>` once the server answers, so phones on any network reach it at the
+address built into the app (`uenav-server.json`); the owner's is `https://encounter-applied-goofiness.ngrok-free.dev`.
+The server watches ngrok's log and says "Online at ..." or ngrok's error; if ngrok already has the address online
+(VS Code task, by hand) it uses that one. ngrok stops with the server, also when the window is closed (the same
+hidden helper as the database, `AfterExit`). ngrok must be installed and logged in once (`ngrok config
+add-authtoken`); `UENAV_NGROK_PATH` names ngrok.exe if it is not on the PATH. Tried here: the address served the map
+7 s after opening the server. This PC's own DNS (10.247.120.74) does not resolve ngrok-free.dev names (public DNS
+does), so testing it from this PC needs `curl --resolve`; phones on mobile data are not affected.
+
 ## D24: the database is built into UENav Server (implemented 2026-11-19, owner asked)
 
 UENav Server needed a MySQL server that was installed and running first; on the owner's PC MySQL80 is set to start
