@@ -99,6 +99,22 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D26: the phone app finds the server even where the network's DNS blocks it (implemented 2026-11-19, owner asked)
+
+The owner's phone could not reach `https://encounter-applied-goofiness.ngrok-free.dev`: its mobile network's DNS
+answers "does not exist" for all of `ngrok-free.dev` and `ngrok-free.app` (seen from the PC on the phone's hotspot,
+DNS 10.247.120.74), while Cloudflare and Google DNS resolve it and the tunnel works. Other students on that carrier
+would have the same problem, so the app works around it instead of asking everyone to change Private DNS.
+
+`Http.call` (every server call: map updates, usage log, admin screens) first connects as before. Only when the
+phone's lookup fails (UnknownHostException) does `SecureDns` ask Cloudflare (`https://1.1.1.1/dns-query`) and then
+Google (`https://8.8.8.8/resolve`) over HTTPS by IP address, and the request goes straight to the address found: a
+TCP connection to it, TLS with the real name (SNI) and the normal certificate check for that name
+(endpoint identification "HTTPS"), then a small HTTP/1.1 request (`Http.direct`, `Http.readReply`: sized, chunked or
+read to the end). The address is remembered for 5 minutes and forgotten when it stops answering. Tried here behind
+the blocking DNS: map version, full map (222 KB) and an admin login POST all worked, and a certificate for another
+name was refused. With no internet at all the call fails as before (searching and directions work offline).
+
 ## D25: UENav Server puts itself online through ngrok (implemented 2026-11-19, owner asked)
 
 With `UENAV_NGROK_URL=https://<name>.ngrok-free.dev` in `~/.uenav/server.properties`, opening UENav Server also

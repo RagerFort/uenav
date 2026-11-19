@@ -76,6 +76,7 @@ D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library
 | D20 | Phone bottom bar Explore / Map / Settings; admin under Settings > Staff sign in; theme Same as phone / Light / Dark. |
 | D21 | Campus layout from a satellite photo + OpenStreetMap, checked by a student: 2 gates, Samson Road Gate path between CFAD and Admin, paths across the field. `sql/05_campus_layout.sql`. |
 | D22 | Tan Yan Kee GF-10F from the posted floor plans; CFAD is TYK's west wing; GF canteen; 4F bridge to EN 3F; 2 elevator banks (anyone); stairs count 15 m a floor. `sql/06_tan_yan_kee.sql`. |
+| D26 | Phone app: when the network's DNS blocks the server's name, SecureDns looks it up via Cloudflare/Google DNS over HTTPS and Http.direct connects with the usual certificate check. |
 | D25 | UENav Server starts ngrok itself when `UENAV_NGROK_URL` is in server.properties; stops it with the server. |
 | D24 | Database built into UENav Server: MariaDB (MySQL compatible) on 127.0.0.1:3307, data in `~/.uenav/database`, map loaded on first start; query with Workbench / mysql / UENav SQL.exe; UENAV_DB_URL = use your own MySQL. |
 | D23 | Directions play the route step by step (RoutePlayer): walker, red trail with flowing arrows, steps light up, floors fade over; stops on touch; Play/Stop; Settings > Animate directions. |
@@ -114,7 +115,8 @@ uenav-mobile/                    Gluon phone app (visitors and admins):
                                  PlaceStyle, uenav-nav.css; CampusStore (bundled snapshot, downloads a newer one, D9);
                                  AdminScreens + MobileAdminApi (phone Admin tab: sign in, dashboard, add/edit/delete place,
                                  route reports, server address); usage log: UsageEntry, UsageQueue, Settings, SyncService,
-                                 HttpSyncClient, Http, FileTextStore/TextStore, AppStorage; `android` profile.
+                                 HttpSyncClient, Http (+ SecureDns when DNS blocks the server, D26), FileTextStore/TextStore,
+                                 AppStorage; `android` profile.
                                  2026-11-09: Explore is a kiosk home (search, You are here card, category tiles, Nearest
                                  buttons, Emergency exit, Favorites, Recent, Avoid stairs switch, light/dark button);
                                  category lists sorted by walking distance; QrScanner (Attach barcode-scan, typed code
