@@ -2,8 +2,6 @@
   // Run these from VS Code: Terminal > Run Task... > pick a "UENav:" task.
   "version": "2.0.0",
   "inputs": [
-    { "id": "dbPassword", "type": "promptString", "password": true,
-      "description": "MySQL password for user uenav_app (the one in sql/00_create_database.sql)" },
     { "id": "adminUser", "type": "promptString", "default": "admin",
       "description": "Username for the first admin account" },
     { "id": "adminPassword", "type": "promptString", "password": true,
@@ -21,11 +19,17 @@
     },
     {
       "label": "UENav: start server",
-      "detail": "Needs MySQL running. Leave this terminal open while you use the apps.",
+      "detail": "Starts its built-in database too (D24). Leave this terminal open while you use the apps.",
       "type": "shell",
       "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -pl uenav-server spring-boot:run",
-      "options": { "env": { "UENAV_DB_PASSWORD": "${input:dbPassword}" } },
       "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "UENav: SQL window (query the database)",
+      "detail": "The mysql command line on the server's built-in database, e.g. SELECT * FROM building;",
+      "type": "shell",
+      "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -q -pl uenav-server package -DskipTests; java -jar uenav-server/target/uenav-server-0.1.0-SNAPSHOT.jar sql",
       "problemMatcher": []
     },
     {
@@ -34,7 +38,6 @@
       "type": "shell",
       "command": "mvn -q -pl uenav-core -am install -DskipTests; mvn -pl uenav-server spring-boot:run",
       "options": { "env": {
-        "UENAV_DB_PASSWORD": "${input:dbPassword}",
         "UENAV_ADMIN_USER": "${input:adminUser}",
         "UENAV_ADMIN_PASSWORD": "${input:adminPassword}"
       } },

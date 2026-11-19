@@ -99,6 +99,27 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D24: the database is built into UENav Server (implemented 2026-11-19, owner asked)
+
+UENav Server needed a MySQL server that was installed and running first; on the owner's PC MySQL80 is set to start
+by hand, so the server "did not work immediately". Now `UENav Server.exe` starts its own database: MariaDB 11.4
+(MySQL compatible) through MariaDB4j, unpacked to `~/.uenav/mariadb-11.4.5`, data in `~/.uenav/database`, listening
+only on this computer at **127.0.0.1:3307** (3307 so it never clashes with a MySQL on 3306). The first start creates
+database `uenav`, user `uenav_app` (password `UENAV_DB_PASSWORD` from `~/.uenav/server.properties`, made up and saved
+if missing; root gets the same password, anonymous accounts are removed) and loads the campus map from `sql/` (01,
+02, 04, 05, 06, copied into the server jar). Later starts take about a second.
+
+Querying: while the server runs, MySQL Workbench or the `mysql` command connect to 127.0.0.1:3307 as `uenav_app`, and
+**UENav SQL.exe** (beside UENav Server.exe; it runs `UENav Server.exe sql`) opens the mysql command line already
+logged in to `uenav` (it starts the database itself if the server is closed). Closing: on Ctrl+C or exit the server
+sends SHUTDOWN after closing its own connections; closing the console window ends Java before it can do anything,
+so a hidden helper (PowerShell `Wait-Process`, then the bundled mysql `-e SHUTDOWN`) closes the database once the
+server process has ended, also after a crash or `taskkill /F`. A database left running is found and taken over by the
+next start. Setting `UENAV_DB_URL` turns all of this off and uses that MySQL server, as before.
+
+The owner's MySQL80 data (1 admin, 878 places, 971 walkways, 5 usage rows) was copied in on 2026-11-19; backup
+`~/UENav/backup/uenav-mysql80-before-built-in-db-20261119-123225.sql`. MySQL80 is no longer needed.
+
 ## D23: directions play the route step by step (implemented 2026-11-15, owner asked)
 
 When directions open for a new route (Get directions, swap, stairs/elevator choice, nearest place, emergency), the

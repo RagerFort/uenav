@@ -32,6 +32,17 @@
       <artifactId>mysql-connector-j</artifactId>
       <scope>runtime</scope>
     </dependency>
+    <!-- the database built into UENav Server (D24): MariaDB, which MySQL tools and Workbench can use -->
+    <dependency>
+      <groupId>ch.vorburger.mariaDB4j</groupId>
+      <artifactId>mariaDB4j-core</artifactId>
+      <version>3.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.vorburger.mariaDB4j</groupId>
+      <artifactId>mariaDB4j-db-winx64</artifactId>
+      <version>11.4.5</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
@@ -41,6 +52,35 @@
 
   <build>
     <plugins>
+      <!-- the campus map SQL files (sql/), loaded into the built-in database the first time it starts -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-campus-sql</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}/db</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/../sql</directory>
+                  <includes>
+                    <include>01_schema.sql</include>
+                    <include>02_seed_sample.sql</include>
+                    <include>04_engineering_building.sql</include>
+                    <include>05_campus_layout.sql</include>
+                    <include>06_tan_yan_kee.sql</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>

@@ -21,7 +21,8 @@ cp "uenav-server/target/uenav-server-$VERSION.jar" target/package/server-input/
 WIN_ADMIN=()
 WIN_SERVER=()
 case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*) WIN_SERVER=(--win-console) ;;   # the server shows its log in a window
+  # the server shows its log in a window; "UENav SQL.exe" opens the mysql command line on its database (D24)
+  MINGW*|MSYS*|CYGWIN*) WIN_SERVER=(--win-console --add-launcher "UENav SQL=packaging/uenav-sql.properties") ;;
 esac
 
 jpackage --type app-image --name "UENav Admin" --app-version 0.1.0 --vendor UENav \

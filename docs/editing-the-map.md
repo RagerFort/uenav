@@ -7,7 +7,9 @@ and every 30 minutes). Only the 3D building shapes and the phone's built-in fall
 ## The Engineering building
 Floors 1 to 4 of the College of Engineering building come from `sql/tools/engineering-building.ps1`, which writes
 `sql/04_engineering_building.sql` from the posted floor plans. To move rooms or add missing ones there, edit the
-lists at the top of the script, run it, then load the SQL file (`mysql -u root -p uenav < sql/04_engineering_building.sql`).
+lists at the top of the script, run it, then load the SQL file: open **UENav SQL.exe** and type
+`source C:/path/to/uenav/sql/04_engineering_building.sql` (forward slashes), or with your own MySQL
+`mysql -u root -p uenav < sql/04_engineering_building.sql`.
 It can be run again: it keeps the usage log and the ids it already uses. There is no elevator in this building.
 
 ## The Tan Yan Kee building

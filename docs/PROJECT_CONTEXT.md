@@ -76,6 +76,7 @@ D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library
 | D20 | Phone bottom bar Explore / Map / Settings; admin under Settings > Staff sign in; theme Same as phone / Light / Dark. |
 | D21 | Campus layout from a satellite photo + OpenStreetMap, checked by a student: 2 gates, Samson Road Gate path between CFAD and Admin, paths across the field. `sql/05_campus_layout.sql`. |
 | D22 | Tan Yan Kee GF-10F from the posted floor plans; CFAD is TYK's west wing; GF canteen; 4F bridge to EN 3F; 2 elevator banks (anyone); stairs count 15 m a floor. `sql/06_tan_yan_kee.sql`. |
+| D24 | Database built into UENav Server: MariaDB (MySQL compatible) on 127.0.0.1:3307, data in `~/.uenav/database`, map loaded on first start; query with Workbench / mysql / UENav SQL.exe; UENAV_DB_URL = use your own MySQL. |
 | D23 | Directions play the route step by step (RoutePlayer): walker, red trail with flowing arrows, steps light up, floors fade over; stops on touch; Play/Stop; Settings > Animate directions. |
 
 ## 6. Technology and versions
@@ -96,7 +97,8 @@ uenav-core/                      Node (+ description, openHours), Edge, EdgeType
                                  MiniJson (reader+writer), SnapshotReader
   src/test/...                   PathFinderTest, NearestAndTraceTest, SnapshotReaderTest, DirectionsTest, PlaceSearchTest,
                                  QrCodesTest, GraphCheckTest
-uenav-server/                    Spring Boot: UenavServerApplication, HealthController
+uenav-server/                    Spring Boot: UenavServerApplication, HealthController; db/ = the built-in database
+                                 (EmbeddedMariaDb, EmbeddedDatabaseStarter, DbSettings, SqlConsole = UENav SQL, D24)
   .../snapshot/                  GET /api/snapshot and /api/snapshot/version (reads MySQL)
   .../admin/                     BCrypt login, 8-hour token, lockout, /api/admin/login|logout|me, interceptor
   .../mapadmin/                  admin CRUD for buildings, floors, nodes, edges under /api/admin/**
@@ -290,14 +292,18 @@ mvn -pl uenav-mobile javafx:run               # phone app in a phone-sized windo
 ```
 ### Windows programs (.exe)
 VS Code task "UENav: make Windows .exe files" (or `.\packaging\package-apps.ps1`) makes, in `target\package\dist`:
-`UENav Admin\UENav Admin.exe` and `UENav Server\UENav Server.exe` (Java built in; MySQL must still be installed).
+`UENav Admin\UENav Admin.exe` and `UENav Server\UENav Server.exe` (Java and the database built in, D24; nothing else to
+install) with `UENav SQL.exe` beside it: the mysql command line on the server's database (`SELECT * FROM node;`).
 GitHub also builds them on every push to `main` (Actions > Windows > artifact **UENav-Windows**).
-The server .exe needs no environment variables: create `C:\Users\<you>\.uenav\server.properties` with
-`UENAV_DB_PASSWORD=...` (and `UENAV_ADMIN_USER` / `UENAV_ADMIN_PASSWORD` for the very first start).
+The server .exe needs no environment variables and no setup: its first start makes the database and saves its
+password in `C:\Users\<you>\.uenav\server.properties` (`UENAV_DB_PASSWORD`). Add `UENAV_ADMIN_USER` /
+`UENAV_ADMIN_PASSWORD` there for the very first start to create the admin login. MySQL Workbench / `mysql`: host
+127.0.0.1, port 3307, user `uenav_app`, that password (while UENav Server runs).
 The admin .exe remembers the server address typed on its login screen (`~/.uenav/admin.properties`).
 Adding floors and rooms later needs no rebuild: see `docs/editing-the-map.md`.
 
-Database: edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
+Database: UENav Server makes and fills it by itself (D24). To use your own MySQL instead, set `UENAV_DB_URL` and:
+edit the password in `sql/00_create_database.sql`, run it with `mysql -u root -p`, then `01_schema.sql` and
 `02_seed_sample.sql` into database `uenav`. A database made before 2026-11-09 needs `03_place_details.sql` once
 (`mysql -u root -p uenav < sql/03_place_details.sql`) before the new server is started. `02_seed_sample.sql` can be run again: it first **deletes the usage log and
 all map rows** (admin accounts are kept), then loads the UE Caloocan map.
