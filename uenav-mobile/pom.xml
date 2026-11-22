@@ -71,6 +71,32 @@
 
   <build>
     <plugins>
+      <!-- The 3D campus shapes (maps/) live in uenav-map, but Gluon's Android build only packs resources that are in
+           this app's own classes folder: copy them in (D27). Without this the phone's campus map has no buildings. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-map-shapes</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/../uenav-map/src/main/resources</directory>
+                  <includes>
+                    <include>maps/**</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.openjfx</groupId>
         <artifactId>javafx-maven-plugin</artifactId>

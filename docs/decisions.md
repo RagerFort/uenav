@@ -136,7 +136,9 @@ To share the drawing, `MapView`, `CampusArt` and `maps/campus-3d.json` moved fro
 **uenav-map** (package `com.uenav.map`, JavaFX only), which the phone app and the PC app both use. `MapView` gained
 what editing needs: `toMap`/`toView`, `nodeAt`, `edgeAt`, `levelNodes`, `updateData` (new data, same view) and
 `setDecorations` (drawing on its top layer). The admin app's screen tour drives the editor with mouse events and
-prints the requests it sends (drag, connect, add).
+prints the requests it sends (drag, connect, add). Gluon's Android build only packs resources from the app's own
+classes folder, so uenav-mobile's pom copies `maps/` from uenav-map into it (the first APK after the move had no 3D
+campus shapes in its build log).
 
 ## D26: the phone app finds the server even where the network's DNS blocks it (implemented 2026-11-19, owner asked)
 
