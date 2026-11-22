@@ -45,6 +45,8 @@ public final class ScreenTour {
         CountDownLatch started = new CountDownLatch(1);
         Platform.startup(started::countDown);
         started.await();
+        // the tour's pages have no window; a form dialog is the only one, and closing it must not end JavaFX
+        Platform.setImplicitExit(false);
 
         for (boolean dark : new boolean[] {false, true}) {
             String p = dark ? "dark-" : "light-";
@@ -94,6 +96,17 @@ public final class ScreenTour {
             fx(() -> click("Places"));
             pause(1200);
             shot(p + "05-places");
+
+            for (String page : new String[] {"Walkways", "Buildings", "Floors", "Route reports"}) {
+                fx(() -> click(page));
+                pause(1200);
+                shot(p + "07-" + page.toLowerCase(java.util.Locale.ROOT).replace(' ', '-'));
+            }
+            if (!dark) {
+                for (String page : new String[] {"Places", "Walkways", "Buildings", "Floors"}) {
+                    formShot(page, p + "08-form-" + page.toLowerCase(java.util.Locale.ROOT));
+                }
+            }
         }
         Platform.exit();
         System.out.println("Saved screens to " + out.getAbsolutePath());
@@ -205,8 +218,10 @@ public final class ScreenTour {
     /** Presses a sidebar button by its text. */
     private static void click(String text) {
         for (javafx.scene.Node n : scene.getRoot().lookupAll(".nav-item")) {
-            if (n instanceof javafx.scene.control.Button b && text.equals(b.getText())) {
-                b.fire();
+            if (n instanceof javafx.scene.control.Button b && (text.equals(b.getText()) || (b.getGraphic() != null
+                    && b.getGraphic().lookupAll(".label").stream().anyMatch(
+                            l -> l instanceof javafx.scene.control.Label lb && text.equals(lb.getText()))))) {
+                b.fire(); // "Route reports" shows its name in its graphic, beside the badge
                 return;
             }
         }
@@ -239,6 +254,63 @@ public final class ScreenTour {
 
     private static void pause(long ms) throws InterruptedException {
         Thread.sleep(ms);
+    }
+
+    /**
+     * Opens a page's "+ Add ..." form, which is a dialog window of its own, saves a picture of that window and closes
+     * it. The button is pressed without waiting, because the dialog waits for an answer.
+     */
+    private static void formShot(String page, String name) throws Exception {
+        fx(() -> click(page));
+        pause(1000);
+        javafx.scene.control.Button[] add = new javafx.scene.control.Button[1];
+        fx(() -> {
+            for (javafx.scene.Node n : scene.getRoot().lookupAll(".button")) {
+                if (n instanceof javafx.scene.control.Button b && b.getText() != null && b.getText().startsWith("+ Add")
+                        && b.isVisible()) {
+                    add[0] = b;
+                }
+            }
+        });
+        if (add[0] == null) {
+            System.out.println("No add button on " + page);
+            return;
+        }
+        System.out.println("form: " + page + " (" + add[0].getText() + ")");
+        Platform.runLater(add[0]::fire);
+        pause(1000);
+        fx(() -> {
+            for (javafx.stage.Window w : new java.util.ArrayList<>(javafx.stage.Window.getWindows())) {
+                if (w.isShowing() && w.getScene() != null && w.getScene() != scene) {
+                    saveScene(w.getScene(), name);
+                    System.out.println("  saved " + name);
+                    // close it the way a person would, so the dialog stops waiting for an answer
+                    w.getScene().getRoot().lookupAll(".button").stream()
+                            .filter(b -> b instanceof javafx.scene.control.Button bt && "Cancel".equals(bt.getText()))
+                            .findFirst().ifPresentOrElse(b -> ((javafx.scene.control.Button) b).fire(), w::hide);
+                }
+            }
+        });
+        pause(500);
+    }
+
+    private static void saveScene(Scene s, String name) {
+        try {
+            s.getRoot().applyCss();
+            s.getRoot().layout();
+            WritableImage img = s.snapshot(null);
+            int w = (int) img.getWidth();
+            int h = (int) img.getHeight();
+            BufferedImage bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            int[] row = new int[w];
+            for (int y = 0; y < h; y++) {
+                img.getPixelReader().getPixels(0, y, w, 1, PixelFormat.getIntArgbInstance(), row, 0, w);
+                bi.setRGB(0, y, w, 1, row, 0, w);
+            }
+            ImageIO.write(bi, "png", new File(out, name + ".png"));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static void shot(String name) throws Exception {

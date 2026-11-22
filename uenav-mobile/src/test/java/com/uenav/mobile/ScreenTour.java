@@ -229,9 +229,148 @@ public final class ScreenTour {
         }
         System.out.println("ROUTE ANIMATION: about " + total + " s");
         tapStep(0); // stops it
+        if (!dark) {
+            adminScreens(p);
+        }
     }
 
     /** The Settings tab, shown in place of the visitor screens for one screenshot. */
+    /**
+     * The staff screens (Settings > Staff sign in): sign-in, dashboard, add place and route reports, against a stand-in
+     * server that answers with the built-in map and made-up usage numbers.
+     */
+    @SuppressWarnings("unchecked")
+    private static void adminScreens(String p) throws Exception {
+        String snap = new String(ScreenTour.class.getResourceAsStream(CampusStore.BUNDLED).readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        java.util.Map<String, Object> m = (java.util.Map<String, Object>) com.uenav.core.MiniJson.parse(snap);
+        java.util.Map<String, String> routes = new java.util.HashMap<>();
+        routes.put("POST /api/admin/login",
+                "{\"token\":\"t\",\"fullName\":\"Campus administrator\",\"role\":\"ADMIN\",\"expiresInSeconds\":28800}");
+        routes.put("GET /api/admin/usage/summary", "{\"searches\":128,\"helpful\":31,\"openReports\":2,\"totalReports\":5}");
+        routes.put("GET /api/admin/usage/most-searched", com.uenav.core.MiniJson.write(List.of(
+                java.util.Map.of("nodeId", 22.0, "name", "Registrar's Office", "count", 41.0),
+                java.util.Map.of("nodeId", 20.0, "name", "Cashier's Office", "count", 33.0),
+                java.util.Map.of("nodeId", 42.0, "name", "EN 420", "count", 19.0))));
+        String event = "{\"id\":%d,\"createdAt\":\"2026-11-22T05:%02d:00Z\",\"eventType\":\"%s\",\"fromName\":\"Samson Road "
+                + "Gate\",\"toName\":\"%s\",\"routePref\":\"ANY\",\"feedbackType\":%s,\"status\":%s,\"note\":null}";
+        String recent = "[" + String.format(event, 1, 50, "ROUTE", "Registrar's Office", "null", "null") + ","
+                + String.format(event, 2, 40, "FEEDBACK", "EN 420", "\"WRONG_ROUTE\"", "\"NEW\"") + ","
+                + String.format(event, 3, 30, "FEEDBACK", "TYK 803", "\"WRONG_ROUTE\"", "\"NEW\"") + "]";
+        routes.put("GET /api/admin/usage/recent", recent);
+        routes.put("GET /api/admin/reports", "[" + String.format(event, 2, 40, "FEEDBACK", "EN 420", "\"WRONG_ROUTE\"",
+                "\"NEW\"") + "," + String.format(event, 3, 30, "FEEDBACK", "TYK 803", "\"WRONG_ROUTE\"", "\"NEW\"")
+                + "," + String.format(event, 4, 10, "FEEDBACK", "Cashier's Office", "\"WRONG_ROUTE\"", "\"REVIEWED\"")
+                + "]");
+        routes.put("GET /api/admin/nodes", com.uenav.core.MiniJson.write(m.get("nodes")));
+        routes.put("GET /api/admin/buildings", com.uenav.core.MiniJson.write(m.get("buildings")));
+        routes.put("GET /api/admin/floors", com.uenav.core.MiniJson.write(m.get("floors")));
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+                new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", ex -> {
+            ex.getRequestBody().readAllBytes();
+            String body = routes.getOrDefault(ex.getRequestMethod() + " " + ex.getRequestURI().getPath(), "{}");
+            byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            ex.getResponseHeaders().add("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, bytes.length);
+            ex.getResponseBody().write(bytes);
+            ex.close();
+        });
+        server.start();
+        String keep = settings.serverUrl();
+        settings.setServerUrl("http://127.0.0.1:" + server.getAddress().getPort());
+        try {
+            CampusStore store = new CampusStore(new MemoryStore());
+            store.load();
+            Parent[] shown = new Parent[1];
+            AdminScreens admin = new AdminScreens(settings, store, new AdminScreens.Host() {
+                @Override
+                public void show(Parent screen) {
+                    shown[0] = screen;
+                }
+
+                @Override
+                public void continueAsVisitor() { }
+
+                @Override
+                public String syncStatus() {
+                    return "Nothing waiting to be sent";
+                }
+
+                @Override
+                public void syncNow(java.util.function.Consumer<String> done) {
+                    done.accept("Nothing to send");
+                }
+
+                @Override
+                public void mapUpdated(CampusData d) { }
+            });
+            Parent login = admin.open();
+            screenShot(login, p + "20-admin-sign-in");
+            for (javafx.scene.Node n : login.lookupAll(".text-field")) {
+                if (n instanceof javafx.scene.control.PasswordField pf) {
+                    pf.setText("pw"); // the stand-in server takes any password
+                } else if (n instanceof javafx.scene.control.TextField tf && "admin".equals(tf.getPromptText())) {
+                    tf.setText("admin");
+                }
+            }
+            for (javafx.scene.Node n : login.lookupAll(".button")) {
+                if (n instanceof javafx.scene.control.Button b && "Sign in".equals(b.getText())) {
+                    b.fire();
+                }
+            }
+            pump(2500); // the sign-in and the dashboard's numbers arrive in the background
+            screenShot(shown[0], p + "21-admin-dashboard");
+            Method form = AdminScreens.class.getDeclaredMethod("placeForm", MobileAdminApi.Place.class);
+            form.setAccessible(true);
+            Parent add = (Parent) form.invoke(admin, (Object) null);
+            pump(1500);
+            screenShot(add, p + "22-admin-add-place");
+            Method reports = AdminScreens.class.getDeclaredMethod("reportsScreen");
+            reports.setAccessible(true);
+            Parent rep = (Parent) reports.invoke(admin);
+            pump(1500);
+            screenShot(rep, p + "23-admin-route-reports");
+        } finally {
+            settings.setServerUrl(keep);
+            server.stop(0);
+        }
+    }
+
+    /**
+     * Lets JavaFX handle events for a while (the tour itself runs on JavaFX's thread). The tour runs inside
+     * Platform.startup, before JavaFX's animation clock starts, so a sleeping thread ends the wait, not a transition.
+     */
+    private static void pump(long ms) {
+        Object key = new Object();
+        Thread t = new Thread(() -> {
+            try {
+                Thread.sleep(ms);
+            } catch (InterruptedException ignored) {
+                // end the wait early
+            }
+            Platform.runLater(() -> Platform.exitNestedEventLoop(key, null));
+        });
+        t.setDaemon(true);
+        t.start();
+        Platform.enterNestedEventLoop(key);
+    }
+
+    private static void screenShot(Parent screen, String name) throws Exception {
+        if (screen.getParent() instanceof javafx.scene.layout.Pane old) {
+            old.getChildren().remove(screen);
+        } else if (screen.getScene() != null) {
+            screen.getScene().setRoot(new javafx.scene.layout.Pane());
+        }
+        BorderPane root = new BorderPane(screen);
+        root.getStyleClass().add("nv-canvas");
+        Scene sc = new Scene(root, 390, 820);
+        sc.getStylesheets().add(Ui.css());
+        current = sc;
+        save(sc, name);
+        current = null;
+    }
+
     private static void settingsShot(String name) throws Exception {
         SettingsScreen s = new SettingsScreen(settings, new SettingsScreen.Host() {
             @Override
