@@ -1,4 +1,4 @@
-package com.uenav.mobile;
+package com.uenav.map;
 
 import com.uenav.core.MiniJson;
 import java.io.InputStream;
@@ -20,7 +20,7 @@ import javafx.scene.text.TextAlignment;
  * raised blocks with shaded walls and trees. Shapes come from /maps/campus-3d.json, in the same pixel frame as the
  * node X/Y, so routes line up. Heights are drawn straight up the screen, like the campus map picture.
  */
-final class CampusArt {
+public final class CampusArt {
 
     /** Map units to screen: MapView's transform, and whether the map is drawn in dark colours. */
     interface View {

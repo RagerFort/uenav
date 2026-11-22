@@ -1,5 +1,6 @@
 package com.uenav.mobile;
 
+import com.uenav.map.MapView;
 import com.uenav.core.CampusData;
 import com.uenav.core.Directions;
 import com.uenav.core.Edge;

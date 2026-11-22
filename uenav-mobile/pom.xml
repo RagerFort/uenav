@@ -28,6 +28,12 @@
       <artifactId>uenav-core</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <!-- the campus map drawing, shared with the PC admin app's Map editor (D27) -->
+    <dependency>
+      <groupId>com.uenav</groupId>
+      <artifactId>uenav-map</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>

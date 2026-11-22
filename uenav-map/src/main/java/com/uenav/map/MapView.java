@@ -1,4 +1,4 @@
-package com.uenav.mobile;
+package com.uenav.map;
 
 import com.uenav.core.Building;
 import com.uenav.core.CampusData;
@@ -130,6 +130,8 @@ public class MapView extends Region {
     private List<Node> highlights = List.of();
     private List<Node> fitNodes;
     private boolean previewing;
+    /** Extra drawing on the top layer: the Map editor's selection and handles (D27). */
+    private Consumer<GraphicsContext> decorations;
     private Preview preview;
     private Runnable onUserTouch;
 
@@ -322,7 +324,7 @@ public class MapView extends Region {
      * {@code angle} degrees clockwise from up, drawn {@code size} times its full size. {@code ringAge} is the age
      * (seconds) of the ring popping at (ringX, ringY), negative for none; {@code tag} a short note over the walker.
      */
-    record Preview(int done, double t, double x, double y, double angle, double size, double alpha, double clock,
+    public record Preview(int done, double t, double x, double y, double angle, double size, double alpha, double clock,
             double ringX, double ringY, double ringAge, String tag, double tagAlpha) { }
 
     /** While the route animation plays, the route not walked yet is drawn grey, under the walk drawn in red. */
@@ -334,12 +336,12 @@ public class MapView extends Region {
     }
 
     /** Shows one frame of the route animation (redraws only the animation's layer). */
-    void showPreview(Preview p) {
+    public void showPreview(Preview p) {
         preview = p;
         drawPreview();
     }
 
-    void clearPreview() {
+    public void clearPreview() {
         preview = null;
         drawPreview();
     }
@@ -1172,12 +1174,23 @@ public class MapView extends Region {
      */
     private void drawPreview() {
         Preview p = preview;
-        overlay.setVisible(p != null);
+        overlay.setVisible(p != null || decorations != null);
         GraphicsContext g = overlay.getGraphicsContext2D();
         g.clearRect(0, 0, overlay.getWidth(), overlay.getHeight());
-        if (p == null || route == null || data == null || viewW < 10 || viewH < 10 || scale <= 0) {
+        if (data == null || viewW < 10 || viewH < 10 || scale <= 0) {
             return;
         }
+        if (p != null && route != null) {
+            drawWalk(g, p);
+        }
+        if (decorations != null) {
+            g.save();
+            decorations.accept(g);
+            g.restore();
+        }
+    }
+
+    private void drawWalk(GraphicsContext g, Preview p) {
         Set<Integer> ids = visibleIds();
         g.save();
         g.setGlobalAlpha(p.alpha());
@@ -1224,6 +1237,82 @@ public class MapView extends Region {
             tag(g, p.tag(), tx, y - 32 - 6 * (1 - Math.min(1, p.tagAlpha())), routeColor(), Color.WHITE);
         }
         g.restore();
+    }
+
+    // ---------------------------------------------------------------- editing (the PC Map editor, D27)
+
+    /**
+     * Extra drawing on the top layer, in this view's coordinates (see toView), such as the Map editor's selection,
+     * or null for none. Redrawn with every frame of the map and by redrawDecorations().
+     */
+    public void setDecorations(Consumer<GraphicsContext> painter) {
+        this.decorations = painter;
+        drawPreview();
+    }
+
+    /** Draws the decorations again (cheap: only the top layer). */
+    public void redrawDecorations() {
+        drawPreview();
+    }
+
+    /** A point of this view (0, 0 = top left of what shows) in map units. */
+    public double[] toMap(double x, double y) {
+        return new double[] {viewX + (x - viewW / 2) / scale, viewY + (y - areaCentreY()) / scale};
+    }
+
+    /** A map point in this view's coordinates. */
+    public double[] toView(double mapX, double mapY) {
+        return new double[] {vx(mapX), vy(mapY)};
+    }
+
+    /** The place drawn near a point of this view (any node with setPickAnyNode(true)), or null. */
+    public Node nodeAt(double x, double y) {
+        return placeAt(x, y);
+    }
+
+    /** The walkway drawn nearest a point of this view (within 7 pixels, both ends on this level), or null. */
+    public Edge edgeAt(double x, double y) {
+        if (data == null) {
+            return null;
+        }
+        Set<Integer> ids = visibleIds();
+        Edge best = null;
+        double bestD = 7;
+        for (Edge e : edges()) {
+            if (!ids.contains(e.fromNodeId()) || !ids.contains(e.toNodeId())) {
+                continue;
+            }
+            Node a = data.graph().node(e.fromNodeId()).orElseThrow();
+            Node b = data.graph().node(e.toNodeId()).orElseThrow();
+            double d = distanceToSegment(x, y, vx(a.x()), vy(a.y()), vx(b.x()), vy(b.y()));
+            if (d < bestD) {
+                bestD = d;
+                best = e;
+            }
+        }
+        return best;
+    }
+
+    static double distanceToSegment(double px, double py, double ax, double ay, double bx, double by) {
+        double dx = bx - ax;
+        double dy = by - ay;
+        double len2 = dx * dx + dy * dy;
+        double t = len2 == 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
+        return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+    }
+
+    /** The places drawn on the level shown now. */
+    public List<Node> levelNodes() {
+        visibleIds();
+        return levelNodes == null ? List.of() : List.copyOf(levelNodes);
+    }
+
+    /** New map data after an edit: same level, same view (setData starts the view again). */
+    public void updateData(CampusData newData) {
+        this.data = newData;
+        levelIds = null;
+        allEdges = null;
+        draw();
     }
 
     /** With a map picture the picture has the names, so only small tap targets are drawn. */
@@ -1365,7 +1454,7 @@ public class MapView extends Region {
     }
 
     /** Keeps map labels short: "College of Engineering Building" -> "Engineering". */
-    static String shortName(String name) {
+    public static String shortName(String name) {
         // worked out once per name: this is asked for every place each time the map is drawn
         return SHORT_NAMES.computeIfAbsent(name, n -> {
             String s = BRACKETS.matcher(n).replaceAll("");

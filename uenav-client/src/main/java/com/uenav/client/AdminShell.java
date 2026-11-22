@@ -59,6 +59,7 @@ public class AdminShell extends BorderPane {
         VBox nav = new VBox(4, brand, section("ADMIN"),
                 navItem("dashboard", "Dashboard", "shield"),
                 section("ADMINISTRATION"),
+                navItem("editor", "Map editor", "map"),
                 navItem("places", "Places", "pin"),
                 navItem("walkways", "Walkways", "navigation"),
                 navItem("buildings", "Buildings", "building"),
@@ -191,6 +192,7 @@ public class AdminShell extends BorderPane {
     private void show(String key) {
         switch (key) {
             case "places" -> openPlaces(null);
+            case "editor" -> setPage(key, new MapEditorView(api, e -> expired()), "Admin", "Map editor");
             case "walkways" -> setPage(key, new WalkwaysView(api, e -> expired()), "Admin", "Walkways");
             case "buildings" -> setPage(key, new BuildingsView(api, e -> expired()), "Admin", "Buildings");
             case "floors" -> setPage(key, new FloorsView(api, e -> expired()), "Admin", "Floors");

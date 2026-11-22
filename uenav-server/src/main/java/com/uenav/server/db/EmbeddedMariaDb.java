@@ -44,7 +44,7 @@ public final class EmbeddedMariaDb {
     public static final String DATABASE = "uenav";
     /** The campus map, in loading order (03 only upgrades old databases, so it is not needed here). */
     static final List<String> SCRIPTS = List.of("01_schema.sql", "02_seed_sample.sql", "04_engineering_building.sql",
-            "05_campus_layout.sql", "06_tan_yan_kee.sql");
+            "05_campus_layout.sql", "06_tan_yan_kee.sql", "07_lucio_tan.sql", "08_office_hours.sql");
     private static final Pattern USER_NAME = Pattern.compile("[A-Za-z0-9_]{1,32}");
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedMariaDb.class);
 

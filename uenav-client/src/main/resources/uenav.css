@@ -153,5 +153,15 @@
 .nv-bar-fill { -fx-background-color: -brand; -fx-background-radius: 4; }
 .bar-count { -fx-text-fill: -brand; -fx-font-weight: bold; }
 
+/* Map editor (D27): the tool buttons and the map's frame */
+.tool-button {
+    -fx-background-color: -surface-2; -fx-text-fill: -ink; -fx-background-radius: 8; -fx-padding: 5 11 5 9;
+    -fx-font-size: 12px; -fx-cursor: hand; -fx-graphic-text-gap: 6;
+}
+.tool-button:hover { -fx-background-color: -surface-hover; }
+.tool-button:selected { -fx-background-color: -brand; -fx-text-fill: white; }
+.tool-button:selected .nv-icon { -fx-background-color: white; }
+.editor-map { -fx-background-color: -surface-2; -fx-background-radius: 10; }
+
 /* QR signs */
 .qr-preview { -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: -line; -fx-border-radius: 12; }

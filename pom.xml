@@ -9,6 +9,7 @@
 
   <modules>
     <module>uenav-core</module>
+    <module>uenav-map</module>
     <module>uenav-server</module>
     <module>uenav-client</module>
     <module>uenav-mobile</module>

@@ -46,7 +46,7 @@ $Rooms = @{
     @('CAS Faculty Room', 'OFFICE', 101.2, 10.7), @('EN 116', 'ROOM', 101.2, 5.2), @('Lab Room (EN 1F)', 'LAB', 101.2, -2.8)
   )
   2 = @(
-    @('DCSS Faculty Room', 'OFFICE', 16.4, 'N'), @('Open Lab Room', 'LAB', 25.4, 'N'), @('ECE Lab I', 'LAB', 30.1, 'N'),
+    @('DCSS Faculty Room', 'OFFICE', 16.4, 'N'), @('Computer Laboratory Room I (Open Lab)', 'LAB', 25.4, 'N'), @('ECE Lab I', 'LAB', 30.1, 'N'),
     @('ECE Lab II', 'LAB', 35.5, 'N'), @('ECE Lab III', 'LAB', 40.5, 'N'), @('ECE Lab IV', 'LAB', 46.2, 'N'),
     @('Satellite Repair Room', 'LAB', 50.9, 'N'), @('ECE / CoE Tool Room', 'ROOM', 56.2, 'N'),
     @("Electrical Engineering Shop", 'LAB', 60.0, 'N'), @('Electrical Power Engineering Lab I', 'LAB', 64.4, 'N'),
@@ -72,7 +72,7 @@ $Rooms = @{
     @('EN 305', 'ROOM', 79.2, 'S'), @('EN 304', 'ROOM', 86.0, 'S'),
     @('EN 319', 'ROOM', 5.9, 10.4), @('EN 318', 'ROOM', 5.9, 3.1), @('EN 317', 'ROOM', 5.9, -3.7),
     @('Multimedia Section (Library)', 'ROOM', 12.7, 5.0),
-    @('Office (EN 3F)', 'OFFICE', 94.0, 8.0), @('IECEP Office', 'OFFICE', 94.0, 3.0),
+    @('The Dawn Office', 'OFFICE', 94.0, 8.0), @('IECEP Office', 'OFFICE', 94.0, 3.0),
     @('EN 303', 'ROOM', 101.5, 10.2), @('EN 302', 'ROOM', 101.5, 2.8), @('EN 301', 'ROOM', 101.5, -4.7)
   )
   4 = @(
@@ -191,6 +191,16 @@ foreach ($st in $Stairs) {
 # outside: Field southeast corner (13) to the main door, Field northeast corner (11) to the north exit
 [void]$edges.Add([pscustomobject]@{ id = $script:nextEdge; a = 13; b = 35; m = 11.5; type = 'WALK'; acc = 'TRUE' }); $script:nextEdge++
 [void]$edges.Add([pscustomobject]@{ id = $script:nextEdge; a = 11; b = $script:northExit.id; m = 15.2; type = 'WALK'; acc = 'TRUE' }); $script:nextEdge++
+
+# Rooms from the 2014 architectural plans (owner's photos, 2026-11-22) that the 2026 emergency plans do not show.
+# The owner chose to keep the 2026 names and only fill gaps: "Open Lab Room" is Computer Lab I there and the 3F
+# "Office" is The Dawn Office. These two are added with fixed ids, so no earlier id moves.
+$f3 = ($Floors | Where-Object { $_.num -eq 3 }).id
+$hall3 = @($nodes | Where-Object { $_.floor -eq $f3 -and $_.type -eq 'JUNCTION' })
+$als = Add-Node $f3 'Alternative Learning System Center' 'ROOM' 88.5 -5.0 'From the 2014 floor plan, beside EN 305; the 2026 emergency plan does not show it. Please confirm.' 960
+Add-Edge $als (Nearest $hall3 88.5 -5.0)
+$council = Add-Node $f3 'Engineering Student Council Office' 'OFFICE' 94.0 5.5 'From the 2014 floor plan, beside The Dawn Office; the 2026 emergency plan does not show it. Please confirm.' 961
+Add-Edge $council (Nearest $hall3 94.0 5.5)
 
 # descriptions
 foreach ($n in $nodes) {

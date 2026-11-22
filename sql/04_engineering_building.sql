@@ -18,7 +18,7 @@ ON DUPLICATE KEY UPDATE floor_number = VALUES(floor_number), floor_name = VALUES
 DELETE FROM edge WHERE from_node_id IN (SELECT node_id FROM (SELECT node_id FROM node WHERE building_id = 1) b)
                   OR to_node_id IN (SELECT node_id FROM (SELECT node_id FROM node WHERE building_id = 1) b);
 -- old sample waypoints and the elevator (there is none), and rows from an older run of this script
-DELETE FROM node WHERE building_id = 1 AND node_id NOT IN (100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 43, 155, 156, 157, 158, 159, 160, 161, 35, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 42, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 44, 365, 366, 367, 368, 369)
+DELETE FROM node WHERE building_id = 1 AND node_id NOT IN (100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 43, 155, 156, 157, 158, 159, 160, 161, 35, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 42, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 44, 365, 366, 367, 368, 369, 960, 961)
   AND node_id NOT IN (SELECT from_node_id FROM usage_log) AND node_id NOT IN (SELECT to_node_id FROM usage_log);
 
 INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y, description) VALUES
@@ -121,7 +121,7 @@ INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y, descrip
   (194, 1, 3, 'EN 2F hallway 87 m', 'JUNCTION', 1346, 521, NULL),
   (195, 1, 3, 'EN 2F hallway 88 m', 'JUNCTION', 1346, 525, NULL),
   (196, 1, 3, 'DCSS Faculty Room', 'OFFICE', 1369, 194, NULL),
-  (197, 1, 3, 'Open Lab Room', 'LAB', 1369, 236, NULL),
+  (197, 1, 3, 'Computer Laboratory Room I (Open Lab)', 'LAB', 1369, 236, NULL),
   (198, 1, 3, 'ECE Lab I', 'LAB', 1369, 257, NULL),
   (199, 1, 3, 'ECE Lab II', 'LAB', 1369, 282, NULL),
   (200, 1, 3, 'ECE Lab III', 'LAB', 1369, 305, NULL),
@@ -210,7 +210,7 @@ INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y, descrip
   (283, 1, 4, 'EN 318', 'ROOM', 1360, 145, NULL),
   (284, 1, 4, 'EN 317', 'ROOM', 1329, 145, NULL),
   (285, 1, 4, 'Multimedia Section (Library)', 'ROOM', 1369, 177, NULL),
-  (286, 1, 4, 'Office (EN 3F)', 'OFFICE', 1383, 553, NULL),
+  (286, 1, 4, 'The Dawn Office', 'OFFICE', 1383, 553, NULL),
   (287, 1, 4, 'IECEP Office', 'OFFICE', 1360, 553, NULL),
   (288, 1, 4, 'EN 303', 'ROOM', 1393, 588, NULL),
   (289, 1, 4, 'EN 302', 'ROOM', 1359, 588, NULL),
@@ -295,7 +295,9 @@ INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y, descrip
   (366, 1, 2, 'EN north stairs, east side (4F)', 'STAIRS', 1406, 174, NULL),
   (367, 1, 2, 'EN north stairs, west side (4F)', 'STAIRS', 1277, 174, NULL),
   (368, 1, 2, 'EN south stairs, east side (4F)', 'STAIRS', 1425, 553, NULL),
-  (369, 1, 2, 'EN south stairs, west side (4F)', 'STAIRS', 1304, 562, NULL)
+  (369, 1, 2, 'EN south stairs, west side (4F)', 'STAIRS', 1304, 562, NULL),
+  (960, 1, 4, 'Alternative Learning System Center', 'ROOM', 1323, 528, 'From the 2014 floor plan, beside EN 305; the 2026 emergency plan does not show it. Please confirm.'),
+  (961, 1, 4, 'Engineering Student Council Office', 'OFFICE', 1371, 553, 'From the 2014 floor plan, beside The Dawn Office; the 2026 emergency plan does not show it. Please confirm.')
 ON DUPLICATE KEY UPDATE building_id = VALUES(building_id), floor_id = VALUES(floor_id), name = VALUES(name),
   node_type = VALUES(node_type), x = VALUES(x), y = VALUES(y),
   description = IFNULL(node.description, VALUES(description));
@@ -584,6 +586,8 @@ INSERT INTO edge (edge_id, from_node_id, to_node_id, distance_m, edge_type, is_a
   (380, 236, 298, 9, 'STAIRS', FALSE),
   (381, 298, 369, 9, 'STAIRS', FALSE),
   (382, 13, 35, 11.5, 'WALK', TRUE),
-  (383, 11, 162, 15.2, 'WALK', TRUE)
+  (383, 11, 162, 15.2, 'WALK', TRUE),
+  (384, 960, 263, 5.6, 'WALK', TRUE),
+  (385, 961, 244, 2.7, 'WALK', TRUE)
 ON DUPLICATE KEY UPDATE from_node_id = VALUES(from_node_id), to_node_id = VALUES(to_node_id),
   distance_m = VALUES(distance_m), edge_type = VALUES(edge_type), is_accessible = VALUES(is_accessible);

@@ -72,6 +72,19 @@ public final class ScreenTour {
             pause(400);
             shot(p + "04-qr-codes");
 
+            fx(() -> click("Map editor"));
+            pause(1800);
+            shot(p + "06-map-editor-campus");
+            fx(() -> editor().pickForTour("Dr. Lucio C. Tan · 2nd floor", "Guidance Office (LCT)", false));
+            pause(500);
+            shot(p + "06b-map-editor-place");
+            fx(() -> editor().pickForTour("Engineering · 3rd floor", "The Dawn Office", true));
+            pause(500);
+            shot(p + "06c-map-editor-walkway");
+            if (!dark) {
+                editorChecks(api);
+            }
+
             fx(() -> click("Dashboard"));
             pause(1200);
             fx(() -> scene = new Scene(swapRoot(), 1366, 689)); // a maximized window on a 1366x768 laptop
@@ -85,6 +98,108 @@ public final class ScreenTour {
         Platform.exit();
         System.out.println("Saved screens to " + out.getAbsolutePath());
         System.exit(0);
+    }
+
+    /** Every change the editor sent to the stand-in server: "PUT /api/admin/nodes/12 {...}". */
+    private static final List<String> REQUESTS = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /**
+     * Uses the Map editor like a person would, with mouse events on its map, and prints what it sent: dragging a
+     * place, connecting two places, and adding a place.
+     */
+    private static void editorChecks(AdminApi api) throws Exception {
+        com.uenav.core.CampusData d = api.snapshot();
+        java.util.function.Function<String, com.uenav.core.Node> node = name -> d.graph().nodes().stream()
+                .filter(n -> n.name().equals(name)).findFirst().orElseThrow();
+        fx(() -> editor().pickForTour("Dr. Lucio C. Tan · 2nd floor", "Guidance Office (LCT)", false));
+        pause(400);
+        com.uenav.core.Node guidance = node.apply("Guidance Office (LCT)");
+        REQUESTS.clear();
+        fx(() -> drag(guidance, 0, 40));
+        pause(1500);
+        System.out.println("DRAG Guidance Office 40 px down:");
+        REQUESTS.forEach(r -> System.out.println("  " + r));
+
+        REQUESTS.clear();
+        fx(() -> clickTool("Connect"));
+        com.uenav.core.Node c1 = node.apply("LCT Classroom 1");
+        com.uenav.core.Node c5 = node.apply("LCT Classroom 5");
+        fx(() -> click(c1));
+        fx(() -> click(c5));
+        pause(1500);
+        System.out.println("CONNECT Classroom 1 to Classroom 5:");
+        REQUESTS.forEach(r -> System.out.println("  " + r));
+
+        REQUESTS.clear();
+        fx(() -> clickTool("Add place"));
+        fx(() -> clickAt(mapView().getWidth() * 0.5, mapView().getHeight() * 0.3));
+        pause(300);
+        shot("light-06d-map-editor-new-place");
+        fx(() -> {
+            for (javafx.scene.Node n : editor().lookupAll(".text-field")) {
+                if (n instanceof javafx.scene.control.TextField t && t.getText().isEmpty()) {
+                    t.setText("Test Room");
+                    break;
+                }
+            }
+            for (javafx.scene.Node n : editor().lookupAll(".primary-button")) {
+                if (n instanceof javafx.scene.control.Button b && "Add place".equals(b.getText())) {
+                    b.fire();
+                }
+            }
+        });
+        pause(1500);
+        System.out.println("ADD a place by clicking the map:");
+        REQUESTS.forEach(r -> System.out.println("  " + r));
+        fx(() -> clickTool("Select"));
+    }
+
+    private static com.uenav.map.MapView mapView() {
+        return (com.uenav.map.MapView) editor().lookupAll(".nv-map-bg").stream()
+                .filter(n -> n instanceof com.uenav.map.MapView).findFirst().orElseThrow();
+    }
+
+    private static void clickTool(String text) {
+        for (javafx.scene.Node n : editor().lookupAll(".tool-button")) {
+            if (n instanceof javafx.scene.control.ToggleButton t && text.equals(t.getText())) {
+                t.setSelected(true);
+            }
+        }
+    }
+
+    private static void drag(com.uenav.core.Node n, double dx, double dy) {
+        double[] p = mapView().toView(n.x(), n.y());
+        mouse(javafx.scene.input.MouseEvent.MOUSE_PRESSED, p[0], p[1]);
+        for (int i = 1; i <= 5; i++) {
+            mouse(javafx.scene.input.MouseEvent.MOUSE_DRAGGED, p[0] + dx * i / 5, p[1] + dy * i / 5);
+        }
+        mouse(javafx.scene.input.MouseEvent.MOUSE_RELEASED, p[0] + dx, p[1] + dy);
+    }
+
+    private static void click(com.uenav.core.Node n) {
+        double[] p = mapView().toView(n.x(), n.y());
+        clickAt(p[0], p[1]);
+    }
+
+    private static void clickAt(double x, double y) {
+        mouse(javafx.scene.input.MouseEvent.MOUSE_PRESSED, x, y);
+        mouse(javafx.scene.input.MouseEvent.MOUSE_RELEASED, x, y);
+        mouse(javafx.scene.input.MouseEvent.MOUSE_CLICKED, x, y);
+    }
+
+    private static void mouse(javafx.event.EventType<javafx.scene.input.MouseEvent> type, double x, double y) {
+        boolean down = type != javafx.scene.input.MouseEvent.MOUSE_RELEASED
+                && type != javafx.scene.input.MouseEvent.MOUSE_CLICKED;
+        javafx.geometry.Point2D s = mapView().localToScene(x, y); // the event takes window (scene) coordinates
+        javafx.event.Event.fireEvent(mapView(), new javafx.scene.input.MouseEvent(type, s.getX(), s.getY(), s.getX(),
+                s.getY(),
+                javafx.scene.input.MouseButton.PRIMARY, 1, false, false, false, false, down, false, false, false,
+                false, true, null));
+    }
+
+    private static MapEditorView editor() {
+        return (MapEditorView) scene.getRoot().lookupAll(".canvas").stream()
+                .filter(n -> n instanceof MapEditorView).findFirst().orElseThrow();
     }
 
     /** Presses a sidebar button by its text. */
@@ -172,9 +287,13 @@ public final class ScreenTour {
         routes.put("GET /api/admin/reports", recent);
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", ex -> {
-            ex.getRequestBody().readAllBytes();
+            String sent = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             String body = routes.getOrDefault(ex.getRequestMethod() + " " + ex.getRequestURI().getPath(),
                     "{\"error\":\"no such route\"}");
+            if (!"GET".equals(ex.getRequestMethod()) && body.startsWith("{\"error")) {
+                REQUESTS.add(ex.getRequestMethod() + " " + ex.getRequestURI().getPath() + " " + sent);
+                body = "{\"id\":9999}"; // the editor's changes: accepted, and recorded for editorChecks
+            }
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().add("Content-Type", "application/json");
             ex.sendResponseHeaders(body.startsWith("{\"error") ? 404 : 200, bytes.length);

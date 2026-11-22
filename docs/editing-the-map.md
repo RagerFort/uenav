@@ -1,6 +1,8 @@
 # Adding floors and rooms after the apps are built
 
-Everything about the map is **data in MySQL**, edited in the PC admin app (UENav Admin.exe). Nothing needs to be
+Everything about the map is **data in the database**, edited in the PC admin app (UENav Admin.exe). The easiest way
+is its **Map editor** page (D27): pick a level, click a place or walkway to change it, drag places, add places by
+clicking the map, and connect them. Nothing needs to be
 rebuilt when floors or rooms are added: phones download the new map by themselves (they check when the app opens
 and every 30 minutes). Only the 3D building shapes and the phone's built-in fallback copy live inside the APK.
 
@@ -26,10 +28,17 @@ positions come from a satellite photo and OpenStreetMap building outlines, turne
 four-corner fit (the campus corners), and were checked by a UE Caloocan student on 2026-11-15. Distances are
 measured on the photo in metres. Load it after `04_engineering_building.sql`, and again whenever 04 is run again
 (04 rebuilds the two walkways into the Engineering building). The matching 3D shapes are in
-`uenav-mobile/src/main/resources/maps/campus-3d.json`. After loading either file, copy `GET /api/snapshot` into
+`uenav-map/src/main/resources/maps/campus-3d.json`. After loading either file, copy `GET /api/snapshot` into
 `uenav-mobile/src/main/resources/campus-snapshot.json` before building the APK.
 
+## The Lucio Tan building
+Ground floor to the 5th floor mezzanine come from `sql/tools/lucio-tan.ps1`, which writes `sql/07_lucio_tan.sql` from
+the architectural floor plans (grid lines 1 to 12). Rooms are listed per floor at the top of the script (name, type,
+metres from grid line 1, side). Edit a list, run the script, then load the SQL file after 06. Grid line 1 is assumed
+to be the west end: flip `$WestIsGrid1` in the script if that is wrong.
+
 ## Order
+The Map editor does all of this on one page; the pages below are the list view of the same data.
 1. **Floors** page: add the missing floors of a building (for example Engineering 2F and 3F: floor number 2, name "2nd floor").
 2. **Places** page, for every floor:
    - the rooms (type `ROOM` or `OFFICE`), with that building and floor;
@@ -59,8 +68,10 @@ The map has no canteen or clinic yet: add the real ones (type `CANTEEN`, `CLINIC
 junction. The two EN restrooms are SAMPLE places.
 
 ## Office hours and "What it handles"
-On the Places form, fill in **Office hours** (e.g. `Mon-Fri 8:00 AM - 5:00 PM`) and **What it handles**. The phone
-shows them on the office's info card. The seeded text is SAMPLE text: confirm it with each office.
+On the Places form (or the Map editor), fill in **Office hours** and **What it handles**. The phone shows them on the
+office's info card. `sql/08_office_hours.sql` gives every office UE's regular hours (Mon-Fri 8:00 AM-12:00 noon and
+1:00-5:00 PM; Admissions also Saturdays during enrollment) unless an admin already typed other hours. The seeded
+"What it handles" text is SAMPLE text: confirm it with each office.
 
 ## "You are here" QR signs
 **QR codes** page (Tools): pick places (gates, building entrances, stairs, elevators, hallway junctions), press
@@ -89,5 +100,5 @@ Distances (metres) are typed per walkway: measure them, or use about 0.27 m per 
 
 ## When to rebuild the APK
 Not needed for new floors, rooms, walkways, office hours or QR signs. Rebuild only to change the 3D building shapes
-(`uenav-mobile/src/main/resources/maps/campus-3d.json`), the built-in server address, or to refresh the phone's
+(`uenav-map/src/main/resources/maps/campus-3d.json`), the built-in server address, or to refresh the phone's
 built-in map copy (copy `GET /api/snapshot` into `campus-snapshot.json`) so brand-new phones have it even offline.

@@ -74,6 +74,8 @@
                     <include>04_engineering_building.sql</include>
                     <include>05_campus_layout.sql</include>
                     <include>06_tan_yan_kee.sql</include>
+                    <include>07_lucio_tan.sql</include>
+                    <include>08_office_hours.sql</include>
                   </includes>
                 </resource>
               </resources>

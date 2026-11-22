@@ -37,8 +37,8 @@ jobs:
           sudo apt-get update
           sudo apt install libasound2-dev libavcodec-dev libavformat-dev libavutil-dev libgl-dev libgtk-3-dev libpango1.0-dev libxtst-dev
 
-      - name: Build and test core
-        run: mvn -B -pl uenav-core -am install
+      - name: Build and test core and the map drawing
+        run: mvn -B -pl uenav-core,uenav-map -am install
 
       # The APK is signed with UENav's own key (GitHub secrets UENAV_KEYSTORE_BASE64 and UENAV_KEYSTORE_PASSWORD;
       # the key and its password are kept in ~/UENav/signing on the owner's PC). With the same key every time, a new

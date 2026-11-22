@@ -1,10 +1,10 @@
 -- UE Caloocan campus layout, checked by a student (2026-11-15). Positions come from a satellite photo and
 -- OpenStreetMap building outlines, turned into the app's map frame with a four-corner fit; distances are measured
 -- on the photo (metres). Changes: Tan Yan Kee, CFAD, Administration, Gym, Old Academic, Lucio Tan and the gates
--- moved to where they really are; Open Court (was "Beach Volleyball Court"); Parking added; the path from the
+-- moved to where they really are; the Beach Volleyball Court (owner, 2026-11-22); Parking added; the path from the
 -- Samson Road Gate goes between CFAD and the Administration Building, and paths cross the grass field to
 -- Lucio Tan and Engineering. The Engineering building and its rooms are unchanged.
--- Run after 04_engineering_building.sql (and again whenever 04 is run again), then 06_tan_yan_kee.sql.
+-- Run after 04_engineering_building.sql (and again whenever 04 is run again), then 06, 07 and 08.
 -- Then copy GET /api/snapshot into uenav-mobile/src/main/resources/campus-snapshot.json before building the APK.
 
 USE uenav;
@@ -49,7 +49,7 @@ INSERT INTO node (node_id, building_id, floor_id, name, node_type, x, y) VALUES
   (28, 5, NULL, 'Old Academic Building', 'BUILDING_ENTRANCE', 690, 240),
   (29, 4, NULL, 'Dr. Lucio C. Tan Building', 'BUILDING_ENTRANCE', 1040, 256),
   (30, NULL, NULL, 'Field', 'FACILITY', 840, 440),
-  (31, NULL, NULL, 'Open Court', 'FACILITY', 1125, 465),
+  (31, NULL, NULL, 'Beach Volleyball Court', 'FACILITY', 1125, 465),
   (32, 8, NULL, 'HRM Mock Hotel', 'BUILDING_ENTRANCE', 1180, 636),
   (33, 3, NULL, 'Tan Yan Kee Academic Building', 'BUILDING_ENTRANCE', 850, 660),
   (34, 3, NULL, 'CFAD Building (Tan Yan Kee west wing)', 'BUILDING_ENTRANCE', 598, 672),

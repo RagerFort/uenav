@@ -1,6 +1,6 @@
 # UENav
 
-Modules: `uenav-core` (graph, routing, directions), `uenav-server` (Spring Boot REST), `uenav-mobile` (Gluon phone app for
+Modules: `uenav-core` (graph, routing, directions), `uenav-map` (the campus map drawing, shared), `uenav-server` (Spring Boot REST), `uenav-mobile` (Gluon phone app for
 visitors and admins), `uenav-client` (JavaFX PC app, admins only). Full guide: `docs/PROJECT_CONTEXT.md`.
 
 ## Versions (edit to match what you actually run)

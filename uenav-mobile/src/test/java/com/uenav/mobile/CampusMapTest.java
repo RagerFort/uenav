@@ -31,15 +31,12 @@ class CampusMapTest {
     }
 
     @Test
-    void placesAndShapesShareTheMapFrame() throws IOException {
+    void placesShareTheMapFrame() throws IOException {
+        // the frame of the 3D shapes (uenav-map, CampusArtTest)
         CampusData d = CampusStore.bundled();
         for (Node n : d.graph().nodes()) {
             assertTrue(n.x() >= 0 && n.x() <= 1560 && n.y() >= 0 && n.y() <= 924, n.name() + " is off the picture");
         }
-        CampusArt art = CampusArt.load("/maps/campus-3d.json");
-        assertTrue(art != null, "campus-3d.json is missing or unreadable");
-        // 9 buildings (Engineering is 3 blocks) plus the playground, security office and gazebo
-        assertTrue(art.buildingCount() >= 14, "buildings in the 3D map: " + art.buildingCount());
     }
 
     @Test

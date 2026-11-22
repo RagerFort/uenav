@@ -1,5 +1,6 @@
 package com.uenav.mobile;
 
+import com.uenav.map.MapView;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.uenav.core.CampusData;

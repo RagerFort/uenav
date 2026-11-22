@@ -136,7 +136,7 @@ UPDATE node SET description = 'Applications for new students, admission requirem
   WHERE node_id = 19;
 UPDATE node SET description = 'Student account balances, assessments and payment arrangements.' WHERE node_id = 23;
 UPDATE node SET description = 'Campus safety, lost and found, visitor and gate passes.' WHERE node_id = 24;
-UPDATE node SET open_hours = 'Mon-Sat 8:00 AM - 5:00 PM (sample, please confirm)' WHERE node_id IN (19, 20, 22, 23);
+-- office hours: 08_office_hours.sql (regular UE office hours, owner 2026-11-22)
 UPDATE node SET open_hours = 'Open 24 hours (sample, please confirm)' WHERE node_id = 24;
 
 -- The College of Engineering floors (real rooms, stairs only) are loaded by 04_engineering_building.sql: run it next,
