@@ -61,10 +61,6 @@ public final class ScreenTour {
             pause(1500);
             shot(p + "02-dashboard");
 
-            fx(() -> click("Map health"));
-            pause(1200);
-            shot(p + "03-map-health");
-
             fx(() -> click("QR codes"));
             pause(1200);
             fx(() -> {

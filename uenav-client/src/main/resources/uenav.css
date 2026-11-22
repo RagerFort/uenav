@@ -63,9 +63,6 @@
     -fx-background-color: -surface-2; -fx-background-radius: 10; -fx-padding: 3 10 3 10;
     -fx-text-fill: -muted; -fx-font-size: 11px;
 }
-.chip-ok { -fx-background-color: -tone-green; -fx-text-fill: -green; -fx-font-weight: bold; }
-.chip-warn { -fx-background-color: -tone-orange; -fx-text-fill: -orange; -fx-font-weight: bold; }
-.chip-bad { -fx-background-color: -tone-red; -fx-text-fill: -brand; -fx-font-weight: bold; }
 
 .primary-button {
     -fx-background-color: -brand; -fx-text-fill: white; -fx-font-weight: bold;
@@ -156,6 +153,5 @@
 .nv-bar-fill { -fx-background-color: -brand; -fx-background-radius: 4; }
 .bar-count { -fx-text-fill: -brand; -fx-font-weight: bold; }
 
-/* map health and QR signs */
-.issue-row { -fx-background-color: transparent; }
+/* QR signs */
 .qr-preview { -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: -line; -fx-border-radius: 12; }

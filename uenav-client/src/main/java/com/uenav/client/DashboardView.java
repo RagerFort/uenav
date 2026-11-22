@@ -54,11 +54,8 @@ public class DashboardView extends ScrollPane {
     private List<AdminModels.Place> placeList = List.of();
     private final Map<Integer, Long> searchCounts = new HashMap<>();
 
-    private final VBox healthRows = new VBox(10);
-    private final Label healthChip = new Label("Checking…");
-
     public DashboardView(AdminApi api, Consumer<ApiException> onProblem, Runnable openReports,
-                         Consumer<PlaceAction> onPlace, Runnable openHealth) {
+                         Consumer<PlaceAction> onPlace) {
         this.onProblem = onProblem;
         this.onPlace = onPlace;
         setFitToWidth(true);
@@ -106,17 +103,9 @@ public class DashboardView extends ScrollPane {
 
         status.getStyleClass().add("error-label");
         status.setWrapText(true);
-        VBox page = new VBox(16, header, stats, panels, healthCard(openHealth), placesCard(), status);
+        VBox page = new VBox(16, header, stats, panels, placesCard(), status);
         page.setPadding(new Insets(24));
         setContent(page);
-
-        Async.run(() -> com.uenav.core.GraphCheck.check(api.snapshot()),
-                issues -> MapHealthView.fillSummary(healthRows, healthChip, issues, 3),
-                err -> {
-                    healthChip.setText("Could not check");
-                    healthChip.getStyleClass().setAll("label", "chip", "chip-warn");
-                    healthRows.getChildren().setAll(muted(err.getMessage()));
-                });
 
         topRows.getChildren().add(muted("Loading\u2026"));
         recentRows.getChildren().add(muted("Loading\u2026"));
@@ -164,29 +153,6 @@ public class DashboardView extends ScrollPane {
             what.setWrapText(true);
             recentRows.getChildren().add(new HBox(10, when, what));
         }
-    }
-
-    /** Map health: the first findings of the data check, with a link to the full list. */
-    private VBox healthCard(Runnable openHealth) {
-        Label h = new Label("Map health");
-        h.getStyleClass().add("card-title");
-        healthChip.getStyleClass().add("chip");
-        Label sub = new Label("Checks that every place can be reached and the walkways look right.");
-        sub.getStyleClass().add("muted");
-        Button open = new Button("See all →");
-        open.getStyleClass().add("link-button");
-        open.setOnAction(e -> openHealth.run());
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox titleRow = new HBox(8, h, healthChip);
-        titleRow.setAlignment(Pos.CENTER_LEFT);
-        HBox head = new HBox(12, new VBox(2, titleRow, sub), spacer, open);
-        head.setAlignment(Pos.CENTER_LEFT);
-        healthRows.getChildren().add(muted("Checking…"));
-        VBox card = new VBox(12, head, new Separator(), healthRows);
-        card.getStyleClass().add("card");
-        card.setPadding(new Insets(16, 20, 16, 20));
-        return card;
     }
 
     private VBox placesCard() {

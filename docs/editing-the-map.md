@@ -41,8 +41,6 @@ measured on the photo in metres. Load it after `04_engineering_building.sql`, an
    - one `ELEVATOR` walkway between the elevator places of two floors (accessible).
    Each floor must be connected to the building entrance through these, or routes to it are "unavailable".
 4. Open the phone app: Explore shows the new rooms; the Directions screen gets floor tabs (1F, 2F, ...).
-5. **Map health** page (Tools): fix anything it lists (places nothing connects to, floors without stairs, places
-   with no step-free route, distances that do not fit the map, duplicate names, offices without hours).
 
 ## Place types for the home screen buttons
 The phone's big buttons and "Nearest ..." buttons find places by type:

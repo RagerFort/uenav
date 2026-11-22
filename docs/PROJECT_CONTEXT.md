@@ -3,7 +3,7 @@
 Read this file first. It is the single source of truth for what the project is, what is decided,
 what is done, and what to do next. **Update the "Status" and "Next tasks" sections after every task.**
 Last updated: 2026-11-09 (kiosk-style phone home, QR "You are here", nearest/emergency routes, office info, recent and
-favorite places, graph view, avoid stairs, dark mode on phone and PC, map health and QR sign pages in the admin app).
+favorite places, graph view, avoid stairs, dark mode on phone and PC, QR sign page in the admin app).
 
 ## 1. What this is
 UENav is a campus navigation app for the University of the East (UE) Caloocan campus.
@@ -95,10 +95,10 @@ uenav-core/                      Node (+ description, openHours), Edge, EdgeType
                                  distancesFrom, reachable), Building, Floor, CampusData, Directions (route -> steps with
                                  landmarks: "Turn left at Registrar's Office", "Turn right after Gazebo"; each step knows
                                  its node), PlaceSearch (ranked search: room codes "en420", synonyms "cr", "pay"),
-                                 PlaceCategory (home buttons), QrCodes (UENAV:<id>), GraphCheck (map health),
+                                 PlaceCategory (home buttons), QrCodes (UENAV:<id>),
                                  MiniJson (reader+writer), SnapshotReader
   src/test/...                   PathFinderTest, NearestAndTraceTest, SnapshotReaderTest, DirectionsTest, PlaceSearchTest,
-                                 QrCodesTest, GraphCheckTest
+                                 QrCodesTest
 uenav-server/                    Spring Boot: UenavServerApplication, HealthController; db/ = the built-in database
                                  (EmbeddedMariaDb, EmbeddedDatabaseStarter, DbSettings, SqlConsole = UENav SQL, D24);
                                  tunnel/NgrokTunnel = starts ngrok (D25); AfterExit = clean-up when the window closes
@@ -130,8 +130,7 @@ uenav-client/                    PC admin app, **admins only** (proposal: Window
                                  FloorsView, WalkwaysView (ManagePage), ReportsView, Icons, PlaceStyle, TimeAgo, UsageText,
                                  AdminApi (+ AdminModels, ApiException), Async, Theme, uenav.css. Does not depend on uenav-mobile.
                                  2026-11-09: Theme switches light/dark (top bar button, uenav-dark.css, remembered in
-                                 admin.properties); MapHealthView + dashboard Map health card (GraphCheck on
-                                 GET /api/snapshot); QrCodesView + QrSigns (printable "You are here" PNG signs, ZXing);
+                                 admin.properties); QrCodesView + QrSigns (printable "You are here" PNG signs, ZXing);
                                  Places form: Office hours, What it handles, new types.
                                  src/test/.../ScreenTour.java: dev tool that saves PNGs of the admin pages (not a test)
 .vscode/tasks.json               VS Code tasks: build, start server, put server online (ngrok), make Windows .exe files, open apps
@@ -199,7 +198,7 @@ Evidence levels: **Confirmed** = shown by owner's output or CI log. **Reported**
 | Owner's MySQL upgraded with `03_place_details.sql` (backup first in `~/UENav/backup`); new server build on port 8081 served office info and the EN restrooms; phone's `campus-snapshot.json` copied from it (version `9944eeeaf8d7cf92`) | **Ran here** 2026-11-09 |
 | Phone: kiosk home, categories (nearest first), You are here (typed QR code, tap on map), nearest restroom/exit, emergency route, avoid stairs, office info card, favorites/recent, tappable steps, graph view, dark mode | **Ran here** as off-screen 390x820 screenshots (ScreenTour), light and dark; never on a phone |
 | Phone: camera QR scanning (Attach barcode-scan) | APK **built on GitHub** 2026-11-09 (run 42577220171, Google code scanner inside); **not run** on a phone yet |
-| PC admin: dark mode, Map health page and dashboard card, QR codes page, Places form office fields | **Ran here** as off-screen screenshots against a stand-in server; Save signs and the Places dialog not clicked through |
+| PC admin: dark mode, QR codes page, Places form office fields (the Map health page was removed 2026-11-22) | **Ran here** as off-screen screenshots against a stand-in server; Save signs and the Places dialog not clicked through |
 | QR code content | **Ran here**: a generated sign's QR decodes back to `UENAV:42` (ZXing reader in QrSignsTest) |
 
 ## 9. Gotchas already hit (do not repeat)

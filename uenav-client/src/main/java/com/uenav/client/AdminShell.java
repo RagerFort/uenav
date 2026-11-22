@@ -65,7 +65,6 @@ public class AdminShell extends BorderPane {
                 navItem("floors", "Floors", "stairs"),
                 navItem("reports", "Route reports", "flag"),
                 section("TOOLS"),
-                navItem("health", "Map health", "health"),
                 navItem("qr", "QR codes", "qr"));
         reportsBadge.getStyleClass().add("nav-badge");
         Button reports = navButtons.get("reports");
@@ -196,10 +195,9 @@ public class AdminShell extends BorderPane {
             case "buildings" -> setPage(key, new BuildingsView(api, e -> expired()), "Admin", "Buildings");
             case "floors" -> setPage(key, new FloorsView(api, e -> expired()), "Admin", "Floors");
             case "reports" -> setPage(key, new ReportsView(api, e -> expired()), "Admin", "Route reports");
-            case "health" -> setPage(key, new MapHealthView(api), "Tools", "Map health");
             case "qr" -> setPage(key, new QrCodesView(api, e -> expired()), "Tools", "QR codes");
             default -> setPage("dashboard", new DashboardView(api, e -> expired(), () -> show("reports"),
-                    this::onDashboardPlace, () -> show("health")), "Admin", "Dashboard");
+                    this::onDashboardPlace), "Admin", "Dashboard");
         }
         refreshBadge();
     }

@@ -228,8 +228,7 @@ public class AdminApi {
     }
 
     /**
-     * The whole map as the phones get it (GET /api/snapshot, no sign-in needed), for the map health check and
-     * the QR sign page.
+     * The whole map as the phones get it (GET /api/snapshot, no sign-in needed), for the QR sign page.
      */
     public CampusData snapshot() throws ApiException {
         String text = sendText("GET", "/api/snapshot", null, false, "application/json");
