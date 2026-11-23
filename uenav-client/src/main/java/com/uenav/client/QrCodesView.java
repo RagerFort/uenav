@@ -47,7 +47,6 @@ public class QrCodesView extends VBox {
     private record Data(List<AdminModels.Place> places, List<AdminModels.Building> buildings,
                         List<AdminModels.Floor> floors) { }
 
-    private final Consumer<ApiException> onUnauthorized;
     private final ObservableList<AdminModels.Place> items = FXCollections.observableArrayList();
     private final FilteredList<AdminModels.Place> shown = new FilteredList<>(items, p -> true);
     private final Map<Integer, BooleanProperty> picked = new HashMap<>();
@@ -61,7 +60,6 @@ public class QrCodesView extends VBox {
     private final Map<Integer, String> floorNames = new HashMap<>();
 
     public QrCodesView(AdminApi api, Consumer<ApiException> onUnauthorized) {
-        this.onUnauthorized = onUnauthorized;
         getStyleClass().add("canvas");
         setPadding(new Insets(24));
         setSpacing(16);
