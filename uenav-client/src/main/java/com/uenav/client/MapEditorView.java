@@ -28,9 +28,13 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputControl;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -45,7 +49,8 @@ import javafx.scene.shape.StrokeLineCap;
  * walkway on it, and edited by hand. Click a place or a walkway to change it in the panel on the right, drag a place
  * to move it (its walkways get new lengths), add places where you click, and connect two places with a walkway.
  * Stairs and elevators can be linked to the floor above or below. Every change is saved on the server at once; the
- * phones get it with their next map update. Desktop only: the phone app has no editor.
+ * phones get it with their next map update. Undo (or Ctrl+Z) takes changes back one at a time, by asking the server
+ * to put things back (see EditHistory). Desktop only: the phone app has no editor.
  */
 public class MapEditorView extends VBox {
 
@@ -65,6 +70,10 @@ public class MapEditorView extends VBox {
     private static final double DEFAULT_M_PER_UNIT = 0.24;
     private static final double FLIGHT_M = 15.0;
     private static final double LIFT_M = 6.0;
+    private static final KeyCombination UNDO_KEY = new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN);
+
+    /** A walkway as it was before a change, to put back on undo. */
+    private record SavedWay(int id, AdminModels.EdgeForm form) { }
 
     private final AdminApi api;
     private final Consumer<ApiException> onUnauthorized;
@@ -74,6 +83,9 @@ public class MapEditorView extends VBox {
     private final VBox panel = new VBox(10);
     private final Label hint = new Label();
     private final Label status = new Label();
+    private final EditHistory history = new EditHistory();
+    private final Button undo = new Button("Undo");
+    private boolean undoing;
 
     private CampusData data;
     private Tool tool = Tool.SELECT;
@@ -102,7 +114,7 @@ public class MapEditorView extends VBox {
         Label title = new Label("Map editor");
         title.getStyleClass().add("page-title");
         Label sub = new Label("The map the phones show, with every walkway. Click a place or a walkway to edit it, drag a "
-                + "place to move it, or pick a tool. Changes are saved at once.");
+                + "place to move it, or pick a tool. Changes are saved at once; Undo (Ctrl+Z) takes the last ones back.");
         sub.getStyleClass().add("muted");
         sub.setWrapText(true);
         VBox header = new VBox(2, eyebrow, title, sub);
@@ -135,8 +147,14 @@ public class MapEditorView extends VBox {
         fit.getStyleClass().add("small-button");
         fit.setMinWidth(Region.USE_PREF_SIZE);
         fit.setOnAction(e -> map.resetView());
+        undo.setGraphic(Icons.icon("undo", 14));
+        undo.getStyleClass().add("small-button");
+        undo.setMinWidth(Region.USE_PREF_SIZE);
+        undo.setFocusTraversable(false);
+        undo.setOnAction(e -> undo());
+        updateUndo();
         HBox toolbar = new HBox(8, levelBox, new Separator(javafx.geometry.Orientation.VERTICAL), select, add, connect,
-                grow, zoomOut, zoomIn, fit);
+                new Separator(javafx.geometry.Orientation.VERTICAL), undo, grow, zoomOut, zoomIn, fit);
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         map.setDark(Theme.isDark());
@@ -178,6 +196,9 @@ public class MapEditorView extends VBox {
                 connectFrom = null;
                 pendingPlace = null;
                 clearSelection();
+            } else if (UNDO_KEY.match(e) && !(e.getTarget() instanceof TextInputControl)) {
+                e.consume(); // in a text box, Ctrl+Z undoes the typing instead
+                undo();
             }
         });
         setTool(Tool.SELECT);
@@ -237,7 +258,11 @@ public class MapEditorView extends VBox {
             } else {
                 map.updateData(d);
             }
-            selNode = nodeId == null ? null : d.graph().node(nodeId).orElse(null);
+            Node n = nodeId == null ? null : d.graph().node(nodeId).orElse(null);
+            if (n != null && !map.shows(n)) {
+                showLevelOf(n); // an undo can bring back a place on another level
+            }
+            selNode = n;
             selEdge = edgeId == null ? null : findEdge(edgeId);
             showPanel();
             map.redrawDecorations();
@@ -476,7 +501,9 @@ public class MapEditorView extends VBox {
             }
             AdminModels.NodeForm f = new AdminModels.NodeForm(n.buildingId(), n.floorId(), nm, type.getValue(),
                     n.x(), n.y(), blankToNull(desc.getText()), blankToNull(hours.getText()));
-            run("Saved " + nm + ".", () -> api.updateNode(n.id(), f), n.id(), null);
+            AdminModels.NodeForm old = formOf(n);
+            run("Saved " + nm + ".", () -> api.updateNode(n.id(), f), n.id(), null,
+                    "changes to " + n.name(), n.id(), h -> api.updateNode(h.node(n.id()), old));
         });
         Button delete = danger("Delete place");
         delete.setOnAction(e -> deletePlace(n));
@@ -538,12 +565,18 @@ public class MapEditorView extends VBox {
             }
             AdminModels.EdgeForm f = new AdminModels.EdgeForm(w.fromNodeId(), w.toNodeId(), m, type.getValue(),
                     stepFree.isSelected());
-            run("Saved the walkway.", () -> api.updateEdge(w.id(), f), null, w.id());
+            AdminModels.EdgeForm old = formOf(w);
+            run("Saved the walkway.", () -> api.updateEdge(w.id(), f), null, w.id(),
+                    "changes to the walkway between " + name(a) + " and " + name(b), null,
+                    h -> api.updateEdge(h.edge(w.id()), h.ends(old)));
         });
         Button delete = danger("Delete walkway");
         delete.setOnAction(e -> {
             if (confirm("Delete the walkway between " + name(a) + " and " + name(b) + "?")) {
-                run("Deleted the walkway.", () -> api.deleteEdge(w.id()), null, null);
+                AdminModels.EdgeForm old = formOf(w);
+                run("Deleted the walkway.", () -> api.deleteEdge(w.id()), null, null,
+                        "delete of the walkway between " + name(a) + " and " + name(b), null,
+                        h -> h.edgeRecreated(w.id(), api.createEdge(h.ends(old))));
             }
         });
         Button openA = linkTo(a);
@@ -588,14 +621,20 @@ public class MapEditorView extends VBox {
             Node near = join.isSelected() ? nearest(x, y, null) : null;
             AdminModels.NodeForm f = new AdminModels.NodeForm(lv.buildingId(), lv.floorId(), nm, type.getValue(), x, y);
             pendingPlace = null;
+            double m = near == null ? 0 : measured(x, y, near.x(), near.y());
             Async.run(() -> {
                 int id = api.createNode(f);
-                if (near != null) {
-                    api.createEdge(new AdminModels.EdgeForm(id, near.id(), measured(x, y, near.x(), near.y()), "WALK",
-                            true));
-                }
-                return id;
-            }, id -> {
+                int way = near == null ? -1 : api.createEdge(new AdminModels.EdgeForm(id, near.id(), m, "WALK", true));
+                return new int[] {id, way};
+            }, ids -> {
+                int id = ids[0];
+                int way = ids[1];
+                remember("new place " + nm, null, h -> {
+                    if (way >= 0) {
+                        api.deleteEdge(h.edge(way));
+                    }
+                    api.deleteNode(h.node(id));
+                });
                 status.setText("Added " + nm + (near != null ? ", joined to " + near.name() + "." : "."));
                 reload(id, null);
             }, this::failed);
@@ -621,9 +660,10 @@ public class MapEditorView extends VBox {
                 n.description(), n.openHours());
         List<Edge> ways = data.graph().edgesAt(n.id());
         double scale = metresPerUnit();
+        AdminModels.NodeForm old = formOf(n);
         Async.run(() -> {
             api.updateNode(n.id(), f);
-            int changed = 0;
+            List<SavedWay> changed = new ArrayList<>();
             for (Edge w : ways) {
                 Node other = otherEnd(w, n.id());
                 if (other == null || w.edgeType() != EdgeType.WALK || !Objects.equals(other.floorId(), n.floorId())) {
@@ -635,11 +675,18 @@ public class MapEditorView extends VBox {
                 m = Math.max(0.5, Math.round(m * 10) / 10.0);
                 api.updateEdge(w.id(), new AdminModels.EdgeForm(w.fromNodeId(), w.toNodeId(), m, w.edgeType().name(),
                         w.accessible()));
-                changed++;
+                changed.add(new SavedWay(w.id(), formOf(w)));
             }
             return changed;
         }, changed -> {
-            status.setText("Moved " + n.name() + (changed > 0 ? "; " + changed + " walkway lengths updated." : "."));
+            remember("move of " + n.name(), n.id(), h -> {
+                api.updateNode(h.node(n.id()), old);
+                for (SavedWay s : changed) {
+                    api.updateEdge(h.edge(s.id()), h.ends(s.form()));
+                }
+            });
+            status.setText("Moved " + n.name() + (changed.isEmpty() ? "." : "; " + changed.size()
+                    + " walkway lengths updated."));
             reload(n.id(), null);
         }, e -> {
             failed(e);
@@ -675,6 +722,7 @@ public class MapEditorView extends VBox {
         }
         double m = measured(a.x(), a.y(), hit.x(), hit.y());
         Async.run(() -> api.createEdge(new AdminModels.EdgeForm(a.id(), hit.id(), m, "WALK", true)), id -> {
+            remember("walkway between " + a.name() + " and " + hit.name(), null, h -> api.deleteEdge(h.edge(id)));
             status.setText(String.format(Locale.ROOT, "Connected %s and %s (%.1f m). Click two more places, or Esc.",
                     a.name(), hit.name(), m));
             reload(null, null);
@@ -705,7 +753,11 @@ public class MapEditorView extends VBox {
         boolean stairs = "STAIRS".equals(n.nodeType());
         AdminModels.EdgeForm f = new AdminModels.EdgeForm(n.id(), target.id(), stairs ? FLIGHT_M : LIFT_M,
                 stairs ? "STAIRS" : "ELEVATOR", !stairs);
-        run("Linked to " + target.name() + " on the " + next.floorName() + ".", () -> api.createEdge(f), n.id(), null);
+        Async.run(() -> api.createEdge(f), id -> {
+            remember("link from " + n.name() + " to " + target.name(), n.id(), h -> api.deleteEdge(h.edge(id)));
+            status.setText("Linked to " + target.name() + " on the " + next.floorName() + ".");
+            reload(n.id(), null);
+        }, this::failed);
     }
 
     private void deletePlace(Node n) {
@@ -714,17 +766,27 @@ public class MapEditorView extends VBox {
                 + (ways.size() == 1 ? "" : "s")) + "? Routes will no longer go through it.")) {
             return;
         }
+        AdminModels.NodeForm old = formOf(n);
+        List<SavedWay> gone = new ArrayList<>(); // filled off the screen thread, read once it is done
         Async.run(() -> {
             for (Edge w : ways) {
                 api.deleteEdge(w.id());
+                gone.add(new SavedWay(w.id(), formOf(w)));
             }
             api.deleteNode(n.id());
             return n.name();
         }, nm -> {
+            remember("delete of " + nm, n.id(), h -> {
+                h.nodeRecreated(n.id(), api.createNode(old));
+                putBack(h, gone);
+            });
             status.setText("Deleted " + nm + ".");
             reload(null, null);
         }, e -> {
             failed(e);
+            if (!gone.isEmpty()) { // the walkways went but the place did not: they can still come back
+                remember("delete of the walkways at " + n.name(), n.id(), h -> putBack(h, gone));
+            }
             if (e.status() != 401) {
                 status.setText(status.getText() + "\n(It may still be in the usage log or a route report.)");
                 reload(n.id(), null);
@@ -736,14 +798,71 @@ public class MapEditorView extends VBox {
         void run() throws ApiException;
     }
 
-    private void run(String done, Change change, Integer selectNode, Integer selectEdge) {
+    /** Makes a change on the server; once it worked, remembers how to undo it and loads the map again. */
+    private void run(String done, Change change, Integer selectNode, Integer selectEdge, String undoLabel,
+                     Integer undoSelect, EditHistory.Step undoStep) {
         Async.run(() -> {
             change.run();
             return done;
         }, msg -> {
+            remember(undoLabel, undoSelect, undoStep);
             status.setText(msg);
             reload(selectNode, selectEdge);
         }, this::failed);
+    }
+
+    private void remember(String label, Integer selectNode, EditHistory.Step step) {
+        history.push(label, selectNode, step);
+        updateUndo();
+    }
+
+    /** Creates deleted walkways again, under new ids. Runs off the screen thread. */
+    private void putBack(EditHistory h, List<SavedWay> ways) throws ApiException {
+        for (SavedWay s : ways) {
+            h.edgeRecreated(s.id(), api.createEdge(h.ends(s.form())));
+        }
+    }
+
+    private void updateUndo() {
+        EditHistory.Entry next = history.peek();
+        undo.setDisable(next == null || undoing);
+        undo.setTooltip(new Tooltip(next == null ? "Nothing to undo" : "Undo the " + next.label() + " (Ctrl+Z)"));
+    }
+
+    /** Takes back the last change: the server is asked to put back what was there before. */
+    private void undo() {
+        if (undoing || data == null || dragNode != null) {
+            return;
+        }
+        EditHistory.Entry e = history.pop();
+        if (e == null) {
+            status.setText("Nothing to undo.");
+            return;
+        }
+        undoing = true;
+        updateUndo();
+        connectFrom = null;
+        pendingPlace = null;
+        Integer before = e.selectNode() == null ? null : history.node(e.selectNode());
+        Async.run(() -> {
+            e.step().undo(history);
+            return before == null ? null : history.node(e.selectNode());
+        }, now -> {
+            undoing = false;
+            updateUndo();
+            String back = now != null && !now.equals(before) ? " It came back as place #" + now
+                    + ": reprint its QR sign if it had one." : "";
+            status.setText("Undid the " + e.label() + "." + back);
+            reload(now, null);
+        }, ex -> {
+            undoing = false;
+            updateUndo();
+            failed(ex);
+            if (ex.status() != 401) {
+                status.setText("Could not undo the " + e.label() + ".\n" + status.getText());
+                reload(null, null);
+            }
+        });
     }
 
     /** For the screen tour: shows a level (by its label) and selects a place or one of its walkways on it. */
@@ -811,6 +930,16 @@ public class MapEditorView extends VBox {
         String b = f == null ? "" : data.building(f.buildingId()).map(x -> MapView.shortName(x.name()) + " · ")
                 .orElse("");
         return b + (f == null ? "floor " + n.floorId() : f.floorName());
+    }
+
+    private static AdminModels.NodeForm formOf(Node n) {
+        return new AdminModels.NodeForm(n.buildingId(), n.floorId(), n.name(), n.nodeType(), n.x(), n.y(),
+                n.description(), n.openHours());
+    }
+
+    private static AdminModels.EdgeForm formOf(Edge w) {
+        return new AdminModels.EdgeForm(w.fromNodeId(), w.toNodeId(), w.distanceM(), w.edgeType().name(),
+                w.accessible());
     }
 
     private static boolean isWaypoint(String type) {

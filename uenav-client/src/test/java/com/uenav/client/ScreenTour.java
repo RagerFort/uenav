@@ -132,6 +132,7 @@ public final class ScreenTour {
         pause(1500);
         System.out.println("DRAG Guidance Office 40 px down:");
         REQUESTS.forEach(r -> System.out.println("  " + r));
+        undo("UNDO the drag with Ctrl+Z:", true);
 
         REQUESTS.clear();
         fx(() -> clickTool("Connect"));
@@ -142,6 +143,7 @@ public final class ScreenTour {
         pause(1500);
         System.out.println("CONNECT Classroom 1 to Classroom 5:");
         REQUESTS.forEach(r -> System.out.println("  " + r));
+        undo("UNDO the walkway with Ctrl+Z:", true);
 
         REQUESTS.clear();
         fx(() -> clickTool("Add place"));
@@ -164,7 +166,32 @@ public final class ScreenTour {
         pause(1500);
         System.out.println("ADD a place by clicking the map:");
         REQUESTS.forEach(r -> System.out.println("  " + r));
+        shot("light-06e-map-editor-undo");
+        undo("UNDO the new place with the Undo button:", false);
+        undo("UNDO with nothing left (Ctrl+Z):", true);
         fx(() -> clickTool("Select"));
+    }
+
+    /** Undoes the editor's last change, with Ctrl+Z or its Undo button, and prints what it sent and said. */
+    private static void undo(String title, boolean key) throws Exception {
+        REQUESTS.clear();
+        fx(() -> {
+            if (key) {
+                editor().fireEvent(new javafx.scene.input.KeyEvent(javafx.scene.input.KeyEvent.KEY_PRESSED, "", "",
+                        javafx.scene.input.KeyCode.Z, false, true, false, false));
+            } else {
+                editor().lookupAll(".small-button").stream()
+                        .filter(n -> n instanceof javafx.scene.control.Button b && "Undo".equals(b.getText()))
+                        .findFirst().ifPresent(n -> ((javafx.scene.control.Button) n).fire());
+            }
+        });
+        pause(1500);
+        System.out.println(title);
+        REQUESTS.forEach(r -> System.out.println("  " + r));
+        fx(() -> editor().lookupAll(".muted").stream()
+                .filter(n -> n instanceof javafx.scene.control.Label l && (l.getText().startsWith("Undid")
+                        || l.getText().startsWith("Nothing") || l.getText().startsWith("Could not")))
+                .forEach(n -> System.out.println("  status: " + ((javafx.scene.control.Label) n).getText())));
     }
 
     private static com.uenav.map.MapView mapView() {
