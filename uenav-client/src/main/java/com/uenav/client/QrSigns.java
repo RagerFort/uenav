@@ -119,8 +119,20 @@ final class QrSigns {
         return l;
     }
 
-    /** A picture of the sign at print size (2x the screen size, so it stays sharp on paper). */
+    /**
+     * A picture of the sign at print size (2x the screen size, so it stays sharp on paper). A sign saved without
+     * being shown has no window, so it gets a scene of its own first: without one its texts are never styled or laid
+     * out and only the QR code comes out.
+     */
     static WritableImage render(Node sign) {
+        if (sign.getScene() == null && sign instanceof javafx.scene.Parent root) {
+            new javafx.scene.Scene(root);
+        }
+        sign.applyCss();
+        if (sign instanceof javafx.scene.Parent parent) {
+            parent.resize(parent.prefWidth(-1), parent.prefHeight(SIGN_WIDTH));
+            parent.layout();
+        }
         SnapshotParameters p = new SnapshotParameters();
         p.setFill(Color.WHITE);
         p.setTransform(javafx.scene.transform.Transform.scale(2, 2));
