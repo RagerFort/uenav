@@ -99,6 +99,16 @@ plans' left wing is the north end and the plans' top is east; building length 10
 room positions follow the plans' order and spacing; the doors are the north exit, the south-west main door and a
 south-east exit.
 
+## D29: Undo for the whole admin app (implemented 2026-11-23, owner asked)
+
+UENav Admin has one **Undo** button in the top bar (and Ctrl+Z) on every page. It takes back the last change made
+since signing in, on any page: the Map editor's moves, new places, walkways, floor links, saves and deletes, and the
+add, edit and delete of places, walkways, buildings and floors on the list pages. Every change is already saved on
+the server, so an undo asks the server to put things back. One `EditHistory` per sign-in holds the last 50 changes
+(signing out clears it). Something deleted comes back under a new id; later undo steps follow the new id. A place that
+comes back needs its QR sign printed again, and the note next to Undo says so. In a text box Ctrl+Z still undoes the
+typing. The Map editor's own Undo button moved to the top bar.
+
 ## D28: Lucio Tan floors, office hours, Beach Volleyball Court (implemented 2026-11-22, owner gave the plans)
 
 - **Dr. Lucio C. Tan Building** (owner: the plans with grid lines 1-12 are this building): ground floor to the 5th

@@ -23,9 +23,9 @@ public class WalkwaysView extends ManagePage<AdminModels.Edge> {
     private List<AdminModels.Place> places = List.of();
     private final Map<Integer, String> placeLabels = new HashMap<>();
 
-    public WalkwaysView(AdminApi api, Consumer<ApiException> onUnauthorized) {
+    public WalkwaysView(AdminApi api, EditHistory history, Consumer<ApiException> onUnauthorized) {
         super("Walkways", "Manage the walkways, stairs and elevators that join places.", "walkway",
-                "+ Add walkway", "This walkway is still used by other records.", onUnauthorized);
+                "+ Add walkway", "This walkway is still used by other records.", history, onUnauthorized);
         this.api = api;
         init();
     }
@@ -77,8 +77,15 @@ public class WalkwaysView extends ManagePage<AdminModels.Edge> {
     }
 
     @Override
-    protected void deleteRow(AdminModels.Edge e) throws ApiException {
+    protected EditHistory.Entry deleteRow(AdminModels.Edge e) throws ApiException {
         api.deleteEdge(e.id());
+        AdminModels.EdgeForm old = formOf(e);
+        return new EditHistory.Entry("delete of the walkway " + describe(e), null,
+                h -> h.edgeRecreated(e.id(), api.createEdge(h.ends(old))));
+    }
+
+    private static AdminModels.EdgeForm formOf(AdminModels.Edge e) {
+        return new AdminModels.EdgeForm(e.fromNodeId(), e.toNodeId(), e.distanceM(), e.edgeType(), e.accessible());
     }
 
     private ComboBox<Option<AdminModels.Place>> placeBox(Integer selectedId) {
@@ -137,12 +144,17 @@ public class WalkwaysView extends ManagePage<AdminModels.Edge> {
                     }
                     AdminModels.EdgeForm form = new AdminModels.EdgeForm(f.value().id(), t.value().id(), d,
                             type.getValue(), accessible.isSelected());
+                    String what = f.value().name() + " to " + t.value().name();
+                    String was = existing == null ? null : describe(existing);
                     return () -> {
                         if (existing == null) {
-                            api.createEdge(form);
-                        } else {
-                            api.updateEdge(existing.id(), form);
+                            int id = api.createEdge(form);
+                            return new EditHistory.Entry("new walkway " + what, null, h -> api.deleteEdge(h.edge(id)));
                         }
+                        api.updateEdge(existing.id(), form);
+                        AdminModels.EdgeForm old = formOf(existing);
+                        return new EditHistory.Entry("changes to the walkway " + was, null,
+                                h -> api.updateEdge(h.edge(existing.id()), h.ends(old)));
                     };
                 });
     }

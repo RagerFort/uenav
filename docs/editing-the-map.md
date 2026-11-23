@@ -38,7 +38,8 @@ metres from grid line 1, side). Edit a list, run the script, then load the SQL f
 to be the west end: flip `$WestIsGrid1` in the script if that is wrong.
 
 ## Order
-The Map editor does all of this on one page; the pages below are the list view of the same data.
+The Map editor does all of this on one page; the pages below are the list view of the same data. A wrong change on
+any page can be taken back with **Undo** in the top bar (or Ctrl+Z), one change at a time.
 1. **Floors** page: add the missing floors of a building (for example Engineering 2F and 3F: floor number 2, name "2nd floor").
 2. **Places** page, for every floor:
    - the rooms (type `ROOM` or `OFFICE`), with that building and floor;

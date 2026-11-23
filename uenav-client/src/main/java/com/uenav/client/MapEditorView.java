@@ -31,7 +31,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -83,9 +82,7 @@ public class MapEditorView extends VBox {
     private final VBox panel = new VBox(10);
     private final Label hint = new Label();
     private final Label status = new Label();
-    private final EditHistory history = new EditHistory();
-    private final Button undo = new Button("Undo");
-    private boolean undoing;
+    private final EditHistory history;
 
     private CampusData data;
     private Tool tool = Tool.SELECT;
@@ -102,8 +99,9 @@ public class MapEditorView extends VBox {
     private double[] mouseAt;
     private boolean handledPress;
 
-    public MapEditorView(AdminApi api, Consumer<ApiException> onUnauthorized) {
+    public MapEditorView(AdminApi api, EditHistory history, Consumer<ApiException> onUnauthorized) {
         this.api = api;
+        this.history = history;
         this.onUnauthorized = onUnauthorized;
         getStyleClass().add("canvas");
         setPadding(new Insets(24));
@@ -147,14 +145,8 @@ public class MapEditorView extends VBox {
         fit.getStyleClass().add("small-button");
         fit.setMinWidth(Region.USE_PREF_SIZE);
         fit.setOnAction(e -> map.resetView());
-        undo.setGraphic(Icons.icon("undo", 14));
-        undo.getStyleClass().add("small-button");
-        undo.setMinWidth(Region.USE_PREF_SIZE);
-        undo.setFocusTraversable(false);
-        undo.setOnAction(e -> undo());
-        updateUndo();
         HBox toolbar = new HBox(8, levelBox, new Separator(javafx.geometry.Orientation.VERTICAL), select, add, connect,
-                new Separator(javafx.geometry.Orientation.VERTICAL), undo, grow, zoomOut, zoomIn, fit);
+                grow, zoomOut, zoomIn, fit);
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         map.setDark(Theme.isDark());
@@ -503,7 +495,7 @@ public class MapEditorView extends VBox {
                     n.x(), n.y(), blankToNull(desc.getText()), blankToNull(hours.getText()));
             AdminModels.NodeForm old = formOf(n);
             run("Saved " + nm + ".", () -> api.updateNode(n.id(), f), n.id(), null,
-                    "changes to " + n.name(), n.id(), h -> api.updateNode(h.node(n.id()), old));
+                    "changes to " + n.name(), n.id(), h -> api.updateNode(h.node(n.id()), h.place(old)));
         });
         Button delete = danger("Delete place");
         delete.setOnAction(e -> deletePlace(n));
@@ -680,7 +672,7 @@ public class MapEditorView extends VBox {
             return changed;
         }, changed -> {
             remember("move of " + n.name(), n.id(), h -> {
-                api.updateNode(h.node(n.id()), old);
+                api.updateNode(h.node(n.id()), h.place(old));
                 for (SavedWay s : changed) {
                     api.updateEdge(h.edge(s.id()), h.ends(s.form()));
                 }
@@ -777,7 +769,7 @@ public class MapEditorView extends VBox {
             return n.name();
         }, nm -> {
             remember("delete of " + nm, n.id(), h -> {
-                h.nodeRecreated(n.id(), api.createNode(old));
+                h.nodeRecreated(n.id(), api.createNode(h.place(old)));
                 putBack(h, gone);
             });
             status.setText("Deleted " + nm + ".");
@@ -813,7 +805,6 @@ public class MapEditorView extends VBox {
 
     private void remember(String label, Integer selectNode, EditHistory.Step step) {
         history.push(label, selectNode, step);
-        updateUndo();
     }
 
     /** Creates deleted walkways again, under new ids. Runs off the screen thread. */
@@ -823,15 +814,9 @@ public class MapEditorView extends VBox {
         }
     }
 
-    private void updateUndo() {
-        EditHistory.Entry next = history.peek();
-        undo.setDisable(next == null || undoing);
-        undo.setTooltip(new Tooltip(next == null ? "Nothing to undo" : "Undo the " + next.label() + " (Ctrl+Z)"));
-    }
-
     /** Takes back the last change: the server is asked to put back what was there before. */
-    private void undo() {
-        if (undoing || data == null || dragNode != null) {
+    void undo() {
+        if (history.isBusy() || data == null || dragNode != null) {
             return;
         }
         EditHistory.Entry e = history.pop();
@@ -839,8 +824,7 @@ public class MapEditorView extends VBox {
             status.setText("Nothing to undo.");
             return;
         }
-        undoing = true;
-        updateUndo();
+        history.setBusy(true);
         connectFrom = null;
         pendingPlace = null;
         Integer before = e.selectNode() == null ? null : history.node(e.selectNode());
@@ -848,15 +832,13 @@ public class MapEditorView extends VBox {
             e.step().undo(history);
             return before == null ? null : history.node(e.selectNode());
         }, now -> {
-            undoing = false;
-            updateUndo();
+            history.setBusy(false);
             String back = now != null && !now.equals(before) ? " It came back as place #" + now
                     + ": reprint its QR sign if it had one." : "";
             status.setText("Undid the " + e.label() + "." + back);
             reload(now, null);
         }, ex -> {
-            undoing = false;
-            updateUndo();
+            history.setBusy(false);
             failed(ex);
             if (ex.status() != 401) {
                 status.setText("Could not undo the " + e.label() + ".\n" + status.getText());

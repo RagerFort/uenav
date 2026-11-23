@@ -3,23 +3,34 @@ package com.uenav.client;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextInputControl;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 /**
  * The admin window after login (Figma: desktop admin dashboard): side menu, top bar, and the page in the middle.
  * The PC app is for admins only (proposal: Windows = admin app); visitors use the phone app.
+ * Undo in the top bar (or Ctrl+Z) takes back the last change made on any page of this sign-in (EditHistory).
  */
 public class AdminShell extends BorderPane {
+
+    private static final KeyCombination UNDO_KEY = new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN);
 
     private final AdminApi api;
     private final AdminApi.LoginInfo info;
@@ -29,6 +40,11 @@ public class AdminShell extends BorderPane {
     private final Label crumbPage = new Label();
     private final Map<String, Button> navButtons = new LinkedHashMap<>();
     private final Label reportsBadge = new Label();
+    private final EditHistory history = new EditHistory();
+    private final Label undoNote = new Label();
+    private final PauseTransition undoNoteTimer = new PauseTransition(Duration.seconds(8));
+    private Node currentPage;
+    private String currentKey;
     private boolean signedOut;
 
     public AdminShell(AdminApi api, AdminApi.LoginInfo info, Consumer<String> onSignOut) {
@@ -39,6 +55,13 @@ public class AdminShell extends BorderPane {
         setLeft(buildSidebar());
         VBox.setVgrow(content, Priority.ALWAYS);
         setCenter(new VBox(buildTopBar(), content));
+        // in a text box Ctrl+Z undoes the typing; the Map editor handles its own Ctrl+Z first
+        addEventHandler(KeyEvent.KEY_PRESSED, e -> {
+            if (UNDO_KEY.match(e) && !(e.getTarget() instanceof TextInputControl)) {
+                e.consume();
+                undo();
+            }
+        });
         show("dashboard");
     }
 
@@ -162,7 +185,21 @@ public class AdminShell extends BorderPane {
             Theme.setDark(!Theme.isDark());
             showTheme.run();
         });
-        HBox bar = new HBox(12, crumb, spacer, theme, new VBox(0, who, where), avatar);
+        Button undo = new Button("Undo");
+        undo.setGraphic(Icons.icon("undo", 14));
+        undo.getStyleClass().add("small-button");
+        undo.setMinWidth(Region.USE_PREF_SIZE);
+        undo.setFocusTraversable(false);
+        undo.disableProperty().bind(history.canUndoProperty().not());
+        Tooltip undoTip = new Tooltip();
+        undoTip.textProperty().bind(history.tipProperty());
+        undo.setTooltip(undoTip);
+        undo.setOnAction(e -> undo());
+        undoNote.getStyleClass().add("muted");
+        undoNote.setWrapText(true);
+        undoNote.setMaxWidth(420);
+        undoNoteTimer.setOnFinished(e -> undoNote.setText(""));
+        HBox bar = new HBox(12, crumb, spacer, undoNote, undo, theme, new VBox(0, who, where), avatar);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("topbar");
         bar.setPadding(new Insets(14, 28, 14, 28));
@@ -182,7 +219,7 @@ public class AdminShell extends BorderPane {
 
     /** Opens the Places page, then runs an action on it once it has loaded. */
     private void openPlaces(Consumer<PlacesView> action) {
-        PlacesView page = new PlacesView(api, e -> expired());
+        PlacesView page = new PlacesView(api, history, e -> expired());
         setPage("places", page, "Admin", "Places");
         if (action != null) {
             page.afterLoad(() -> action.accept(page));
@@ -192,10 +229,10 @@ public class AdminShell extends BorderPane {
     private void show(String key) {
         switch (key) {
             case "places" -> openPlaces(null);
-            case "editor" -> setPage(key, new MapEditorView(api, e -> expired()), "Admin", "Map editor");
-            case "walkways" -> setPage(key, new WalkwaysView(api, e -> expired()), "Admin", "Walkways");
-            case "buildings" -> setPage(key, new BuildingsView(api, e -> expired()), "Admin", "Buildings");
-            case "floors" -> setPage(key, new FloorsView(api, e -> expired()), "Admin", "Floors");
+            case "editor" -> setPage(key, new MapEditorView(api, history, e -> expired()), "Admin", "Map editor");
+            case "walkways" -> setPage(key, new WalkwaysView(api, history, e -> expired()), "Admin", "Walkways");
+            case "buildings" -> setPage(key, new BuildingsView(api, history, e -> expired()), "Admin", "Buildings");
+            case "floors" -> setPage(key, new FloorsView(api, history, e -> expired()), "Admin", "Floors");
             case "reports" -> setPage(key, new ReportsView(api, e -> expired()), "Admin", "Route reports");
             case "qr" -> setPage(key, new QrCodesView(api, e -> expired()), "Tools", "QR codes");
             default -> setPage("dashboard", new DashboardView(api, e -> expired(), () -> show("reports"),
@@ -217,7 +254,64 @@ public class AdminShell extends BorderPane {
         crumbArea.setText(area);
         crumbPage.setText(title);
         content.getChildren().setAll(page);
+        currentPage = page;
+        currentKey = key;
         highlight(key);
+    }
+
+    /**
+     * Takes back the last change, on whichever page it was made: the server is asked to put back what was there
+     * before, then the page on screen loads again. The Map editor does this itself, to show the result on its map.
+     */
+    void undo() {
+        if (currentPage instanceof MapEditorView editor) {
+            editor.undo();
+            return;
+        }
+        if (history.isBusy()) {
+            return;
+        }
+        EditHistory.Entry e = history.pop();
+        if (e == null) {
+            note("Nothing to undo.", false);
+            return;
+        }
+        history.setBusy(true);
+        Integer before = e.selectNode() == null ? null : history.node(e.selectNode());
+        Async.run(() -> {
+            e.step().undo(history);
+            return before == null ? null : history.node(e.selectNode());
+        }, now -> {
+            history.setBusy(false);
+            String back = now != null && !now.equals(before) ? " It came back as place #" + now
+                    + ": reprint its QR sign if it had one." : "";
+            note("Undid the " + e.label() + "." + back, false);
+            reloadPage();
+        }, ex -> {
+            history.setBusy(false);
+            if (ex.status() == 401) {
+                expired();
+                return;
+            }
+            note("Could not undo the " + e.label() + ": " + ex.getMessage(), true);
+            reloadPage();
+        });
+    }
+
+    /** Shows what an undo did, next to the Undo button, for a few seconds. */
+    private void note(String text, boolean error) {
+        undoNote.setText(text);
+        undoNote.getStyleClass().removeAll("muted", "error-label");
+        undoNote.getStyleClass().add(error ? "error-label" : "muted");
+        undoNoteTimer.playFromStart();
+    }
+
+    private void reloadPage() {
+        if (currentPage instanceof EditHistory.Page page) {
+            page.reloadAfterUndo();
+        } else if (currentKey != null) {
+            show(currentKey);
+        }
     }
 
     private void highlight(String key) {

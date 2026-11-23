@@ -33,8 +33,9 @@ import javafx.scene.layout.VBox;
  * Shared layout for the list pages: title, search box, add button, table with Edit and Delete,
  * and the add/edit pop-up. A page fills in what is specific to it (columns, form, server calls).
  * The page must call init() at the end of its own constructor.
+ * Every save and delete tells how to undo it; the admin window's Undo button (Ctrl+Z) takes it back.
  */
-abstract class ManagePage<T> extends VBox {
+abstract class ManagePage<T> extends VBox implements EditHistory.Page {
 
     /** One choice in a drop-down list. */
     record Option<V>(V value, String label) {
@@ -44,14 +45,15 @@ abstract class ManagePage<T> extends VBox {
         }
     }
 
-    /** The server call to make when the form was filled in correctly. */
+    /** The server call to make when the form was filled in correctly; it returns how to undo it, or null. */
     interface FormSave {
-        void save() throws ApiException;
+        EditHistory.Entry save() throws ApiException;
     }
 
     private final String noun;
     private final String inUseMessage;
     private final Consumer<ApiException> onUnauthorized;
+    private final EditHistory history;
 
     private final ObservableList<T> items = FXCollections.observableArrayList();
     private final FilteredList<T> filtered = new FilteredList<>(items, r -> true);
@@ -63,10 +65,11 @@ abstract class ManagePage<T> extends VBox {
     private final Button retry = new Button("Retry");
 
     ManagePage(String title, String subtitle, String noun, String addLabel, String inUseMessage,
-               Consumer<ApiException> onUnauthorized) {
+               EditHistory history, Consumer<ApiException> onUnauthorized) {
         this.noun = noun;
         this.inUseMessage = inUseMessage;
         this.onUnauthorized = onUnauthorized;
+        this.history = history;
         getStyleClass().add("canvas");
         setPadding(new Insets(24));
         setSpacing(16);
@@ -119,7 +122,8 @@ abstract class ManagePage<T> extends VBox {
 
     protected abstract void openForm(T existingOrNull);
 
-    protected abstract void deleteRow(T row) throws ApiException;
+    /** Deletes the row on the server and returns how to bring it back (it comes back under a new id). */
+    protected abstract EditHistory.Entry deleteRow(T row) throws ApiException;
 
     // ---- starting up
     protected final void init() {
@@ -254,11 +258,11 @@ abstract class ManagePage<T> extends VBox {
             }
             ok.setDisable(true);
             error.setText("");
-            Async.run(() -> {
-                        action.save();
-                        return Boolean.TRUE;
-                    },
-                    done -> {
+            Async.run(action::save,
+                    undoStep -> {
+                        if (undoStep != null) {
+                            history.push(undoStep);
+                        }
                         dlg.close();
                         reload();
                     },
@@ -278,18 +282,18 @@ abstract class ManagePage<T> extends VBox {
     // ---- delete
     private void confirmDelete(T row) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Delete \"" + describe(row) + "\"? This cannot be undone.", ButtonType.OK, ButtonType.CANCEL);
+                "Delete \"" + describe(row) + "\"? Undo (Ctrl+Z) can bring it back.", ButtonType.OK, ButtonType.CANCEL);
         confirm.setHeaderText("Delete " + noun);
         style(confirm);
         confirm.showAndWait().ifPresent(choice -> {
             if (choice != ButtonType.OK) {
                 return;
             }
-            Async.run(() -> {
-                        deleteRow(row);
-                        return Boolean.TRUE;
+            Async.run(() -> deleteRow(row),
+                    undoStep -> {
+                        history.push(undoStep);
+                        reload();
                     },
-                    done -> reload(),
                     e -> {
                         if (e.status() == 401) {
                             onUnauthorized.accept(e);
@@ -302,6 +306,11 @@ abstract class ManagePage<T> extends VBox {
                         err.showAndWait();
                     });
         });
+    }
+
+    @Override
+    public void reloadAfterUndo() {
+        reload();
     }
 
     private static void style(Alert a) {

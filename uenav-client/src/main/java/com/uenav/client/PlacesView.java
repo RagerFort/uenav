@@ -32,8 +32,11 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-/** The Places page: list, search, add, edit and delete (Figma: Dashboard "Places" panel, as a full page). */
-public class PlacesView extends VBox {
+/**
+ * The Places page: list, search, add, edit and delete (Figma: Dashboard "Places" panel, as a full page).
+ * Every save and delete tells the admin window how to undo it (Undo button, Ctrl+Z).
+ */
+public class PlacesView extends VBox implements EditHistory.Page {
 
     /** Place types. RESTROOM, CANTEEN, CLINIC, LIBRARY and EXIT feed the phone's quick buttons (D15). */
     static final List<String> TYPES = List.of(
@@ -52,6 +55,7 @@ public class PlacesView extends VBox {
 
     private final AdminApi api;
     private final Consumer<ApiException> onUnauthorized;
+    private final EditHistory history;
 
     private final ObservableList<AdminModels.Place> items = FXCollections.observableArrayList();
     private final FilteredList<AdminModels.Place> filtered = new FilteredList<>(items, p -> true);
@@ -69,9 +73,10 @@ public class PlacesView extends VBox {
     private boolean loaded;
     private Runnable afterLoad;
 
-    public PlacesView(AdminApi api, Consumer<ApiException> onUnauthorized) {
+    public PlacesView(AdminApi api, EditHistory history, Consumer<ApiException> onUnauthorized) {
         this.api = api;
         this.onUnauthorized = onUnauthorized;
+        this.history = history;
         getStyleClass().add("canvas");
         setPadding(new Insets(24));
         setSpacing(16);
@@ -405,13 +410,16 @@ public class PlacesView extends VBox {
             error.setText("");
             Async.run(() -> {
                         if (existing == null) {
-                            api.createNode(form);
-                        } else {
-                            api.updateNode(existing.id(), form);
+                            int id = api.createNode(form);
+                            return new EditHistory.Entry("new place " + n, null, u -> api.deleteNode(u.node(id)));
                         }
-                        return Boolean.TRUE;
+                        api.updateNode(existing.id(), form);
+                        AdminModels.NodeForm old = formOf(existing);
+                        return new EditHistory.Entry("changes to " + existing.name(), existing.id(),
+                                u -> api.updateNode(u.node(existing.id()), u.place(old)));
                     },
-                    done -> {
+                    undoStep -> {
+                        history.push(undoStep);
                         dlg.close();
                         reload();
                     },
@@ -431,18 +439,24 @@ public class PlacesView extends VBox {
     // ---- delete
     private void confirmDelete(AdminModels.Place p) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Delete \"" + p.name() + "\"? This cannot be undone.", ButtonType.OK, ButtonType.CANCEL);
+                "Delete \"" + p.name() + "\"? Undo (Ctrl+Z) can bring it back, under a new id: its QR sign would "
+                        + "need printing again.", ButtonType.OK, ButtonType.CANCEL);
         confirm.setHeaderText("Delete place");
         styleAlert(confirm);
         confirm.showAndWait().ifPresent(choice -> {
             if (choice != ButtonType.OK) {
                 return;
             }
+            AdminModels.NodeForm old = formOf(p);
             Async.run(() -> {
                         api.deleteNode(p.id());
-                        return Boolean.TRUE;
+                        return new EditHistory.Entry("delete of " + p.name(), p.id(),
+                                u -> u.nodeRecreated(p.id(), api.createNode(u.place(old))));
                     },
-                    done -> reload(),
+                    undoStep -> {
+                        history.push(undoStep);
+                        reload();
+                    },
                     e -> {
                         if (e.status() == 401) {
                             onUnauthorized.accept(e);
@@ -457,6 +471,17 @@ public class PlacesView extends VBox {
                         err.showAndWait();
                     });
         });
+    }
+
+    /** The place as a form; "" for empty texts, so putting it back also clears texts added since. */
+    private static AdminModels.NodeForm formOf(AdminModels.Place p) {
+        return new AdminModels.NodeForm(p.buildingId(), p.floorId(), p.name(), p.nodeType(), p.x(), p.y(),
+                p.description() == null ? "" : p.description(), p.openHours() == null ? "" : p.openHours());
+    }
+
+    @Override
+    public void reloadAfterUndo() {
+        reload();
     }
 
     private static void styleAlert(Alert a) {

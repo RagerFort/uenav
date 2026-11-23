@@ -76,6 +76,7 @@ D10 (JSON): implemented as a hand-written `MiniJson` in `uenav-core` (no library
 | D20 | Phone bottom bar Explore / Map / Settings; admin under Settings > Staff sign in; theme Same as phone / Light / Dark. |
 | D21 | Campus layout from a satellite photo + OpenStreetMap, checked by a student: 2 gates, Samson Road Gate path between CFAD and Admin, paths across the field. `sql/05_campus_layout.sql`. |
 | D22 | Tan Yan Kee GF-10F from the posted floor plans; CFAD is TYK's west wing; GF canteen; 4F bridge to EN 3F; 2 elevator banks (anyone); stairs count 15 m a floor. `sql/06_tan_yan_kee.sql`. |
+| D29 | Undo button in UENav Admin's top bar (and Ctrl+Z) for every page: map editor and the list pages (EditHistory). |
 | D28 | Lucio Tan GF-5F mezzanine from the plans (`sql/07_lucio_tan.sql`); office hours for every office (`sql/08_office_hours.sql`); Engineering gaps filled from the 2014 plans; Beach Volleyball Court. |
 | D27 | Map editor page in UENav Admin (drag, add, connect, link floors); map drawing shared in the new uenav-map module. |
 | D26 | Phone app: when the network's DNS blocks the server's name, SecureDns looks it up via Cloudflare/Google DNS over HTTPS and Http.direct connects with the usual certificate check. |

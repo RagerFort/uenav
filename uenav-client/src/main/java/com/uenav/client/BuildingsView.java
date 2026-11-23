@@ -14,9 +14,10 @@ public class BuildingsView extends ManagePage<AdminModels.Building> {
 
     private final AdminApi api;
 
-    public BuildingsView(AdminApi api, Consumer<ApiException> onUnauthorized) {
+    public BuildingsView(AdminApi api, EditHistory history, Consumer<ApiException> onUnauthorized) {
         super("Buildings", "Manage campus buildings. Add their floors on the Floors page.", "building",
-                "+ Add building", "This building still has floors or places. Remove those first.", onUnauthorized);
+                "+ Add building", "This building still has floors or places. Remove those first.", history,
+                onUnauthorized);
         this.api = api;
         init();
     }
@@ -45,8 +46,15 @@ public class BuildingsView extends ManagePage<AdminModels.Building> {
     }
 
     @Override
-    protected void deleteRow(AdminModels.Building b) throws ApiException {
+    protected EditHistory.Entry deleteRow(AdminModels.Building b) throws ApiException {
         api.deleteBuilding(b.id());
+        AdminModels.BuildingForm old = formOf(b);
+        return new EditHistory.Entry("delete of " + b.name(), null,
+                h -> h.buildingRecreated(b.id(), api.createBuilding(old)));
+    }
+
+    private static AdminModels.BuildingForm formOf(AdminModels.Building b) {
+        return new AdminModels.BuildingForm(b.name(), b.category(), b.description());
     }
 
     @Override
@@ -71,10 +79,14 @@ public class BuildingsView extends ManagePage<AdminModels.Building> {
                     AdminModels.BuildingForm form = new AdminModels.BuildingForm(n, c, d.isEmpty() ? null : d);
                     return () -> {
                         if (existing == null) {
-                            api.createBuilding(form);
-                        } else {
-                            api.updateBuilding(existing.id(), form);
+                            int id = api.createBuilding(form);
+                            return new EditHistory.Entry("new building " + n, null,
+                                    h -> api.deleteBuilding(h.building(id)));
                         }
+                        api.updateBuilding(existing.id(), form);
+                        AdminModels.BuildingForm old = formOf(existing);
+                        return new EditHistory.Entry("changes to " + existing.name(), null,
+                                h -> api.updateBuilding(h.building(existing.id()), old));
                     };
                 });
     }

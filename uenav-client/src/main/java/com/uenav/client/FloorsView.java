@@ -19,9 +19,9 @@ public class FloorsView extends ManagePage<AdminModels.Floor> {
     private List<AdminModels.Building> buildings = List.of();
     private final Map<Integer, String> buildingNames = new HashMap<>();
 
-    public FloorsView(AdminApi api, Consumer<ApiException> onUnauthorized) {
+    public FloorsView(AdminApi api, EditHistory history, Consumer<ApiException> onUnauthorized) {
         super("Floors", "Manage the floors of each building.", "floor", "+ Add floor",
-                "This floor still has places on it. Move or delete those first.", onUnauthorized);
+                "This floor still has places on it. Move or delete those first.", history, onUnauthorized);
         this.api = api;
         init();
     }
@@ -66,8 +66,15 @@ public class FloorsView extends ManagePage<AdminModels.Floor> {
     }
 
     @Override
-    protected void deleteRow(AdminModels.Floor f) throws ApiException {
+    protected EditHistory.Entry deleteRow(AdminModels.Floor f) throws ApiException {
         api.deleteFloor(f.id());
+        AdminModels.FloorForm old = formOf(f);
+        return new EditHistory.Entry("delete of " + describe(f), null,
+                h -> h.floorRecreated(f.id(), api.createFloor(h.floor(old))));
+    }
+
+    private static AdminModels.FloorForm formOf(AdminModels.Floor f) {
+        return new AdminModels.FloorForm(f.buildingId(), f.floorNumber(), f.floorName());
     }
 
     @Override
@@ -110,12 +117,17 @@ public class FloorsView extends ManagePage<AdminModels.Floor> {
                         throw new IllegalArgumentException("Floor number must be a whole number.");
                     }
                     AdminModels.FloorForm form = new AdminModels.FloorForm(sel.value().id(), num, fn);
+                    String what = sel.value().name() + ", " + fn;
+                    String was = existing == null ? null : describe(existing);
                     return () -> {
                         if (existing == null) {
-                            api.createFloor(form);
-                        } else {
-                            api.updateFloor(existing.id(), form);
+                            int id = api.createFloor(form);
+                            return new EditHistory.Entry("new floor " + what, null, h -> api.deleteFloor(h.floor(id)));
                         }
+                        api.updateFloor(existing.id(), form);
+                        AdminModels.FloorForm old = formOf(existing);
+                        return new EditHistory.Entry("changes to " + was, null,
+                                h -> api.updateFloor(h.floor(existing.id()), h.floor(old)));
                     };
                 });
     }

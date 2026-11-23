@@ -106,6 +106,7 @@ public final class ScreenTour {
                 for (String page : new String[] {"Places", "Walkways", "Buildings", "Floors"}) {
                     formShot(page, p + "08-form-" + page.toLowerCase(java.util.Locale.ROOT));
                 }
+                listPageChecks();
             }
         }
         Platform.exit();
@@ -172,15 +173,21 @@ public final class ScreenTour {
         fx(() -> clickTool("Select"));
     }
 
-    /** Undoes the editor's last change, with Ctrl+Z or its Undo button, and prints what it sent and said. */
+    /**
+     * Undoes the last change, with Ctrl+Z (on the Map editor when it is open, else on the window) or the Undo button
+     * in the top bar, and prints what it sent and what the editor or the top bar said.
+     */
     private static void undo(String title, boolean key) throws Exception {
         REQUESTS.clear();
         fx(() -> {
             if (key) {
-                editor().fireEvent(new javafx.scene.input.KeyEvent(javafx.scene.input.KeyEvent.KEY_PRESSED, "", "",
+                java.util.Set<javafx.scene.Node> pages = scene.getRoot().lookupAll(".canvas");
+                javafx.scene.Node target = pages.stream().filter(n -> n instanceof MapEditorView).findFirst()
+                        .orElseGet(() -> pages.stream().filter(n -> n instanceof AdminShell).findFirst().orElseThrow());
+                target.fireEvent(new javafx.scene.input.KeyEvent(javafx.scene.input.KeyEvent.KEY_PRESSED, "", "",
                         javafx.scene.input.KeyCode.Z, false, true, false, false));
             } else {
-                editor().lookupAll(".small-button").stream()
+                scene.getRoot().lookupAll(".small-button").stream()
                         .filter(n -> n instanceof javafx.scene.control.Button b && "Undo".equals(b.getText()))
                         .findFirst().ifPresent(n -> ((javafx.scene.control.Button) n).fire());
             }
@@ -188,10 +195,81 @@ public final class ScreenTour {
         pause(1500);
         System.out.println(title);
         REQUESTS.forEach(r -> System.out.println("  " + r));
-        fx(() -> editor().lookupAll(".muted").stream()
-                .filter(n -> n instanceof javafx.scene.control.Label l && (l.getText().startsWith("Undid")
-                        || l.getText().startsWith("Nothing") || l.getText().startsWith("Could not")))
+        fx(() -> scene.getRoot().lookupAll(".label").stream()
+                .filter(n -> n instanceof javafx.scene.control.Label l && l.getText() != null
+                        && (l.getText().startsWith("Undid") || l.getText().startsWith("Nothing")
+                        || l.getText().startsWith("Could not")))
                 .forEach(n -> System.out.println("  status: " + ((javafx.scene.control.Label) n).getText())));
+    }
+
+    /**
+     * Undo on a list page: adds a building with the form and undoes it with Ctrl+Z, then deletes a building and
+     * brings it back with the Undo button; prints what was sent each time.
+     */
+    private static void listPageChecks() throws Exception {
+        fx(() -> click("Buildings"));
+        pause(1200);
+        REQUESTS.clear();
+        fx(() -> scene.getRoot().lookupAll(".button").stream()
+                .filter(n -> n instanceof javafx.scene.control.Button b && "+ Add building".equals(b.getText()))
+                .findFirst().ifPresent(n -> Platform.runLater(((javafx.scene.control.Button) n)::fire)));
+        pause(1000);
+        fx(() -> {
+            for (javafx.stage.Window w : new java.util.ArrayList<>(javafx.stage.Window.getWindows())) {
+                if (w.isShowing() && w.getScene() != null && w.getScene() != scene) {
+                    w.getScene().getRoot().lookupAll(".text-field").stream()
+                            .filter(n -> n instanceof javafx.scene.control.TextField t
+                                    && "e.g. College of Engineering Building".equals(t.getPromptText()))
+                            .findFirst().ifPresent(n -> ((javafx.scene.control.TextField) n).setText("Test Hall"));
+                }
+            }
+        });
+        windowButton("Save");
+        pause(1500);
+        System.out.println("ADD building Test Hall on the Buildings page:");
+        REQUESTS.forEach(r -> System.out.println("  " + r));
+        undo("UNDO the new building with Ctrl+Z:", true);
+
+        REQUESTS.clear();
+        fx(() -> {
+            scene.getRoot().applyCss(); // the table makes its rows when it is laid out (the tour has no window)
+            scene.getRoot().layout();
+            java.util.List<javafx.scene.Node> dels = scene.getRoot().lookupAll(".danger").stream()
+                    .filter(n -> n instanceof javafx.scene.control.Button b && "Delete".equals(b.getText())
+                            && b.getScene() != null && b.localToScene(b.getBoundsInLocal()).getMinY() > 0)
+                    .toList();
+            System.out.println("  delete buttons on screen: " + dels.size());
+            dels.stream().findFirst().ifPresent(n -> Platform.runLater(((javafx.scene.control.Button) n)::fire));
+        });
+        pause(800);
+        fx(() -> {
+            for (javafx.stage.Window w : new java.util.ArrayList<>(javafx.stage.Window.getWindows())) {
+                if (w.isShowing() && w.getScene() != null && w.getScene() != scene
+                        && w.getScene().getRoot() instanceof javafx.scene.control.DialogPane d) {
+                    System.out.println("  asks: " + d.getContentText());
+                }
+            }
+        });
+        windowButton("OK");
+        pause(1500);
+        System.out.println("DELETE the first building on the Buildings page:");
+        REQUESTS.forEach(r -> System.out.println("  " + r));
+        shot("light-09-buildings-undo");
+        undo("UNDO the delete with the Undo button:", false);
+        undo("UNDO with nothing left (Ctrl+Z):", true);
+    }
+
+    /** Presses a button in the open dialog (a form or a question). */
+    private static void windowButton(String text) throws Exception {
+        fx(() -> {
+            for (javafx.stage.Window w : new java.util.ArrayList<>(javafx.stage.Window.getWindows())) {
+                if (w.isShowing() && w.getScene() != null && w.getScene() != scene) {
+                    w.getScene().getRoot().lookupAll(".button").stream()
+                            .filter(b -> b instanceof javafx.scene.control.Button bt && text.equals(bt.getText()))
+                            .findFirst().ifPresent(b -> ((javafx.scene.control.Button) b).fire());
+                }
+            }
+        });
     }
 
     private static com.uenav.map.MapView mapView() {
